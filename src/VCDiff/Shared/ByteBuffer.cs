@@ -4,7 +4,7 @@ namespace VCDiff.Shared
 {
     internal class ByteBuffer : IByteBuffer, IDisposable
     {
-        private byte[] bytes;
+        private ReadOnlyMemory<byte> bytes;
         private int length;
         private int offset;
 
@@ -16,29 +16,15 @@ namespace VCDiff.Shared
         public ByteBuffer(byte[] bytes)
         {
             offset = 0;
-            this.bytes = bytes;
-            if (bytes != null)
-            {
-                this.length = bytes.Length;
-            }
-            else
-            {
-                this.length = 0;
-            }
+            this.bytes = bytes != null ? new ReadOnlyMemory<byte>(bytes) : Memory<byte>.Empty;
+            this.length = this.bytes.Length;
         }
 
         public ByteBuffer(ReadOnlyMemory<byte> bytes)
         {
             offset = 0;
-            this.bytes = bytes.ToArray();
-            if (this.bytes != null)
-            {
-                this.length = this.bytes.Length;
-            }
-            else
-            {
-                this.length = 0;
-            }
+            this.bytes = bytes;
+            this.length = this.bytes.Length;
         }
 
         public bool CanRead
@@ -79,19 +65,19 @@ namespace VCDiff.Shared
         public byte PeekByte()
         {
             if (offset >= length) throw new Exception("Trying to read past End of Buffer");
-            return this.bytes[offset];
+            return this.bytes.Span[offset];
         }
 
         public ReadOnlyMemory<byte> PeekBytes(int len)
         {
             int sliceLen = offset + len > bytes.Length ? bytes.Length - (int)offset : len;
-            return this.bytes.AsMemory().Slice((int)offset, sliceLen);
+            return this.bytes.Slice((int)offset, sliceLen);
         }
 
         public byte ReadByte()
         {
             if (offset >= length) throw new Exception("Trying to read past End of Buffer");
-            return this.bytes[offset++];
+            return this.bytes.Span[offset++];
         }
 
         public ReadOnlyMemory<byte> ReadBytes(int len)
