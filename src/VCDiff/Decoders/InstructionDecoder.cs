@@ -40,9 +40,9 @@ namespace VCDiff.Decoders
                 {
                     opcode = (byte)pendingSecond;
                     pendingSecond = CodeTable.kNoOpcode;
-                    instructionType = table.inst2[opcode];
-                    instructionSize = table.size2[opcode];
-                    instructionMode = table.mode2[opcode];
+                    instructionType = table.inst2.Span[opcode];
+                    instructionSize = table.size2.Span[opcode];
+                    instructionMode = table.mode2.Span[opcode];
                     break;
                 }
 
@@ -54,14 +54,14 @@ namespace VCDiff.Decoders
                 }
 
                 opcode = source.PeekByte();
-                if (table.inst2[opcode] != CodeTable.N)
+                if (table.inst2.Span[opcode] != CodeTable.N)
                 {
                     pendingSecond = source.PeekByte();
                 }
                 source.Next();
-                instructionType = table.inst1[opcode];
-                instructionSize = table.size1[opcode];
-                instructionMode = table.mode1[opcode];
+                instructionType = table.inst1.Span[opcode];
+                instructionSize = table.size1.Span[opcode];
+                instructionMode = table.mode1.Span[opcode];
             } while (instructionType == CodeTable.N);
 
             if (instructionSize == 0)

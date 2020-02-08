@@ -1,4 +1,5 @@
-﻿using VCDiff.Includes;
+﻿using System;
+using VCDiff.Includes;
 using VCDiff.Shared;
 
 namespace VCDiff.Encoders
@@ -15,27 +16,27 @@ namespace VCDiff.Encoders
         public InstructionMap()
         {
             table = CodeTable.DefaultTable;
-            firstMap = new OpcodeMap((int)VCDiffInstructionType.LAST + AddressCache.DefaultLast + 1, FindMaxSize(table.size1));
-            secondMap = new OpcodeMap2((int)VCDiffInstructionType.LAST + AddressCache.DefaultLast + 1, FindMaxSize(table.size2));
+            firstMap = new OpcodeMap((int)VCDiffInstructionType.LAST + AddressCache.DefaultLast + 1, FindMaxSize(table.size1.Span));
+            secondMap = new OpcodeMap2((int)VCDiffInstructionType.LAST + AddressCache.DefaultLast + 1, FindMaxSize(table.size2.Span));
             for (int opcode = 0; opcode < CodeTable.kCodeTableSize; ++opcode)
             {
-                if (table.inst2[opcode] == CodeTable.N)
+                if (table.inst2.Span[opcode] == CodeTable.N)
                 {
-                    firstMap.Add(table.inst1[opcode], table.size1[opcode], table.mode1[opcode], (byte)opcode);
+                    firstMap.Add(table.inst1.Span[opcode], table.size1.Span[opcode], table.mode1.Span[opcode], (byte)opcode);
                 }
-                else if (table.inst1[opcode] == CodeTable.N)
+                else if (table.inst1.Span[opcode] == CodeTable.N)
                 {
-                    firstMap.Add(table.inst1[opcode], table.size1[opcode], table.mode1[opcode], (byte)opcode);
+                    firstMap.Add(table.inst1.Span[opcode], table.size1.Span[opcode], table.mode1.Span[opcode], (byte)opcode);
                 }
             }
 
             for (int opcode = 0; opcode < CodeTable.kCodeTableSize; ++opcode)
             {
-                if ((table.inst1[opcode] != CodeTable.N) && (table.inst2[opcode] != CodeTable.N))
+                if ((table.inst1.Span[opcode] != CodeTable.N) && (table.inst2.Span[opcode] != CodeTable.N))
                 {
-                    int found = this.LookFirstOpcode(table.inst1[opcode], table.size1[opcode], table.mode1[opcode]);
+                    int found = this.LookFirstOpcode(table.inst1.Span[opcode], table.size1.Span[opcode], table.mode1.Span[opcode]);
                     if (found == CodeTable.kNoOpcode) continue;
-                    secondMap.Add((byte)found, table.inst2[opcode], table.size2[opcode], table.mode2[opcode], (byte)opcode);
+                    secondMap.Add((byte)found, table.inst2.Span[opcode], table.size2.Span[opcode], table.mode2.Span[opcode], (byte)opcode);
                 }
             }
         }
@@ -50,7 +51,7 @@ namespace VCDiff.Encoders
             return secondMap.LookUp(first, inst, size, mode);
         }
 
-        private static byte FindMaxSize(byte[] sizes)
+        private static byte FindMaxSize(ReadOnlySpan<byte> sizes)
         {
             byte maxSize = sizes[0];
             for (int i = 1; i < sizes.Length; i++)

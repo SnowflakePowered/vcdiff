@@ -83,12 +83,12 @@ namespace VCDiff.Encoders
             {
                 int lastOp = instructionAndSizes[lastOpcodeIndex];
 
-                if (inst == VCDiffInstructionType.ADD && (table.inst1[lastOp] == CodeTable.A))
+                if (inst == VCDiffInstructionType.ADD && (table.inst1.Span[lastOp] == CodeTable.A))
                 {
                     //warning adding two in a row
                     Console.WriteLine("Warning: performing two ADD instructions in a row.");
                 }
-                int compoundOp = CodeTable.kNoOpcode;
+                int compoundOp;
                 if (size <= byte.MaxValue)
                 {
                     compoundOp = instrMap.LookSecondOpcode((byte)lastOp, (byte)inst, (byte)size, mode);
@@ -110,7 +110,7 @@ namespace VCDiff.Encoders
                 }
             }
 
-            int opcode = CodeTable.kNoOpcode;
+            int opcode;
             if (size <= byte.MaxValue)
             {
                 opcode = instrMap.LookFirstOpcode((byte)inst, (byte)size, mode);

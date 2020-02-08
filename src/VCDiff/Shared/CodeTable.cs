@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using VCDiff.Includes;
 
 namespace VCDiff.Shared
@@ -8,16 +9,18 @@ namespace VCDiff.Shared
         /// <summary>
         /// Default CodeTable as described in the RFC doc
         /// </summary>
-        public const int kNoOpcode = 0x100;
+        public static readonly int kNoOpcode = 0x100;
 
-        public const int kCodeTableSize = 256;
+        public static readonly int kCodeTableSize = 256;
 
-        public byte[] inst1;
-        public byte[] inst2;
-        public byte[] size1;
-        public byte[] size2;
-        public byte[] mode1;
-        public byte[] mode2;
+        public byte[] table = new byte[kCodeTableSize * 6];
+
+        public Memory<byte> inst1;
+        public Memory<byte> inst2;
+        public Memory<byte> size1;
+        public Memory<byte> size2;
+        public Memory<byte> mode1;
+        public Memory<byte> mode2;
 
         public const byte N = (byte)VCDiffInstructionType.NOOP;
         public const byte A = (byte)VCDiffInstructionType.ADD;
@@ -26,17 +29,7 @@ namespace VCDiff.Shared
         public const byte ERR = (byte)VCDiffInstructionType.ERROR;
         public const byte EOD = (byte)VCDiffInstructionType.EOD;
 
-        public static CodeTable DefaultTable
-        {
-            get
-            {
-                return new CodeTable();
-            }
-        }
-
-        public CodeTable()
-        {
-            inst1 = new byte[]
+        private static readonly byte[] defaultInst1 = new byte[]
             {
                 R,  // opcode 0
                 A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,  // opcodes 1-18
@@ -60,7 +53,8 @@ namespace VCDiff.Shared
                 A, A, A, A,  // opcodes 243-246
                 C, C, C, C, C, C, C, C, C  // opcodes 247-255
             };
-            inst2 = new byte[]
+
+        private static readonly byte[] defaultInst2 = new byte[]
             {
                 N,  // opcode 0
                 N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N,  // opcodes 1-18
@@ -83,8 +77,9 @@ namespace VCDiff.Shared
                 C, C, C, C,  // opcodes 239-242
                 C, C, C, C,  // opcodes 243-246
                 A, A, A, A, A, A, A, A, A  // opcodes 247-255
-            };
-            size1 = new byte[]
+    };
+
+        private static readonly byte[] defaultSize1 = new byte[]
             {
                 0,  // opcode 0
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,  // 1-18
@@ -108,7 +103,8 @@ namespace VCDiff.Shared
                 1, 2, 3, 4,  // opcodes 243-246
                 4, 4, 4, 4, 4, 4, 4, 4, 4  // opcodes 247-255
             };
-            size2 = new byte[]
+
+        private static readonly byte[] defaultSize2 = new byte[]
             {
                 0,  // opcode 0
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // opcodes 1-18
@@ -132,7 +128,8 @@ namespace VCDiff.Shared
                 4, 4, 4, 4,  // opcodes 243-246
                 1, 1, 1, 1, 1, 1, 1, 1, 1  // opcodes 247-255
             };
-            mode1 = new byte[]
+
+        private static readonly byte[] defaultMode1 = new byte[]
             {
                 0,  // opcode 0
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // opcodes 1-18
@@ -156,7 +153,8 @@ namespace VCDiff.Shared
                 0, 0, 0, 0,  // opcodes 243-246
                 0, 1, 2, 3, 4, 5, 6, 7, 8  // opcodes 247-255
             };
-            mode2 = new byte[]
+
+        private static readonly byte[] defaultMode2 = new byte[]
             {
                 0,  // opcode 0
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // opcodes 1-18
@@ -180,89 +178,50 @@ namespace VCDiff.Shared
                 8, 8, 8, 8,  // opcodes 243-246
                 0, 0, 0, 0, 0, 0, 0, 0, 0  // opcodes 247-255
             };
+
+        public static CodeTable DefaultTable
+        {
+            get
+            {
+                return new CodeTable();
+            }
+        }
+
+        public CodeTable()
+        {
+            inst1 = this.table.AsMemory(0 * kCodeTableSize, kCodeTableSize);
+            defaultInst1.CopyTo(inst1);
+
+            inst2 = this.table.AsMemory(1 * kCodeTableSize, kCodeTableSize);
+            defaultInst2.CopyTo(inst2);
+
+            size1 = this.table.AsMemory(2 * kCodeTableSize, kCodeTableSize);
+            defaultSize1.CopyTo(size1);
+
+            size2 = this.table.AsMemory(3 * kCodeTableSize, kCodeTableSize);
+            defaultSize2.CopyTo(size2);
+
+            mode1 = this.table.AsMemory(4 * kCodeTableSize, kCodeTableSize);
+            defaultMode1.CopyTo(mode1);
+
+            mode2 = this.table.AsMemory(5 * kCodeTableSize, kCodeTableSize);
+            defaultMode2.CopyTo(mode2);
         }
 
         public bool SetBytes(byte[] items)
         {
-            if (items.Length != 256 * 6)
+            if (items.Length != kCodeTableSize * 6)
             {
                 return false;
             }
 
-            int offset = 0;
-            for (int i = 0; i < 256; i++)
-            {
-                inst1[i] = items[offset + i];
-            }
-            offset += 256;
-            for (int i = 0; i < 256; i++)
-            {
-                inst2[i] = items[offset + i];
-            }
-            offset += 256;
-            for (int i = 0; i < 256; i++)
-            {
-                size1[i] = items[offset + i];
-            }
-            offset += 256;
-            for (int i = 0; i < 256; i++)
-            {
-                size2[i] = items[offset + i];
-            }
-            offset += 256;
-            for (int i = 0; i < 256; i++)
-            {
-                mode1[i] = items[offset + i];
-            }
-            offset += 256;
-            for (int i = 0; i < 256; i++)
-            {
-                mode2[i] = items[offset + i];
-            }
-
+            items.CopyTo(this.table, 0);
             return true;
         }
 
         public IByteBuffer GetBytes()
         {
-            List<byte> bytes = new List<byte>();
-
-            for (int i = 0; i < inst1.Length; i++)
-            {
-                bytes.Add(inst1[i]);
-            }
-            for (int i = 0; i < inst2.Length; i++)
-            {
-                bytes.Add(inst2[i]);
-            }
-            for (int i = 0; i < size1.Length; i++)
-            {
-                bytes.Add(size1[i]);
-            }
-            for (int i = 0; i < size2.Length; i++)
-            {
-                bytes.Add(size2[i]);
-            }
-            for (int i = 0; i < mode1.Length; i++)
-            {
-                bytes.Add(mode1[i]);
-            }
-            for (int i = 0; i < mode2.Length; i++)
-            {
-                bytes.Add(mode2[i]);
-            }
-
-            return new ByteBuffer(bytes.ToArray());
-        }
-
-        private static bool Validate(byte maxMode)
-        {
-            return true;
-        }
-
-        private static bool ValidateOpCode(int opcode, byte inst, byte size, byte mode, byte maxMode)
-        {
-            return true;
+            return new ByteBuffer(this.table);
         }
     }
 }
