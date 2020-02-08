@@ -19,7 +19,7 @@ namespace VCDiff.Decoders
         long decodedOnly = 0;
         long bytesWritten = 0;
         List<byte> targetData;
-        CustomCodeTableDecoder customTable;
+        CustomCodeTableDecoder? customTable;
 
         //the total bytes decoded
         public long Decoded
@@ -38,12 +38,12 @@ namespace VCDiff.Decoders
         /// <param name="target">the target data</param>
         /// <param name="sout">the out stream</param>
         /// <param name="customTable">custom table if any. Default is null.</param>
-        public BodyDecoder(WindowDecoder w, IByteBuffer dictionary, IByteBuffer target, ByteStreamWriter sout, CustomCodeTableDecoder customTable = null)
+        public BodyDecoder(WindowDecoder w, IByteBuffer dictionary, IByteBuffer target, ByteStreamWriter sout, CustomCodeTableDecoder? customTable = null)
         {
             if (customTable != null)
             {
                 this.customTable = customTable;
-                addressCache = new AddressCache((byte)customTable.NearSize, (byte)customTable.SameSize);
+                addressCache = new AddressCache(customTable.NearSize, customTable.SameSize);
             }
             else 
             {
@@ -205,12 +205,10 @@ namespace VCDiff.Decoders
 
             while (decodedOnly < window.DecodedDeltaLength && instructionBuffer.CanRead)
             {
-                int decodedSize = 0;
-                byte mode = 0;
 
-                VCDiffInstructionType instruction = instrDecoder.Next(out decodedSize, out mode);
+                VCDiffInstructionType instruction = instrDecoder.Next(out int decodedSize, out byte mode);
 
-                switch(instruction)
+                switch (instruction)
                 {
                     case VCDiffInstructionType.EOD:
                         targetData.Clear();

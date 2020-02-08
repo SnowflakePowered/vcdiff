@@ -1,18 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace VCDiff.Shared
-{ 
+﻿namespace VCDiff.Shared
+{
     public class Adler32
     {
         /// <summary>
         /// Zlib implementation of the Adler32 Hash
         /// </summary>
-        const uint BASE = 65521;
-        const uint NMAX = 5552;
+        private const uint BASE = 65521;
+
+        private const uint NMAX = 5552;
 
         public static uint Combine(uint adler1, uint adler2, uint len)
         {
@@ -20,7 +15,7 @@ namespace VCDiff.Shared
             uint sum2 = 0;
             uint rem = 0;
 
-            rem = (uint)(len % BASE);
+            rem = len % BASE;
             sum1 = adler1 & 0xffff;
             sum2 = rem * sum1;
             sum2 %= BASE;
@@ -43,29 +38,29 @@ namespace VCDiff.Shared
             sum2 = (adler >> 16) & 0xffff;
             adler &= 0xffff;
 
-            if(buff.Length == 1)
+            if (buff.Length == 1)
             {
                 adler += buff[0];
-                if(adler >= BASE)
+                if (adler >= BASE)
                 {
                     adler -= BASE;
                 }
                 sum2 += adler;
-                if(sum2 >= BASE)
+                if (sum2 >= BASE)
                 {
                     sum2 -= BASE;
                 }
                 return adler | (sum2 << 16);
             }
 
-            if(buff.Length < 16)
+            if (buff.Length < 16)
             {
-                for(int i = 0; i < buff.Length; i++)
+                for (int i = 0; i < buff.Length; i++)
                 {
                     adler += buff[i];
                     sum2 += adler;
                 }
-                if(adler >= BASE)
+                if (adler >= BASE)
                 {
                     adler -= BASE;
                 }
@@ -75,7 +70,7 @@ namespace VCDiff.Shared
 
             uint len = (uint)buff.Length;
             int dof = 0;
-            while(len >= NMAX)
+            while (len >= NMAX)
             {
                 len -= NMAX;
                 n = NMAX / 16;
@@ -88,15 +83,15 @@ namespace VCDiff.Shared
                 sum2 %= BASE;
             }
 
-            if(len > 0)
+            if (len > 0)
             {
-                while(len >= 16)
+                while (len >= 16)
                 {
                     len -= 16;
                     DO16(adler, sum2, buff, dof, out adler, out sum2);
                     dof += 16;
                 }
-                while(len-- > 0)
+                while (len-- > 0)
                 {
                     adler += buff[dof++];
                     sum2 += adler;
@@ -108,29 +103,33 @@ namespace VCDiff.Shared
             return adler | (sum2 << 16);
         }
 
-        static void DO1(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
+        private static void DO1(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
         {
             adler += buff[i];
             sum += adler;
             ald = adler;
             s = sum;
         }
-        static void DO2(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
+
+        private static void DO2(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
         {
             DO1(adler, sum, buff, i, out ald, out s);
             DO1(ald, s, buff, i + 1, out ald, out s);
         }
-        static void DO4(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
+
+        private static void DO4(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
         {
             DO2(adler, sum, buff, i, out ald, out s);
-            DO2(ald, s, buff, i+2, out ald, out s);
+            DO2(ald, s, buff, i + 2, out ald, out s);
         }
-        static void DO8(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
+
+        private static void DO8(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
         {
             DO4(adler, sum, buff, i, out ald, out s);
             DO4(ald, s, buff, i + 4, out ald, out s);
         }
-        static void DO16(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
+
+        private static void DO16(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
         {
             DO8(adler, sum, buff, 0 + i, out ald, out s);
             DO8(ald, s, buff, 8 + i, out ald, out s);

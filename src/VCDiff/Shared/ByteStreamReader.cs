@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 
 namespace VCDiff.Shared
@@ -12,11 +9,11 @@ namespace VCDiff.Shared
     //also has a helper function for reading all the bytes in at once
     public class ByteStreamReader : IByteBuffer, IDisposable
     {
-        Stream buffer;
-        int lastLenRead;
-        bool readAll;
-        List<byte> internalBuffer;
-        long offset;
+        private Stream buffer;
+        private int lastLenRead;
+        private bool readAll;
+        private List<byte> internalBuffer;
+        private long offset;
 
         public ByteStreamReader(Stream stream)
         {
@@ -27,7 +24,7 @@ namespace VCDiff.Shared
         {
             get
             {
-                if(readAll)
+                if (readAll)
                 {
                     return offset;
                 }
@@ -35,12 +32,12 @@ namespace VCDiff.Shared
             }
             set
             {
-                if(readAll)
+                if (readAll)
                 {
-                    if(value >= 0)
+                    if (value >= 0)
                         offset = value;
                 }
-                if(buffer.CanRead && value >= 0)
+                if (buffer.CanRead && value >= 0)
                     buffer.Position = value;
             }
         }
@@ -49,7 +46,7 @@ namespace VCDiff.Shared
         {
             get
             {
-                if(readAll)
+                if (readAll)
                 {
                     return internalBuffer.Count;
                 }
@@ -100,15 +97,14 @@ namespace VCDiff.Shared
 
         public override byte[] PeekBytes(int len)
         {
-            if(readAll)
+            if (readAll)
             {
-                
                 int end = (int)offset + len > internalBuffer.Count ? internalBuffer.Count : (int)offset + len;
-                int realLen = (int)offset + len > internalBuffer.Count ? (int)internalBuffer.Count - (int)offset : len;
+                int realLen = (int)offset + len > internalBuffer.Count ? internalBuffer.Count - (int)offset : len;
 
                 byte[] rbuff = new byte[realLen];
                 int rcc = 0;
-                for(int i = (int)offset; i < end; i++)
+                for (int i = (int)offset; i < end; i++)
                 {
                     rbuff[rcc] = internalBuffer[i];
                     rcc++;
@@ -146,7 +142,7 @@ namespace VCDiff.Shared
         public override byte ReadByte()
         {
             if (!CanRead) throw new Exception("Trying to read past end of buffer");
-            if(readAll)
+            if (readAll)
             {
                 return internalBuffer[(int)offset++];
             }
@@ -161,7 +157,7 @@ namespace VCDiff.Shared
             if (readAll)
             {
                 int end = (int)offset + len > internalBuffer.Count ? internalBuffer.Count : (int)offset + len;
-                int realLen = (int)offset + len > internalBuffer.Count ? (int)internalBuffer.Count - (int)offset : len;
+                int realLen = (int)offset + len > internalBuffer.Count ? internalBuffer.Count - (int)offset : len;
 
                 byte[] rbuff = new byte[realLen];
                 int rcc = 0;
@@ -178,15 +174,15 @@ namespace VCDiff.Shared
 
             int actualRead = buffer.Read(buf, 0, len);
             lastLenRead = actualRead;
-            if(actualRead > 0)
+            if (actualRead > 0)
             {
-                if(actualRead == len)
+                if (actualRead == len)
                 {
                     return buf;
                 }
 
                 byte[] actualData = new byte[actualRead];
-                for(int i = 0; i < actualRead; i++)
+                for (int i = 0; i < actualRead; i++)
                 {
                     actualData[i] = buf[i];
                 }
@@ -200,7 +196,7 @@ namespace VCDiff.Shared
         public override byte PeekByte()
         {
             if (!CanRead) throw new Exception("Trying to read past end of buffer");
-            if(readAll)
+            if (readAll)
             {
                 return internalBuffer[(int)offset];
             }

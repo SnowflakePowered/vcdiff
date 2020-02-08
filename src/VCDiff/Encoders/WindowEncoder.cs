@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
@@ -11,19 +7,19 @@ namespace VCDiff.Encoders
 {
     public class WindowEncoder
     {
-        bool interleaved;
-        int maxMode;
-        long dictionarySize;
-        long targetLength;
-        CodeTable table;
-        int lastOpcodeIndex;
-        AddressCache addrCache;
-        InstructionMap instrMap;
-        List<byte> instructionAndSizes;
-        List<byte> dataForAddAndRun;
-        List<byte> addressForCopy;
-        bool hasChecksum;
-        uint checksum;
+        private bool interleaved;
+        private int maxMode;
+        private long dictionarySize;
+        private long targetLength;
+        private CodeTable table;
+        private int lastOpcodeIndex;
+        private AddressCache addrCache;
+        private InstructionMap instrMap;
+        private List<byte> instructionAndSizes;
+        private List<byte> dataForAddAndRun;
+        private List<byte> addressForCopy;
+        private bool hasChecksum;
+        private uint checksum;
 
         public bool HasChecksum
         {
@@ -81,22 +77,22 @@ namespace VCDiff.Encoders
             }
         }
 
-        void EncodeInstruction(VCDiffInstructionType inst, int size, byte mode = 0)
+        private void EncodeInstruction(VCDiffInstructionType inst, int size, byte mode = 0)
         {
-            if(lastOpcodeIndex >= 0)
+            if (lastOpcodeIndex >= 0)
             {
                 int lastOp = instructionAndSizes[lastOpcodeIndex];
 
-                if(inst == VCDiffInstructionType.ADD && (table.inst1[lastOp] == CodeTable.A))
+                if (inst == VCDiffInstructionType.ADD && (table.inst1[lastOp] == CodeTable.A))
                 {
                     //warning adding two in a row
                     Console.WriteLine("Warning: performing two ADD instructions in a row.");
                 }
                 int compoundOp = CodeTable.kNoOpcode;
-                if(size <= byte.MaxValue)
+                if (size <= byte.MaxValue)
                 {
                     compoundOp = instrMap.LookSecondOpcode((byte)lastOp, (byte)inst, (byte)size, mode);
-                    if(compoundOp != CodeTable.kNoOpcode)
+                    if (compoundOp != CodeTable.kNoOpcode)
                     {
                         instructionAndSizes[lastOpcodeIndex] = (byte)compoundOp;
                         lastOpcodeIndex = -1;
@@ -104,8 +100,8 @@ namespace VCDiff.Encoders
                     }
                 }
 
-                compoundOp = instrMap.LookSecondOpcode((byte)lastOp, (byte)inst, (byte)0, mode);
-                if(compoundOp != CodeTable.kNoOpcode)
+                compoundOp = instrMap.LookSecondOpcode((byte)lastOp, (byte)inst, 0, mode);
+                if (compoundOp != CodeTable.kNoOpcode)
                 {
                     instructionAndSizes[lastOpcodeIndex] = (byte)compoundOp;
                     //append size to instructionAndSizes
@@ -115,11 +111,11 @@ namespace VCDiff.Encoders
             }
 
             int opcode = CodeTable.kNoOpcode;
-            if(size <= byte.MaxValue)
+            if (size <= byte.MaxValue)
             {
                 opcode = instrMap.LookFirstOpcode((byte)inst, (byte)size, mode);
 
-                if(opcode != CodeTable.kNoOpcode)
+                if (opcode != CodeTable.kNoOpcode)
                 {
                     instructionAndSizes.Add((byte)opcode);
                     lastOpcodeIndex = instructionAndSizes.Count - 1;
@@ -127,7 +123,7 @@ namespace VCDiff.Encoders
                 }
             }
             opcode = instrMap.LookFirstOpcode((byte)inst, 0, mode);
-            if(opcode == CodeTable.kNoOpcode)
+            if (opcode == CodeTable.kNoOpcode)
             {
                 return;
             }
@@ -146,10 +142,9 @@ namespace VCDiff.Encoders
 
         public void Copy(int offset, int length)
         {
-            long encodedAddr = 0;
-            byte mode = addrCache.EncodeAddress(offset, dictionarySize + targetLength, out encodedAddr);
+            byte mode = addrCache.EncodeAddress(offset, dictionarySize + targetLength, out long encodedAddr);
             EncodeInstruction(VCDiffInstructionType.COPY, length, mode);
-            if(addrCache.WriteAddressAsVarint(mode))
+            if (addrCache.WriteAddressAsVarint(mode))
             {
                 VarIntBE.AppendInt64(encodedAddr, addressForCopy);
             }
@@ -167,11 +162,11 @@ namespace VCDiff.Encoders
             targetLength += size;
         }
 
-        int CalculateLengthOfTheDeltaEncoding()
+        private int CalculateLengthOfTheDeltaEncoding()
         {
             int extraLength = 0;
 
-            if(hasChecksum)
+            if (hasChecksum)
             {
                 extraLength += VarIntBE.CalcInt64Length(checksum);
             }
@@ -246,7 +241,7 @@ namespace VCDiff.Encoders
                 VarIntBE.AppendInt32(addressForCopy.Count, sout); //length of addresses for copys
 
                 //Google Checksum Support
-                if(hasChecksum)
+                if (hasChecksum)
                 {
                     VarIntBE.AppendInt64(checksum, sout);
                 }
@@ -273,14 +268,14 @@ namespace VCDiff.Encoders
             //end of delta encoding
 
             Int64 sizeAfterDelta = sout.Position;
-            if(lengthOfDelta != sizeAfterDelta - sizeBeforeDelta)
+            if (lengthOfDelta != sizeAfterDelta - sizeBeforeDelta)
             {
                 Console.WriteLine("Delta output length does not match");
             }
             dataForAddAndRun.Clear();
             instructionAndSizes.Clear();
             addressForCopy.Clear();
-            if(targetLength == 0)
+            if (targetLength == 0)
             {
                 Console.WriteLine("Empty target window");
             }

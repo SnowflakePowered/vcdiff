@@ -85,10 +85,9 @@ namespace VCDiff.Decoders
                     return result;
                 }
 
-                long bytesWritten = 0;
-                result = decoder.Decode(out bytesWritten);
+                result = decoder.Decode(out long bytesWritten);
 
-                if(result != VCDiffResult.SUCCESS || bytesWritten == 0)
+                if (result != VCDiffResult.SUCCESS || bytesWritten == 0)
                 {
                     return VCDiffResult.ERRROR;
                 }

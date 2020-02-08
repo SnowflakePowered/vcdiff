@@ -1,19 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace VCDiff.Encoders
+﻿namespace VCDiff.Encoders
 {
     public class RollingHash
     {
-        const ulong kMult = 257;
-        const ulong kBase = (1 << 23);
+        private const ulong kMult = 257;
+        private const ulong kBase = (1 << 23);
 
-        int size = 0;
-        ulong[] removeTable;
-        ulong multiplier;
+        private int size = 0;
+        private ulong[] removeTable;
+        private ulong multiplier;
 
         /// <summary>
         /// Rolling Hash Constructor
@@ -24,12 +18,12 @@ namespace VCDiff.Encoders
             this.size = size;
             removeTable = new ulong[256];
             multiplier = 1;
-            for(int i = 0; i < size - 1; ++i)
+            for (int i = 0; i < size - 1; ++i)
             {
                 multiplier = ModBase(multiplier * kMult);
             }
             ulong byteTimes = 0;
-            for(int i = 0; i < 256; ++i)
+            for (int i = 0; i < 256; ++i)
             {
                 removeTable[i] = FindModBaseInverse(byteTimes);
                 byteTimes = ModBase(byteTimes + multiplier);
@@ -41,7 +35,7 @@ namespace VCDiff.Encoders
         /// </summary>
         /// <param name="op"></param>
         /// <returns></returns>
-        static ulong ModBase(ulong op)
+        private static ulong ModBase(ulong op)
         {
             return op & (kBase - 1);
         }
@@ -51,9 +45,9 @@ namespace VCDiff.Encoders
         /// </summary>
         /// <param name="op"></param>
         /// <returns></returns>
-        static ulong FindModBaseInverse(ulong op)
+        private static ulong FindModBaseInverse(ulong op)
         {
-            return ModBase((ulong)0 - op);
+            return ModBase(0 - op);
         }
 
         /// <summary>
@@ -63,7 +57,7 @@ namespace VCDiff.Encoders
         /// <param name="partialHash"></param>
         /// <param name="next"></param>
         /// <returns></returns>
-        static ulong HashStep(ulong partialHash, byte next)
+        private static ulong HashStep(ulong partialHash, byte next)
         {
             return ModBase((partialHash * kMult) + next);
         }
@@ -73,7 +67,7 @@ namespace VCDiff.Encoders
         /// </summary>
         /// <param name="bytes"></param>
         /// <returns></returns>
-        static ulong HashFirstTwoBytes(byte[] bytes)
+        private static ulong HashFirstTwoBytes(byte[] bytes)
         {
             if (bytes.Length == 0) return 1;
             if (bytes.Length == 1) return (bytes[0] * kMult);
@@ -89,7 +83,7 @@ namespace VCDiff.Encoders
         public ulong Hash(byte[] bytes)
         {
             ulong h = HashFirstTwoBytes(bytes);
-            for(int i = 2; i < bytes.Length; i++)
+            for (int i = 2; i < bytes.Length; i++)
             {
                 h = HashStep(h, bytes[i]);
             }
@@ -118,7 +112,7 @@ namespace VCDiff.Encoders
         /// <param name="hash">hash</param>
         /// <param name="first">first byte</param>
         /// <returns></returns>
-        ulong RemoveFirstByte(ulong hash, byte first)
+        private ulong RemoveFirstByte(ulong hash, byte first)
         {
             return ModBase(hash + removeTable[first]);
         }

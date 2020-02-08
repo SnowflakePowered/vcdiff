@@ -19,16 +19,9 @@ namespace VCDiff.Decoders
         /// </summary>
         /// <param name="sin">the instruction buffer</param>
         /// <param name="customTable">custom code table if any. Default is null.</param>
-        public InstructionDecoder(ByteBuffer sin, CustomCodeTableDecoder customTable = null)
+        public InstructionDecoder(ByteBuffer sin, CustomCodeTableDecoder? customTable = null)
         {
-            if (customTable != null)
-            {
-                table = customTable.CustomTable;
-            }
-            else
-            {
-                table = CodeTable.DefaultTable;
-            }
+            table = customTable?.CustomTable ?? CodeTable.DefaultTable;
             source = sin;
             pendingSecond = CodeTable.kNoOpcode;
         }
