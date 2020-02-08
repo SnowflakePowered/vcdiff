@@ -30,9 +30,10 @@ namespace VCDiff.Tests
 
             VCDecoder decoder = new VCDecoder(srcStream, deltaStream, outputStream);
             Assert.Equal(VCDiffResult.SUCCESS, decoder.Initialize());
-            Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritter));
+            Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
 
             Assert.Equal("Goodbye World", Encoding.UTF8.GetString(outputStream.ToArray()));
+            Assert.NotEqual(0, bytesWritten);
         }
 
         [Fact]

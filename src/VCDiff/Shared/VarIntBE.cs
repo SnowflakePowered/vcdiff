@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using VCDiff.Includes;
 
 namespace VCDiff.Shared
@@ -89,7 +90,7 @@ namespace VCDiff.Shared
 
         public static int AppendInt32(int v, List<byte> buffer)
         {
-            byte[] varint = new byte[int32Max];
+            Span<byte> varint = stackalloc byte[int32Max];
             int length = EncodeInt32(v, varint);
             int start = int32Max - length;
             for (int i = start; i < int32Max; i++)
@@ -101,7 +102,7 @@ namespace VCDiff.Shared
 
         public static int AppendInt32(int v, ByteStreamWriter sout)
         {
-            byte[] varint = new byte[int32Max];
+            Span<byte> varint = stackalloc byte[int32Max];
             int length = EncodeInt32(v, varint);
             int start = int32Max - length;
             for (int i = start; i < int32Max; i++)
@@ -113,7 +114,7 @@ namespace VCDiff.Shared
 
         public static int AppendInt64(long v, ByteStreamWriter sout)
         {
-            byte[] varint = new byte[int64Max];
+            Span<byte> varint = stackalloc byte[int64Max];
             int length = EncodeInt64(v, varint);
             int start = int64Max - length;
             for (int i = start; i < int64Max; i++)
@@ -125,7 +126,7 @@ namespace VCDiff.Shared
 
         public static int AppendInt64(long v, List<byte> buffer)
         {
-            byte[] varint = new byte[int64Max];
+            Span<byte> varint = stackalloc byte[int64Max];
             int length = EncodeInt64(v, varint);
             int start = int64Max - length;
             for (int i = start; i < int64Max; i++)
@@ -138,7 +139,7 @@ namespace VCDiff.Shared
 
         //v cannot be negative!
         //the buffer must be of size: int32Max
-        public static int EncodeInt32(int v, byte[] sout)
+        public static int EncodeInt32(int v, Span<byte> sout)
         {
             if (v < 0)
             {
@@ -163,7 +164,7 @@ namespace VCDiff.Shared
 
         //v cannot be negative!
         //the buffer must be of size: int64Max
-        public static int EncodeInt64(long v, byte[] sout)
+        public static int EncodeInt64(long v, Span<byte> sout)
         {
             if (v < 0)
             {
