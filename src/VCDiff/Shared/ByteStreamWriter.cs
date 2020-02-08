@@ -41,62 +41,19 @@ namespace VCDiff.Shared
             }
         }
 
-        public void writeByte(byte b)
+        public void Write(byte b)
         {
             this.buffer.WriteByte(b);
         }
 
-        public void writeBytes(byte[] b)
+        public void Write(byte[] b)
         {
             this.buffer.Write(b, 0, b.Length);
         }
 
-        public void writeUInt16(ushort s)
+        public void Write(ReadOnlyMemory<byte> b)
         {
-            byte[] bytes = BitConverter.GetBytes(s);
-
-            if (isLittle)
-            {
-                Array.Reverse(bytes);
-            }
-
-            this.writeBytes(bytes);
-        }
-
-        public void writeUInt32(uint i)
-        {
-            byte[] bytes = BitConverter.GetBytes(i);
-
-            if (isLittle)
-            {
-                Array.Reverse(bytes);
-            }
-
-            this.writeBytes(bytes);
-        }
-
-        public void writeFloat(float f)
-        {
-            byte[] bytes = BitConverter.GetBytes(f);
-
-            if (isLittle)
-            {
-                Array.Reverse(bytes);
-            }
-
-            this.writeBytes(bytes);
-        }
-
-        public void writeDouble(double d)
-        {
-            byte[] bytes = BitConverter.GetBytes(d);
-
-            if (isLittle)
-            {
-                Array.Reverse(bytes);
-            }
-
-            this.writeBytes(bytes);
+            this.buffer.Write(b.Span);
         }
 
         public void Dispose()

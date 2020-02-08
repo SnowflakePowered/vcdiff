@@ -1,4 +1,6 @@
-﻿namespace VCDiff.Shared
+﻿using System;
+
+namespace VCDiff.Shared
 {
     public class Adler32
     {
@@ -28,9 +30,9 @@
             return sum1 | (sum2 << 16);
         }
 
-        public static uint Hash(uint adler, byte[] buff)
+        public static uint Hash(uint adler, ReadOnlySpan<byte> buff)
         {
-            if (buff == null || buff.Length == 0) return 1;
+            if (buff.Length == 0) return 1;
 
             uint sum2 = 0;
             uint n = 0;
@@ -103,7 +105,7 @@
             return adler | (sum2 << 16);
         }
 
-        private static void DO1(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
+        private static void DO1(uint adler, uint sum, ReadOnlySpan<byte> buff, int i, out uint ald, out uint s)
         {
             adler += buff[i];
             sum += adler;
@@ -111,25 +113,25 @@
             s = sum;
         }
 
-        private static void DO2(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
+        private static void DO2(uint adler, uint sum, ReadOnlySpan<byte> buff, int i, out uint ald, out uint s)
         {
             DO1(adler, sum, buff, i, out ald, out s);
             DO1(ald, s, buff, i + 1, out ald, out s);
         }
 
-        private static void DO4(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
+        private static void DO4(uint adler, uint sum, ReadOnlySpan<byte> buff, int i, out uint ald, out uint s)
         {
             DO2(adler, sum, buff, i, out ald, out s);
             DO2(ald, s, buff, i + 2, out ald, out s);
         }
 
-        private static void DO8(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
+        private static void DO8(uint adler, uint sum, ReadOnlySpan<byte> buff, int i, out uint ald, out uint s)
         {
             DO4(adler, sum, buff, i, out ald, out s);
             DO4(ald, s, buff, i + 4, out ald, out s);
         }
 
-        private static void DO16(uint adler, uint sum, byte[] buff, int i, out uint ald, out uint s)
+        private static void DO16(uint adler, uint sum, ReadOnlySpan<byte> buff, int i, out uint ald, out uint s)
         {
             DO8(adler, sum, buff, 0 + i, out ald, out s);
             DO8(ald, s, buff, 8 + i, out ald, out s);

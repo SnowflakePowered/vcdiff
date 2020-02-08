@@ -1,12 +1,12 @@
 ﻿using System;
+using System.Buffers;
+using System.Linq;
 
 namespace VCDiff.Shared
 {
     public class ByteBuffer : IByteBuffer, IDisposable
     {
-        private byte[] bytes;
-        private int length;
-        private long offset;
+        private ReadOnlySequence<byte> Sequence { get; }
 
         /// <summary>
         /// Basically a simple wrapper for byte[] arrays
@@ -15,36 +15,30 @@ namespace VCDiff.Shared
         /// <param name="bytes"></param>
         public ByteBuffer(byte[] bytes)
         {
-            offset = 0;
-            this.bytes = bytes;
-            if (bytes != null)
-            {
-                this.length = bytes.Length;
-            }
-            else
-            {
-                this.length = 0;
-            }
+            this.Sequence = new ReadOnlySequence<byte>(bytes ?? new byte[] { });
+            this.Position = 0;
         }
 
-        public bool CanRead
+        /// <summary>
+        /// Basically a simple wrapper for byte[] arrays
+        /// for easier reading and parsing
+        /// </summary>
+        /// <param name="bytes"></param>
+        public ByteBuffer(ReadOnlyMemory<byte> bytes)
         {
-            get
-            {
-                return offset < length;
-            }
+            this.Sequence = new ReadOnlySequence<byte>(bytes);
+            this.Position = 0;
         }
+
+        public bool CanRead => this.Position < this.Length;
 
         public long Position
         {
-            get
-            {
-                return offset;
-            }
+            get => this.offset;
             set
             {
-                if (value > bytes.Length || value < 0) return;
-                offset = value;
+                if (value > this.Sequence.Length || value < 0) return;
+                this.offset = value;
             }
         }
 
@@ -54,70 +48,49 @@ namespace VCDiff.Shared
             //since it already contains the full buffered data
         }
 
-        public long Length
-        {
-            get
-            {
-                return length;
-            }
-        }
+        public long Length => this.Sequence.Length;
+
+        private long offset;
 
         public byte PeekByte()
         {
-            if (offset >= length) throw new Exception("Trying to read past End of Buffer");
-            return this.bytes[offset];
+            if (this.Position >= this.Length) throw new ArgumentOutOfRangeException("Attempted to read past end of buffer.");
+            return this.Sequence.Slice(this.Position, this.Position + 1).FirstSpan[0];
         }
 
-        public byte[] PeekBytes(int len)
+        public ReadOnlyMemory<byte> PeekBytes(int len)
         {
-            int end = (int)offset + len > bytes.Length ? bytes.Length : (int)offset + len;
-            int realLen = (int)offset + len > bytes.Length ? bytes.Length - (int)offset : len;
-
-            byte[] rbuff = new byte[realLen];
-            int cc = 0;
-            for (long i = offset; i < end; i++)
-            {
-                rbuff[cc] = bytes[i];
-                cc++;
-            }
-            return rbuff;
+            long realLen = (int)this.Position + len > this.Sequence.Length ? this.Sequence.Length - (int)this.Position : len;
+            return this.Sequence.Slice(this.Position, realLen).First;
         }
 
         public byte ReadByte()
         {
-            if (offset >= length) throw new Exception("Trying to read past End of Buffer");
-            return this.bytes[offset++];
+            if (this.Position >= this.Length) throw new Exception("Trying to read past End of Buffer");
+            byte value = this.PeekByte();
+            this.Position++;
+            return value;
         }
 
-        public byte[] ReadBytes(int len)
+        public ReadOnlyMemory<byte> ReadBytes(int len)
         {
-            int end = (int)offset + len > bytes.Length ? bytes.Length : (int)offset + len;
-            int realLen = (int)offset + len > bytes.Length ? bytes.Length - (int)offset : len;
-
-            byte[] rbuff = new byte[realLen];
-            int cc = 0;
-            for (long i = offset; i < end; i++)
-            {
-                rbuff[cc] = bytes[i];
-                cc++;
-            }
-            offset += len;
-            return rbuff;
+            var values = this.PeekBytes(len);
+            this.Position += len;
+            return values;
         }
 
         public void Next()
         {
-            offset++;
+            this.Position++;
         }
 
         public void Skip(int len)
         {
-            offset += len;
+            this.Position += len;
         }
 
         public void Dispose()
         {
-            bytes = null;
         }
     }
 }

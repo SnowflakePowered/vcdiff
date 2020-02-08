@@ -62,7 +62,7 @@ namespace VCDiff.Decoders
             //since interleave expected then the last point that was most likely decoded was the lengths section
             //so following is all data for the add run copy etc
             long interleaveLength = window.InstructionAndSizesLength;
-            List<byte> previous = new List<byte>();
+            var previous = new List<byte>();
             bool didBreakBeforeComplete = false;
             int lastDecodedSize = 0;
             VCDiffInstructionType lastDecodedInstruction = VCDiffInstructionType.NOOP;
@@ -76,7 +76,7 @@ namespace VCDiff.Decoders
 
                     //try to read in all interleaved bytes
                     //if not then it will buffer for next time
-                    previous.AddRange(target.ReadBytes((int)interleaveLength));
+                    previous.AddRange(target.ReadBytes((int)interleaveLength).ToArray());
                     ByteBuffer incoming = new ByteBuffer(previous.ToArray());
                     previous.Clear();
                     long initialLength = incoming.Length;
@@ -127,7 +127,7 @@ namespace VCDiff.Decoders
 
                             if (initialLength - incoming.Position > 0)
                             {
-                                previous.AddRange(incoming.ReadBytes((int)(initialLength - incoming.Position)));
+                                previous.AddRange(incoming.ReadBytes((int)(initialLength - incoming.Position)).ToArray());
                             }
 
                             break;
@@ -160,7 +160,7 @@ namespace VCDiff.Decoders
 
                             if (initialLength - incoming.Position > 0)
                             {
-                                previous.AddRange(incoming.ReadBytes((int)(initialLength - incoming.Position)));
+                                previous.AddRange(incoming.ReadBytes((int)(initialLength - incoming.Position)).ToArray());
                             }
 
                             break;
@@ -282,9 +282,9 @@ namespace VCDiff.Decoders
             if (decoded + size <= window.SourceLength)
             {
                 dict.Position = decoded;
-                byte[] rbytes = dict.ReadBytes(size);
-                sout.writeBytes(rbytes);
-                targetData.AddRange(rbytes);
+                var rbytes = dict.ReadBytes(size);
+                sout.Write(rbytes);
+                targetData.AddRange(rbytes.ToArray());
                 decodedOnly += size;
                 return VCDiffResult.SUCCESS;
             }
@@ -334,7 +334,7 @@ namespace VCDiff.Decoders
 
             for (int i = 0; i < size; i++)
             {
-                sout.writeByte(b);
+                sout.Write(b);
                 targetData.Add(b);
             }
 
@@ -355,9 +355,9 @@ namespace VCDiff.Decoders
                 return VCDiffResult.EOD;
             }
 
-            byte[] rbytes = addRun.ReadBytes(size);
-            sout.writeBytes(rbytes);
-            targetData.AddRange(rbytes);
+            var rbytes = addRun.ReadBytes(size);
+            sout.Write(rbytes);
+            targetData.AddRange(rbytes.ToArray());
             decodedOnly += size;
             return VCDiffResult.SUCCESS;
         }

@@ -59,11 +59,8 @@ namespace VCDiff.Encoders
             if (hasChecksum)
             {
                 newData.Position = 0;
-                byte[] bytes = newData.ReadBytes((int)newData.Length);
+                ReadOnlyMemory<byte> bytes = newData.ReadBytes((int)newData.Length);
                 checksum = Checksum.ComputeAdler32(bytes);
-
-                bytes = null;
-                System.GC.Collect();
             }
 
             windowEncoder = new WindowEncoder(oldData.Length, checksum, this.interleaved, hasChecksum);
@@ -128,7 +125,7 @@ namespace VCDiff.Encoders
             {
                 int len = (int)(newData.Length - nextEncode);
                 newData.Position = nextEncode;
-                windowEncoder.Add(newData.ReadBytes(len));
+                windowEncoder.Add(newData.ReadBytes(len).ToArray());
             }
 
             //output the final window
@@ -151,7 +148,7 @@ namespace VCDiff.Encoders
             if (bestMatch.TargetOffset > 0)
             {
                 newData.Position = unencodedStart;
-                windowEncoder.Add(newData.ReadBytes((int)bestMatch.TargetOffset));
+                windowEncoder.Add(newData.ReadBytes((int)bestMatch.TargetOffset).ToArray());
             }
 
             windowEncoder.Copy((int)bestMatch.SourceOffset, (int)bestMatch.Size);

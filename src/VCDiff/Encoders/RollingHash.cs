@@ -1,4 +1,6 @@
-﻿namespace VCDiff.Encoders
+﻿using System;
+
+namespace VCDiff.Encoders
 {
     public class RollingHash
     {
@@ -67,10 +69,10 @@
         /// </summary>
         /// <param name="bytes"></param>
         /// <returns></returns>
-        private static ulong HashFirstTwoBytes(byte[] bytes)
+        private static ulong HashFirstTwoBytes(ReadOnlySpan<byte> bytes)
         {
             if (bytes.Length == 0) return 1;
-            if (bytes.Length == 1) return (bytes[0] * kMult);
+            if (bytes.Length == 1) return bytes[0] * kMult;
 
             return (bytes[0] * kMult) + bytes[1];
         }
@@ -80,12 +82,12 @@
         /// </summary>
         /// <param name="bytes">The bytes to generate the hash for</param>
         /// <returns></returns>
-        public ulong Hash(byte[] bytes)
+        public ulong Hash(ReadOnlyMemory<byte> bytes)
         {
-            ulong h = HashFirstTwoBytes(bytes);
+            ulong h = HashFirstTwoBytes(bytes.Span);
             for (int i = 2; i < bytes.Length; i++)
             {
-                h = HashStep(h, bytes[i]);
+                h = HashStep(h, bytes.Span[i]);
             }
             return h;
         }

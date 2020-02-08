@@ -214,11 +214,11 @@ namespace VCDiff.Encoders
             //Google's Checksum Implementation Support
             if (hasChecksum)
             {
-                sout.writeByte((byte)VCDiffWindowFlags.VCDSOURCE | (byte)VCDiffWindowFlags.VCDCHECKSUM); //win indicator
+                sout.Write((byte)VCDiffWindowFlags.VCDSOURCE | (byte)VCDiffWindowFlags.VCDCHECKSUM); //win indicator
             }
             else
             {
-                sout.writeByte((byte)VCDiffWindowFlags.VCDSOURCE); //win indicator
+                sout.Write((byte)VCDiffWindowFlags.VCDSOURCE); //win indicator
             }
             VarIntBE.AppendInt32((int)dictionarySize, sout); //dictionary size
             VarIntBE.AppendInt32(0, sout); //dictionary start position 0 is default aka encompass the whole dictionary
@@ -228,7 +228,7 @@ namespace VCDiff.Encoders
             //begin of delta encoding
             Int64 sizeBeforeDelta = sout.Position;
             VarIntBE.AppendInt32((int)targetLength, sout); //final target length after decoding
-            sout.writeByte(0x00); //uncompressed
+            sout.Write(0x00); //uncompressed
 
             // [Here is where a secondary compressor would be used
             //  if the encoder and decoder supported that feature.]
@@ -246,9 +246,9 @@ namespace VCDiff.Encoders
                     VarIntBE.AppendInt64(checksum, sout);
                 }
 
-                sout.writeBytes(dataForAddAndRun.ToArray()); //data section for adds and runs
-                sout.writeBytes(instructionAndSizes.ToArray()); //data for instructions and sizes
-                sout.writeBytes(addressForCopy.ToArray()); //data for addresses section copys
+                sout.Write(dataForAddAndRun.ToArray()); //data section for adds and runs
+                sout.Write(instructionAndSizes.ToArray()); //data for instructions and sizes
+                sout.Write(addressForCopy.ToArray()); //data for addresses section copys
             }
             else
             {
@@ -263,7 +263,7 @@ namespace VCDiff.Encoders
                     VarIntBE.AppendInt64(checksum, sout);
                 }
 
-                sout.writeBytes(instructionAndSizes.ToArray()); //data for instructions and sizes, in interleaved it is everything
+                sout.Write(instructionAndSizes.ToArray()); //data for instructions and sizes, in interleaved it is everything
             }
             //end of delta encoding
 

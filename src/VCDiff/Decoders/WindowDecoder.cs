@@ -1,4 +1,5 @@
-﻿using VCDiff.Includes;
+﻿using System;
+using VCDiff.Includes;
 using VCDiff.Shared;
 
 namespace VCDiff.Decoders
@@ -20,35 +21,12 @@ namespace VCDiff.Decoders
         private long instructionAndSizesLength;
         private long addressForCopyLength;
         private uint checksum;
-        private bool hasChecksum;
 
-        private byte[] addRun;
-        private byte[] instructionAndSizes;
-        private byte[] addressesForCopy;
+        public ReadOnlyMemory<byte> AddRunData { get; private set; }
 
-        public byte[] AddRunData
-        {
-            get
-            {
-                return addRun;
-            }
-        }
+        public ReadOnlyMemory<byte> InstructionsAndSizesData { get; private set; }
 
-        public byte[] InstructionsAndSizesData
-        {
-            get
-            {
-                return instructionAndSizes;
-            }
-        }
-
-        public byte[] AddressesForCopyData
-        {
-            get
-            {
-                return addressesForCopy;
-            }
-        }
+        public ReadOnlyMemory<byte> AddressesForCopyData { get; private set; }
 
         public long AddRunLength
         {
@@ -138,13 +116,7 @@ namespace VCDiff.Decoders
             }
         }
 
-        public bool HasChecksum
-        {
-            get
-            {
-                return hasChecksum;
-            }
-        }
+        public bool HasChecksum { get; private set; }
 
         public int Result
         {
@@ -197,13 +169,13 @@ namespace VCDiff.Decoders
                 return false;
             }
 
-            hasChecksum = false;
+            HasChecksum = false;
             if ((winIndicator & (int)VCDiffWindowFlags.VCDCHECKSUM) != 0 && googleVersion)
             {
-                hasChecksum = true;
+                HasChecksum = true;
             }
 
-            success = ParseSectionLengths(hasChecksum, out addRunLength, out instructionAndSizesLength, out addressForCopyLength, out checksum);
+            success = ParseSectionLengths(HasChecksum, out addRunLength, out instructionAndSizesLength, out addressForCopyLength, out checksum);
 
             if (!success)
             {
@@ -218,15 +190,15 @@ namespace VCDiff.Decoders
 
             if (buffer.CanRead)
             {
-                addRun = buffer.ReadBytes((int)addRunLength);
+                AddRunData = buffer.ReadBytes((int)addRunLength);
             }
             if (buffer.CanRead)
             {
-                instructionAndSizes = buffer.ReadBytes((int)instructionAndSizesLength);
+                InstructionsAndSizesData = buffer.ReadBytes((int)instructionAndSizesLength);
             }
             if (buffer.CanRead)
             {
-                addressesForCopy = buffer.ReadBytes((int)addressForCopyLength);
+                AddressesForCopyData = buffer.ReadBytes((int)addressForCopyLength);
             }
 
             return true;

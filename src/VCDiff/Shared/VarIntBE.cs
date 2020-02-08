@@ -106,7 +106,7 @@ namespace VCDiff.Shared
             int start = int32Max - length;
             for (int i = start; i < int32Max; i++)
             {
-                sout.writeByte(varint[i]);
+                sout.Write(varint[i]);
             }
             return length;
         }
@@ -118,7 +118,7 @@ namespace VCDiff.Shared
             int start = int64Max - length;
             for (int i = start; i < int64Max; i++)
             {
-                sout.writeByte(varint[i]);
+                sout.Write(varint[i]);
             }
             return length;
         }

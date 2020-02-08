@@ -60,11 +60,11 @@ namespace VCDiff.Encoders
             //write magic bytes
             if (!interleaved && !checksum)
             {
-                outputStreamWriter.writeBytes(MagicBytes);
+                outputStreamWriter.Write(MagicBytes);
             }
             else
             {
-                outputStreamWriter.writeBytes(MagicBytesExtended);
+                outputStreamWriter.Write(MagicBytesExtended);
             }
 
             //buffer the whole olddata (dictionary)

@@ -95,7 +95,7 @@ namespace VCDiff.Shared
             }
         }
 
-        public byte[] PeekBytes(int len)
+        public ReadOnlyMemory<byte> PeekBytes(int len)
         {
             if (readAll)
             {
@@ -152,7 +152,7 @@ namespace VCDiff.Shared
             return 0;
         }
 
-        public byte[] ReadBytes(int len)
+        public ReadOnlyMemory<byte> ReadBytes(int len)
         {
             if (readAll)
             {
