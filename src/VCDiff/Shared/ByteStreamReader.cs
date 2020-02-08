@@ -79,17 +79,15 @@ namespace VCDiff.Shared
                 offset = 0;
                 Span<byte> buff = new byte[1024 * 8];
 
-                lastLenRead = buffer.Read(buff);
                 int bytesCopied = 0;
-                while (lastLenRead > 0 && buffer.CanRead)
-                {
-                    for (int i = 0; i < lastLenRead; i++, bytesCopied++)
-                    {
-                        internalBuffer[bytesCopied] = buff[i];
-                    }
 
+                do
+                {
                     lastLenRead = buffer.Read(buff);
+                    buff[0..lastLenRead].CopyTo(internalBuffer.AsSpan(bytesCopied));
+                    bytesCopied += lastLenRead;
                 }
+                while (lastLenRead > 0 && buffer.CanRead);
                 readAll = true;
             }
         }
