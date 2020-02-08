@@ -1,0 +1,247 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>VCDiff</name>
+    </assembly>
+    <members>
+        <member name="M:VCDiff.Decoders.BodyDecoder.#ctor(VCDiff.Decoders.WindowDecoder,VCDiff.Shared.IByteBuffer,VCDiff.Shared.IByteBuffer,VCDiff.Shared.ByteStreamWriter,VCDiff.Decoders.CustomCodeTableDecoder)">
+            <summary>
+            The main decoder loop for the data
+            </summary>
+            <param name="w">the window decoder</param>
+            <param name="dictionary">the dictionary data</param>
+            <param name="target">the target data</param>
+            <param name="sout">the out stream</param>
+            <param name="customTable">custom table if any. Default is null.</param>
+        </member>
+        <member name="M:VCDiff.Decoders.BodyDecoder.DecodeInterleave">
+            <summary>
+            Decode if as expecting interleave
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Decoders.BodyDecoder.Decode">
+            <summary>
+            Decode normally
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Decoders.InstructionDecoder.#ctor(VCDiff.Shared.ByteBuffer,VCDiff.Decoders.CustomCodeTableDecoder)">
+            <summary>
+            Decodes the incoming instruction from the buffer
+            </summary>
+            <param name="sin">the instruction buffer</param>
+            <param name="customTable">custom code table if any. Default is null.</param>
+        </member>
+        <member name="M:VCDiff.Decoders.InstructionDecoder.Next(System.Int32@,System.Byte@)">
+            <summary>
+            Gets the next instruction from the buffer
+            </summary>
+            <param name="size">the size</param>
+            <param name="mode">the mode</param>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Decoders.VCDecoder.#ctor(System.IO.Stream,System.IO.Stream,System.IO.Stream)">
+            <summary>
+            Dict is the dictionary file
+            Delta is the diff file
+            Sout is the stream for output
+            </summary>
+            <param name="dict">Dictionary</param>
+            <param name="delta">Target file / Diff / Delta file</param>
+            <param name="sout">Output Stream</param>
+        </member>
+        <member name="M:VCDiff.Decoders.VCDecoder.Start">
+            <summary>
+            Call this before calling decode
+            This expects at least the header part of the delta file
+            is available in the stream
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Decoders.VCDecoder.Decode(System.Int64@)">
+            <summary>
+            Use this after calling Start
+            Each time the decode is called it is expected
+            that at least 1 Window header is available in the stream
+            </summary>
+            <param name="bytesWritten">bytes decoded for all available windows</param>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Decoders.WindowDecoder.#ctor(System.Int64,VCDiff.Shared.IByteBuffer)">
+            <summary>
+            Parses the window from the data
+            </summary>
+            <param name="dictionarySize">the dictionary size</param>
+            <param name="buffer">the buffer containing the incoming data</param>
+        </member>
+        <member name="M:VCDiff.Decoders.WindowDecoder.Decode(System.Boolean)">
+            <summary>
+            Decodes the window header - Parses it basically
+            </summary>
+            <param name="googleVersion">if true will check for checksum and if interleaved</param>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Encoders.BlockHash.#ctor(VCDiff.Shared.IByteBuffer,System.Int32,VCDiff.Encoders.RollingHash)">
+            <summary>
+            Create a hash lookup table for the data
+            </summary>
+            <param name="sin">the data to create the table for</param>
+            <param name="offset">the offset usually 0</param>
+            <param name="hasher">the hashing method</param>
+        </member>
+        <member name="M:VCDiff.Encoders.BlockHash.FindBestMatch(System.UInt64,System.Int64,System.Int64,System.Int64,VCDiff.Shared.IByteBuffer,VCDiff.Encoders.BlockHash.Match)">
+            <summary>
+            Finds the best matching block for the candidate
+            </summary>
+            <param name="hash">the hash to look for</param>
+            <param name="candidateStart">the start position</param>
+            <param name="targetStart">the target start position</param>
+            <param name="targetSize">the data left to encode</param>
+            <param name="target">the target buffer</param>
+            <param name="m">the match object to use</param>
+        </member>
+        <member name="M:VCDiff.Encoders.ChunkEncoder.#ctor(VCDiff.Encoders.BlockHash,VCDiff.Shared.IByteBuffer,VCDiff.Encoders.RollingHash,System.Boolean,System.Boolean)">
+            <summary>
+            Performs the actual encoding of a chunk of data into the VCDiff format
+            </summary>
+            <param name="dictionary">The dictionary hash table</param>
+            <param name="oldData">The data for the dictionary hash table</param>
+            <param name="hash">The rolling hash object</param>
+            <param name="interleaved">Whether to interleave the data or not</param>
+            <param name="checksum">Whether to include checksums for each window</param>
+        </member>
+        <member name="M:VCDiff.Encoders.ChunkEncoder.EncodeChunk(VCDiff.Shared.IByteBuffer,VCDiff.Shared.ByteStreamWriter)">
+            <summary>
+            Encodes the data using the settings from initialization
+            </summary>
+            <param name="newData">the target data</param>
+            <param name="sout">the out stream</param>
+        </member>
+        <member name="M:VCDiff.Encoders.InstructionMap.#ctor">
+            <summary>
+            Instruction mapping for op codes and such for using in encoding
+            </summary>
+        </member>
+        <member name="M:VCDiff.Encoders.RollingHash.#ctor(System.Int32)">
+            <summary>
+            Rolling Hash Constructor
+            </summary>
+            <param name="size">block size</param>
+        </member>
+        <member name="M:VCDiff.Encoders.RollingHash.ModBase(System.UInt64)">
+            <summary>
+            Does the MODULO operation
+            </summary>
+            <param name="op"></param>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Encoders.RollingHash.FindModBaseInverse(System.UInt64)">
+            <summary>
+            Finds the inverse of the operation
+            </summary>
+            <param name="op"></param>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Encoders.RollingHash.HashStep(System.UInt64,System.Byte)">
+            <summary>
+            Performs the next hash encoding step
+            for creating the hash
+            </summary>
+            <param name="partialHash"></param>
+            <param name="next"></param>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Encoders.RollingHash.HashFirstTwoBytes(System.Byte[])">
+            <summary>
+            only hash the first two bytes if any
+            </summary>
+            <param name="bytes"></param>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Encoders.RollingHash.Hash(System.Byte[])">
+            <summary>
+            Generate a new hash from the bytes
+            </summary>
+            <param name="bytes">The bytes to generate the hash for</param>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Encoders.RollingHash.UpdateHash(System.UInt64,System.Byte,System.Byte)">
+            <summary>
+            Rolling update for the hash
+            First byte must be the first bytee that was used in the data
+            that was last encoded
+            new byte is the first byte position + Size
+            </summary>
+            <param name="oldHash">the original hash</param>
+            <param name="firstByte">the original byte of the data for the first hash</param>
+            <param name="newByte">the first byte of the new data to hash</param>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Encoders.RollingHash.RemoveFirstByte(System.UInt64,System.Byte)">
+            <summary>
+            Removes the first byte from the hash
+            </summary>
+            <param name="hash">hash</param>
+            <param name="first">first byte</param>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Encoders.VCCoder.#ctor(System.IO.Stream,System.IO.Stream,System.IO.Stream,System.Int32)">
+            <summary>
+            The easy public structure for encoding into a vcdiff format
+            Simply instantiate it with the proper streams and use the Encode() function.
+            Does not check if data is equal already. You will need to do that.
+            Returns VCDiffResult: should always return success, unless either the dict or the target streams have 0 bytes
+            See the VCDecoder for decoding vcdiff format
+            </summary>
+            <param name="dict">The dictionary (previous data)</param>
+            <param name="target">The new data</param>
+            <param name="sout">The output stream</param>
+            <param name="maxBufferSize">The maximum buffer size for window chunking. It is in Megabytes. 2 would mean 2 megabytes etc. Default is 1.</param>
+        </member>
+        <member name="M:VCDiff.Encoders.VCCoder.Encode(System.Boolean,System.Boolean)">
+            <summary>
+            Encodes the file
+            </summary>
+            <param name="interleaved">Set this to true to enable SDHC interleaved vcdiff google format</param>
+            <param name="checksum">Set this to true to add checksum for encoded data windows</param>
+            <returns></returns>
+        </member>
+        <member name="F:VCDiff.Shared.AddressCache.DefaultNearCacheSize">
+            <summary>
+            The address cache implementation as described in the RFC doc.
+            </summary>
+        </member>
+        <member name="F:VCDiff.Shared.Adler32.BASE">
+            <summary>
+            Zlib implementation of the Adler32 Hash
+            </summary>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.#ctor(System.Byte[])">
+            <summary>
+            Basically a simple wrapper for byte[] arrays
+            for easier reading and parsing
+            </summary>
+            <param name="bytes"></param>
+        </member>
+        <member name="M:VCDiff.Shared.ByteStreamWriter.#ctor(System.IO.Stream)">
+            <summary>
+            Wrapper class for writing to streams
+            with a little bit easier functionality
+            also detects whether it is little endian
+            to encode into BE properly
+            </summary>
+            <param name="s"></param>
+        </member>
+        <member name="F:VCDiff.Shared.CodeTable.kNoOpcode">
+            <summary>
+            Default CodeTable as described in the RFC doc
+            </summary>
+        </member>
+        <member name="F:VCDiff.Shared.VarIntBE.int32Max">
+            <summary>
+            Special VarIntBE class for encoding a Variable BE Integer
+            </summary>
+        </member>
+    </members>
+</doc>
