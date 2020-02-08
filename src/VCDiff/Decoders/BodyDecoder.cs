@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
@@ -14,7 +15,7 @@ namespace VCDiff.Decoders
         private AddressCache addressCache;
         private long decodedOnly = 0;
         private long bytesWritten = 0;
-        private List<byte> targetData;
+        private MemoryStream targetData;
         private CustomCodeTableDecoder? customTable;
 
         //the total bytes decoded
@@ -49,7 +50,7 @@ namespace VCDiff.Decoders
             this.sout = sout;
             this.dict = dictionary;
             this.target = target;
-            targetData = new List<byte>();
+            targetData = new MemoryStream();
         }
 
         /// <summary>
@@ -62,7 +63,7 @@ namespace VCDiff.Decoders
             //since interleave expected then the last point that was most likely decoded was the lengths section
             //so following is all data for the add run copy etc
             long interleaveLength = window.InstructionAndSizesLength;
-            var previous = new List<byte>();
+            using var previous = new MemoryStream();
             bool didBreakBeforeComplete = false;
             int lastDecodedSize = 0;
             VCDiffInstructionType lastDecodedInstruction = VCDiffInstructionType.NOOP;
@@ -76,9 +77,9 @@ namespace VCDiff.Decoders
 
                     //try to read in all interleaved bytes
                     //if not then it will buffer for next time
-                    previous.AddRange(target.ReadBytes((int)interleaveLength).ToArray());
+                    previous.Write(target.ReadBytes((int)interleaveLength).Span);
                     ByteBuffer incoming = new ByteBuffer(previous.ToArray());
-                    previous.Clear();
+                    previous.SetLength(0);
                     long initialLength = incoming.Length;
 
                     InstructionDecoder instrDecoder = new InstructionDecoder(incoming, this.customTable);
@@ -105,7 +106,7 @@ namespace VCDiff.Decoders
                                     break;
 
                                 case VCDiffInstructionType.ERROR:
-                                    targetData.Clear();
+                                    targetData.SetLength(0);
                                     return VCDiffResult.ERRROR;
 
                                 default:
@@ -127,7 +128,7 @@ namespace VCDiff.Decoders
 
                             if (initialLength - incoming.Position > 0)
                             {
-                                previous.AddRange(incoming.ReadBytes((int)(initialLength - incoming.Position)).ToArray());
+                                previous.Write(incoming.ReadBytes((int)(initialLength - incoming.Position)).Span);
                             }
 
                             break;
@@ -148,7 +149,7 @@ namespace VCDiff.Decoders
                                 break;
 
                             default:
-                                targetData.Clear();
+                                targetData.SetLength(0);
                                 return VCDiffResult.ERRROR;
                         }
 
@@ -160,7 +161,7 @@ namespace VCDiff.Decoders
 
                             if (initialLength - incoming.Position > 0)
                             {
-                                previous.AddRange(incoming.ReadBytes((int)(initialLength - incoming.Position)).ToArray());
+                                previous.Write(incoming.ReadBytes((int)(initialLength - incoming.Position)).Span);
                             }
 
                             break;
@@ -188,7 +189,7 @@ namespace VCDiff.Decoders
                 }
             }
 
-            targetData.Clear();
+            targetData.SetLength(0);
             return result;
         }
 
@@ -213,11 +214,11 @@ namespace VCDiff.Decoders
                 switch (instruction)
                 {
                     case VCDiffInstructionType.EOD:
-                        targetData.Clear();
+                        targetData.SetLength(0);
                         return VCDiffResult.EOD;
 
                     case VCDiffInstructionType.ERROR:
-                        targetData.Clear();
+                        targetData.SetLength(0);
                         return VCDiffResult.ERRROR;
 
                     default:
@@ -239,7 +240,7 @@ namespace VCDiff.Decoders
                         break;
 
                     default:
-                        targetData.Clear();
+                        targetData.SetLength(0);
                         return VCDiffResult.ERRROR;
                 }
             }
@@ -254,7 +255,7 @@ namespace VCDiff.Decoders
                 }
             }
 
-            targetData.Clear();
+            targetData.SetLength(0);
             return result;
         }
 
@@ -284,7 +285,7 @@ namespace VCDiff.Decoders
                 dict.Position = decoded;
                 var rbytes = dict.ReadBytes(size);
                 sout.Write(rbytes);
-                targetData.AddRange(rbytes.ToArray());
+                targetData.Write(rbytes.ToArray());
                 decodedOnly += size;
                 return VCDiffResult.SUCCESS;
             }
@@ -335,7 +336,7 @@ namespace VCDiff.Decoders
             for (int i = 0; i < size; i++)
             {
                 sout.Write(b);
-                targetData.Add(b);
+                targetData.WriteByte(b);
             }
 
             decodedOnly += size;
@@ -357,14 +358,14 @@ namespace VCDiff.Decoders
 
             var rbytes = addRun.ReadBytes(size);
             sout.Write(rbytes);
-            targetData.AddRange(rbytes.ToArray());
+            targetData.Write(rbytes.Span);
             decodedOnly += size;
             return VCDiffResult.SUCCESS;
         }
 
         public void Dispose()
         {
-            targetData.Clear();
+            targetData.Dispose();
         }
     }
 }
