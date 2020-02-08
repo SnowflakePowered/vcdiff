@@ -72,7 +72,7 @@ namespace VCDiff.Decoders
             using (MemoryStream sout = new MemoryStream())
             {
                 VCDecoder decoder = new VCDecoder(dictionary, codeTable, sout);
-                result = decoder.Start();
+                result = decoder.Initialize();
 
                 if (result != VCDiffResult.SUCCESS)
                 {

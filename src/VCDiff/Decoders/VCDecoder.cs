@@ -6,53 +6,38 @@ namespace VCDiff.Decoders
 {
     public class VCDecoder
     {
-        private ByteStreamWriter sout;
-        private IByteBuffer delta;
-        private IByteBuffer dict;
+        private readonly ByteStreamWriter outputStream;
+        private readonly IByteBuffer delta;
+        private readonly IByteBuffer source;
         private CustomCodeTableDecoder customTable;
-        private bool googleVersion;
-        private bool isStarted;
+        private static readonly byte[] MagicBytes = new byte[] { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
 
-        private static byte[] MagicBytes = new byte[] { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
+        public bool IsSDHCFormat { get; private set; }
 
-        public bool IsSDHCFormat
-        {
-            get
-            {
-                return googleVersion;
-            }
-        }
-
-        public bool IsStarted
-        {
-            get
-            {
-                return isStarted;
-            }
-        }
+        public bool IsInitialized { get; private set; }
 
         /// <summary>
         /// Dict is the dictionary file
         /// Delta is the diff file
         /// Sout is the stream for output
         /// </summary>
-        /// <param name="dict">Dictionary</param>
+        /// <param name="source">Dictionary</param>
         /// <param name="delta">Target file / Diff / Delta file</param>
-        /// <param name="sout">Output Stream</param>
-        public VCDecoder(Stream dict, Stream delta, Stream sout)
+        /// <param name="outputStream">Output Stream</param>
+        public VCDecoder(Stream source, Stream delta, Stream outputStream)
         {
             this.delta = new ByteStreamReader(delta);
-            this.dict = new ByteStreamReader(dict);
-            this.sout = new ByteStreamWriter(sout);
-            isStarted = false;
+            this.source = new ByteStreamReader(source);
+            this.outputStream = new ByteStreamWriter(outputStream);
+            IsInitialized = false;
         }
 
         public VCDecoder(IByteBuffer dict, IByteBuffer delta, Stream sout)
         {
             this.delta = delta;
-            this.dict = dict;
-            this.sout = new ByteStreamWriter(sout);
-            isStarted = false;
+            this.source = dict;
+            this.outputStream = new ByteStreamWriter(sout);
+            IsInitialized = false;
         }
 
         /// <summary>
@@ -61,7 +46,7 @@ namespace VCDiff.Decoders
         /// is available in the stream
         /// </summary>
         /// <returns></returns>
-        public VCDiffResult Start()
+        public VCDiffResult Initialize()
         {
             if (!delta.CanRead) return VCDiffResult.EOD;
 
@@ -125,12 +110,12 @@ namespace VCDiff.Decoders
                 }
             }
 
-            googleVersion = version == 'S';
+            IsSDHCFormat = version == 'S';
 
-            isStarted = true;
+            IsInitialized = true;
 
             //buffer all the dictionary up front
-            dict.BufferAll();
+            source.BufferAll();
 
             return VCDiffResult.SUCCESS;
         }
@@ -144,7 +129,7 @@ namespace VCDiff.Decoders
         /// <returns></returns>
         public VCDiffResult Decode(out long bytesWritten)
         {
-            if (!isStarted)
+            if (!IsInitialized)
             {
                 bytesWritten = 0;
                 return VCDiffResult.ERRROR;
@@ -158,13 +143,13 @@ namespace VCDiff.Decoders
             while (delta.CanRead)
             {
                 //delta is streamed in order aka not random access
-                WindowDecoder w = new WindowDecoder(dict.Length, delta);
+                WindowDecoder w = new WindowDecoder(source.Length, delta);
 
-                if (w.Decode(googleVersion))
+                if (w.Decode(IsSDHCFormat))
                 {
-                    using (BodyDecoder body = new BodyDecoder(w, dict, delta, sout))
+                    using (BodyDecoder body = new BodyDecoder(w, source, delta, outputStream))
                     {
-                        if (googleVersion && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
+                        if (IsSDHCFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
                         {
                             //interleaved
                             //decodedinterleave actually has an internal loop for waiting and streaming the incoming rest of the interleaved window
@@ -179,7 +164,7 @@ namespace VCDiff.Decoders
                         }
                         //technically add could be 0 if it is all copy instructions
                         //so do an or check on those two
-                        else if (googleVersion && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) && w.InstructionAndSizesLength > 0)
+                        else if (IsSDHCFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) && w.InstructionAndSizesLength > 0)
                         {
                             //not interleaved
                             //expects the full window to be available
@@ -194,7 +179,7 @@ namespace VCDiff.Decoders
 
                             bytesWritten += body.Decoded;
                         }
-                        else if (!googleVersion)
+                        else if (!IsSDHCFormat)
                         {
                             //not interleaved
                             //expects the full window to be available

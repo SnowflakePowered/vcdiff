@@ -23,7 +23,5 @@ namespace VCDiff.Shared
         void Next();
 
         void BufferAll();
-
-        void Dispose();
     }
 }

@@ -8,7 +8,7 @@ namespace VCDiff.Encoders
     {
         private IByteBuffer oldData;
         private IByteBuffer newData;
-        private ByteStreamWriter sout;
+        private ByteStreamWriter outputStreamWriter;
         private RollingHash hasher;
         private int bufferSize;
 
@@ -22,17 +22,17 @@ namespace VCDiff.Encoders
         /// Returns VCDiffResult: should always return success, unless either the dict or the target streams have 0 bytes
         /// See the VCDecoder for decoding vcdiff format
         /// </summary>
-        /// <param name="dict">The dictionary (previous data)</param>
+        /// <param name="source">The dictionary (previous data)</param>
         /// <param name="target">The new data</param>
-        /// <param name="sout">The output stream</param>
+        /// <param name="outputStream">The output stream</param>
         /// <param name="maxBufferSize">The maximum buffer size for window chunking. It is in Megabytes. 2 would mean 2 megabytes etc. Default is 1.</param>
-        public VCCoder(Stream dict, Stream target, Stream sout, int maxBufferSize = 1)
+        public VCCoder(Stream source, Stream target, Stream outputStream, int maxBufferSize = 1)
         {
             if (maxBufferSize <= 0) maxBufferSize = 1;
 
-            this.oldData = new ByteStreamReader(dict);
+            this.oldData = new ByteStreamReader(source);
             this.newData = new ByteStreamReader(target);
-            this.sout = new ByteStreamWriter(sout);
+            this.outputStreamWriter = new ByteStreamWriter(outputStream);
             hasher = new RollingHash(BlockHash.BlockSize);
 
             this.bufferSize = maxBufferSize * 1024 * 1024;
@@ -60,11 +60,11 @@ namespace VCDiff.Encoders
             //write magic bytes
             if (!interleaved && !checksum)
             {
-                sout.writeBytes(MagicBytes);
+                outputStreamWriter.writeBytes(MagicBytes);
             }
             else
             {
-                sout.writeBytes(MagicBytesExtended);
+                outputStreamWriter.writeBytes(MagicBytesExtended);
             }
 
             //buffer the whole olddata (dictionary)
@@ -87,7 +87,7 @@ namespace VCDiff.Encoders
             {
                 using (ByteBuffer ntarget = new ByteBuffer(newData.ReadBytes(bufferSize)))
                 {
-                    chunker.EncodeChunk(ntarget, sout);
+                    chunker.EncodeChunk(ntarget, outputStreamWriter);
                 }
 
                 //just in case

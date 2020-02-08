@@ -20,7 +20,7 @@ namespace VCDiff.Shared
             buffer = stream;
         }
 
-        public override long Position
+        public long Position
         {
             get
             {
@@ -42,7 +42,7 @@ namespace VCDiff.Shared
             }
         }
 
-        public override long Length
+        public long Length
         {
             get
             {
@@ -58,7 +58,7 @@ namespace VCDiff.Shared
             }
         }
 
-        public override bool CanRead
+        public bool CanRead
         {
             get
             {
@@ -71,7 +71,7 @@ namespace VCDiff.Shared
             }
         }
 
-        public override void BufferAll()
+        public void BufferAll()
         {
             if (!readAll)
             {
@@ -95,7 +95,7 @@ namespace VCDiff.Shared
             }
         }
 
-        public override byte[] PeekBytes(int len)
+        public byte[] PeekBytes(int len)
         {
             if (readAll)
             {
@@ -139,7 +139,7 @@ namespace VCDiff.Shared
             return new byte[0];
         }
 
-        public override byte ReadByte()
+        public byte ReadByte()
         {
             if (!CanRead) throw new Exception("Trying to read past end of buffer");
             if (readAll)
@@ -152,7 +152,7 @@ namespace VCDiff.Shared
             return 0;
         }
 
-        public override byte[] ReadBytes(int len)
+        public byte[] ReadBytes(int len)
         {
             if (readAll)
             {
@@ -193,7 +193,7 @@ namespace VCDiff.Shared
             return new byte[0];
         }
 
-        public override byte PeekByte()
+        public byte PeekByte()
         {
             if (!CanRead) throw new Exception("Trying to read past end of buffer");
             if (readAll)
@@ -207,17 +207,17 @@ namespace VCDiff.Shared
         }
 
         //increases the offset by 1
-        public override void Next()
+        public void Next()
         {
             buffer.Position++;
         }
 
-        public override void Skip(int len)
+        public void Skip(int len)
         {
             buffer.Position += len;
         }
 
-        public override void Dispose()
+        public void Dispose()
         {
             buffer.Dispose();
         }
