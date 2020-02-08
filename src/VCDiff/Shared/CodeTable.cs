@@ -3,7 +3,7 @@ using VCDiff.Includes;
 
 namespace VCDiff.Shared
 {
-    public class CodeTable
+    internal class CodeTable
     {
         /// <summary>
         /// Default CodeTable as described in the RFC doc

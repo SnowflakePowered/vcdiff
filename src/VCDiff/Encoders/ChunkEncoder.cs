@@ -3,7 +3,7 @@ using VCDiff.Shared;
 
 namespace VCDiff.Encoders
 {
-    public class ChunkEncoder : IDisposable
+    internal class ChunkEncoder : IDisposable
     {
         private static int minBlockSize = 32;
 

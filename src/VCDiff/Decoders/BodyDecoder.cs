@@ -6,7 +6,7 @@ using VCDiff.Shared;
 
 namespace VCDiff.Decoders
 {
-    public class BodyDecoder : IDisposable
+    internal class BodyDecoder : IDisposable
     {
         private WindowDecoder window;
         private ByteStreamWriter sout;

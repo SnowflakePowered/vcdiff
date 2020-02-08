@@ -4,7 +4,7 @@ using VCDiff.Includes;
 
 namespace VCDiff.Shared
 {
-    public class VarIntBE
+    internal class VarIntBE
     {
         /// <summary>
         /// Special VarIntBE class for encoding a Variable BE Integer

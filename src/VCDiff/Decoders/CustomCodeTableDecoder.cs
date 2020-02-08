@@ -4,7 +4,7 @@ using VCDiff.Shared;
 
 namespace VCDiff.Decoders
 {
-    public class CustomCodeTableDecoder
+    internal class CustomCodeTableDecoder
     {
         private byte nearSize;
         private byte sameSize;
@@ -33,12 +33,7 @@ namespace VCDiff.Decoders
                 return table;
             }
         }
-
-        public CustomCodeTableDecoder()
-        {
-        }
-
-        public VCDiffResult Decode(IByteBuffer source)
+        internal VCDiffResult Decode(IByteBuffer source)
         {
             VCDiffResult result = VCDiffResult.SUCCESS;
 

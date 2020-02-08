@@ -3,7 +3,7 @@ using System.IO;
 
 namespace VCDiff.Shared
 {
-    public class ByteStreamWriter : IDisposable
+    internal class ByteStreamWriter : IDisposable
     {
         private Stream buffer;
 

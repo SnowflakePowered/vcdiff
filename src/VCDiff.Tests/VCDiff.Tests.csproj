@@ -17,4 +17,13 @@
     <ProjectReference Include="..\VCDiff\VCDiff.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="a.test">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="b.test">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

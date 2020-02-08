@@ -5,6 +5,7 @@ using System.Linq;
 namespace VCDiff.Shared
 {
     public class ByteBuffer : IByteBuffer, IDisposable
+    internal class ByteBuffer : IByteBuffer, IDisposable
     {
         private ReadOnlySequence<byte> Sequence { get; }
 

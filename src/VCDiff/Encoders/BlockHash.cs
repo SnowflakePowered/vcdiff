@@ -3,7 +3,7 @@ using VCDiff.Shared;
 
 namespace VCDiff.Encoders
 {
-    public class BlockHash
+    internal class BlockHash
     {
         private static int blockSize = 16;
 

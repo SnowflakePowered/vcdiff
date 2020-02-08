@@ -2,7 +2,7 @@
 
 namespace VCDiff.Shared
 {
-    public interface IByteBuffer : IDisposable
+    internal interface IByteBuffer : IDisposable
     {
         long Length { get; }
 

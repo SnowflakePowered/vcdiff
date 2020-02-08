@@ -5,7 +5,7 @@ using VCDiff.Shared;
 
 namespace VCDiff.Encoders
 {
-    public class WindowEncoder
+    internal class WindowEncoder
     {
         private bool interleaved;
         private int maxMode;

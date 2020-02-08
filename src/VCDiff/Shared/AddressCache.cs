@@ -2,7 +2,7 @@
 
 namespace VCDiff.Shared
 {
-    public class AddressCache
+    internal class AddressCache
     {
         /// <summary>
         /// The address cache implementation as described in the RFC doc.

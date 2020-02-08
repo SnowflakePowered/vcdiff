@@ -224,13 +224,6 @@
             </summary>
             <param name="bytes"></param>
         </member>
-        <member name="M:VCDiff.Shared.ByteBuffer.#ctor(System.ReadOnlyMemory{System.Byte})">
-            <summary>
-            Basically a simple wrapper for byte[] arrays
-            for easier reading and parsing
-            </summary>
-            <param name="bytes"></param>
-        </member>
         <member name="M:VCDiff.Shared.ByteStreamWriter.#ctor(System.IO.Stream)">
             <summary>
             Wrapper class for writing to streams

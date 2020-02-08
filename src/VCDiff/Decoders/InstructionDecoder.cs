@@ -3,7 +3,7 @@ using VCDiff.Shared;
 
 namespace VCDiff.Decoders
 {
-    public class InstructionDecoder
+    internal class InstructionDecoder
     {
         private CodeTable table;
         private ByteBuffer source;

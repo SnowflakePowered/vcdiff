@@ -32,7 +32,7 @@ namespace VCDiff.Decoders
             IsInitialized = false;
         }
 
-        public VCDecoder(IByteBuffer dict, IByteBuffer delta, Stream sout)
+        internal VCDecoder(IByteBuffer dict, IByteBuffer delta, Stream sout)
         {
             this.delta = delta;
             this.source = dict;

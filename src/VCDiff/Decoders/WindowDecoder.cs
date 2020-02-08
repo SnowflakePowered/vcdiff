@@ -4,7 +4,7 @@ using VCDiff.Shared;
 
 namespace VCDiff.Decoders
 {
-    public class WindowDecoder
+    internal class WindowDecoder
     {
         private IByteBuffer buffer;
         private int returnCode;
