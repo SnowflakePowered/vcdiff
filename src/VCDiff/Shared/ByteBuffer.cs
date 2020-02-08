@@ -1,16 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace VCDiff.Shared
 {
     public class ByteBuffer : IByteBuffer, IDisposable
     {
-        byte[] bytes;
-        int length;
-        long offset;
+        private byte[] bytes;
+        private int length;
+        private long offset;
 
         /// <summary>
         /// Basically a simple wrapper for byte[] arrays
@@ -54,8 +50,8 @@ namespace VCDiff.Shared
 
         public void BufferAll()
         {
-           //not implemented in this one
-           //since it already contains the full buffered data
+            //not implemented in this one
+            //since it already contains the full buffered data
         }
 
         public long Length

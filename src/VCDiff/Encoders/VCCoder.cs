@@ -1,24 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.IO;
 using VCDiff.Includes;
 using VCDiff.Shared;
-using System.IO;
 
 namespace VCDiff.Encoders
 {
     public class VCCoder
     {
-        IByteBuffer oldData;
-        IByteBuffer newData;
-        ByteStreamWriter sout;
-        RollingHash hasher;
-        int bufferSize;
+        private IByteBuffer oldData;
+        private IByteBuffer newData;
+        private ByteStreamWriter sout;
+        private RollingHash hasher;
+        private int bufferSize;
 
-        static byte[] MagicBytes = new byte[] { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
-        static byte[] MagicBytesExtended = new byte[] { 0xD6, 0xC3, 0xC4, (byte)'S', 0x00 };
+        private static byte[] MagicBytes = new byte[] { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
+        private static byte[] MagicBytesExtended = new byte[] { 0xD6, 0xC3, 0xC4, (byte)'S', 0x00 };
 
         /// <summary>
         /// The easy public structure for encoding into a vcdiff format

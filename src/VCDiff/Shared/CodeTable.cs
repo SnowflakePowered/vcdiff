@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using VCDiff.Includes;
 
 namespace VCDiff.Shared
@@ -13,6 +9,7 @@ namespace VCDiff.Shared
         /// Default CodeTable as described in the RFC doc
         /// </summary>
         public const int kNoOpcode = 0x100;
+
         public const int kCodeTableSize = 256;
 
         public byte[] inst1;
@@ -187,38 +184,38 @@ namespace VCDiff.Shared
 
         public bool SetBytes(byte[] items)
         {
-            if(items.Length != 256 * 6)
+            if (items.Length != 256 * 6)
             {
                 return false;
             }
 
             int offset = 0;
-            for(int i = 0; i < 256; i++)
+            for (int i = 0; i < 256; i++)
             {
                 inst1[i] = items[offset + i];
             }
             offset += 256;
-            for(int i = 0; i < 256; i++)
+            for (int i = 0; i < 256; i++)
             {
                 inst2[i] = items[offset + i];
             }
             offset += 256;
-            for(int i = 0; i < 256; i++)
+            for (int i = 0; i < 256; i++)
             {
                 size1[i] = items[offset + i];
             }
             offset += 256;
-            for(int i = 0; i < 256; i++)
+            for (int i = 0; i < 256; i++)
             {
                 size2[i] = items[offset + i];
             }
             offset += 256;
-            for(int i = 0; i < 256; i++)
+            for (int i = 0; i < 256; i++)
             {
                 mode1[i] = items[offset + i];
             }
             offset += 256;
-            for(int i = 0; i < 256; i++)
+            for (int i = 0; i < 256; i++)
             {
                 mode2[i] = items[offset + i];
             }
@@ -229,20 +226,20 @@ namespace VCDiff.Shared
         public IByteBuffer GetBytes()
         {
             List<byte> bytes = new List<byte>();
- 
-            for(int i = 0; i < inst1.Length; i++)
+
+            for (int i = 0; i < inst1.Length; i++)
             {
                 bytes.Add(inst1[i]);
             }
-            for(int i = 0; i < inst2.Length; i++)
+            for (int i = 0; i < inst2.Length; i++)
             {
                 bytes.Add(inst2[i]);
             }
-            for(int i = 0; i < size1.Length; i++)
+            for (int i = 0; i < size1.Length; i++)
             {
                 bytes.Add(size1[i]);
             }
-            for(int i = 0; i < size2.Length; i++)
+            for (int i = 0; i < size2.Length; i++)
             {
                 bytes.Add(size2[i]);
             }
@@ -258,12 +255,12 @@ namespace VCDiff.Shared
             return new ByteBuffer(bytes.ToArray());
         }
 
-        static bool Validate(byte maxMode)
+        private static bool Validate(byte maxMode)
         {
             return true;
         }
 
-        static bool ValidateOpCode(int opcode, byte inst, byte size, byte mode, byte maxMode)
+        private static bool ValidateOpCode(int opcode, byte inst, byte size, byte mode, byte maxMode)
         {
             return true;
         }

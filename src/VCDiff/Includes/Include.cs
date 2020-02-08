@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace VCDiff.Includes
+﻿namespace VCDiff.Includes
 {
     public enum VCDiffResult
     {
@@ -80,6 +74,7 @@ namespace VCDiff.Includes
     {
         VCDSOURCE = 0x01,
         VCDTARGET = 0x02,
+
         //Google Specific Flag
         VCDCHECKSUM = 0x04
     }

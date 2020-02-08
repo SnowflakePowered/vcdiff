@@ -1,16 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
 
 namespace VCDiff.Shared
 {
     public class ByteStreamWriter : IDisposable
     {
-        Stream buffer;
+        private Stream buffer;
 
-        bool isLittle;
+        private bool isLittle;
 
         /// <summary>
         /// Wrapper class for writing to streams
@@ -27,7 +24,7 @@ namespace VCDiff.Shared
 
         public byte[] ToArray()
         {
-            if(buffer.GetType().Equals(typeof(MemoryStream)))
+            if (buffer.GetType().Equals(typeof(MemoryStream)))
             {
                 MemoryStream buff = (MemoryStream)buffer;
                 return buff.ToArray();

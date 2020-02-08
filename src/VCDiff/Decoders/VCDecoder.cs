@@ -1,24 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using VCDiff.Shared;
+﻿using System.IO;
 using VCDiff.Includes;
-using System.IO;
+using VCDiff.Shared;
 
 namespace VCDiff.Decoders
 {
     public class VCDecoder
     {
-        ByteStreamWriter sout;
-        IByteBuffer delta;
-        IByteBuffer dict;
-        CustomCodeTableDecoder customTable;
-        bool googleVersion;
-        bool isStarted;
+        private ByteStreamWriter sout;
+        private IByteBuffer delta;
+        private IByteBuffer dict;
+        private CustomCodeTableDecoder customTable;
+        private bool googleVersion;
+        private bool isStarted;
 
-        static byte[] MagicBytes = new byte[] { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
+        private static byte[] MagicBytes = new byte[] { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
 
         public bool IsSDHCFormat
         {
@@ -115,7 +110,7 @@ namespace VCDiff.Decoders
             }
 
             //custom code table!
-            if((hdr & (int)VCDiffCodeFlags.VCDCODETABLE) != 0)
+            if ((hdr & (int)VCDiffCodeFlags.VCDCODETABLE) != 0)
             {
                 if (!delta.CanRead) return VCDiffResult.EOD;
 
@@ -124,7 +119,7 @@ namespace VCDiff.Decoders
                 customTable = new CustomCodeTableDecoder();
                 VCDiffResult result = customTable.Decode(delta);
 
-                if(result != VCDiffResult.SUCCESS)
+                if (result != VCDiffResult.SUCCESS)
                 {
                     return result;
                 }
@@ -149,7 +144,7 @@ namespace VCDiff.Decoders
         /// <returns></returns>
         public VCDiffResult Decode(out long bytesWritten)
         {
-            if(!isStarted)
+            if (!isStarted)
             {
                 bytesWritten = 0;
                 return VCDiffResult.ERRROR;
@@ -169,7 +164,6 @@ namespace VCDiff.Decoders
                 {
                     using (BodyDecoder body = new BodyDecoder(w, dict, delta, sout))
                     {
-
                         if (googleVersion && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
                         {
                             //interleaved
@@ -203,7 +197,7 @@ namespace VCDiff.Decoders
                         else if (!googleVersion)
                         {
                             //not interleaved
-                            //expects the full window to be available 
+                            //expects the full window to be available
                             //in the stream
                             result = body.Decode();
 

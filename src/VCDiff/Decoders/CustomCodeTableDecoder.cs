@@ -1,19 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.IO;
 using VCDiff.Includes;
 using VCDiff.Shared;
-using System.IO;
 
 namespace VCDiff.Decoders
 {
     public class CustomCodeTableDecoder
     {
-        byte nearSize;
-        byte sameSize;
-        CodeTable table;
+        private byte nearSize;
+        private byte sameSize;
+        private CodeTable table;
 
         public byte NearSize
         {
@@ -41,7 +36,6 @@ namespace VCDiff.Decoders
 
         public CustomCodeTableDecoder()
         {
- 
         }
 
         public VCDiffResult Decode(IByteBuffer source)
@@ -64,7 +58,7 @@ namespace VCDiff.Decoders
             nearSize = codeTable.ReadByte();
             sameSize = codeTable.ReadByte();
 
-            if(nearSize == 0 || sameSize == 0 || nearSize > byte.MaxValue || sameSize > byte.MaxValue)
+            if (nearSize == 0 || sameSize == 0 || nearSize > byte.MaxValue || sameSize > byte.MaxValue)
             {
                 return VCDiffResult.ERRROR;
             }
@@ -75,12 +69,12 @@ namespace VCDiff.Decoders
 
             //Decode the code table VCDiff file itself
             //stream the decoded output into a memory stream
-            using(MemoryStream sout = new MemoryStream())
+            using (MemoryStream sout = new MemoryStream())
             {
                 VCDecoder decoder = new VCDecoder(dictionary, codeTable, sout);
                 result = decoder.Start();
 
-                if(result != VCDiffResult.SUCCESS)
+                if (result != VCDiffResult.SUCCESS)
                 {
                     return result;
                 }
@@ -93,7 +87,7 @@ namespace VCDiff.Decoders
                 }
 
                 //set the new table data that was decoded
-                if(!table.SetBytes(sout.ToArray()))
+                if (!table.SetBytes(sout.ToArray()))
                 {
                     result = VCDiffResult.ERRROR;
                 }

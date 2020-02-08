@@ -1,18 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using VCDiff.Includes;
 using VCDiff.Shared;
-using VCDiff.Includes;
 
 namespace VCDiff.Decoders
 {
     public class InstructionDecoder
     {
-        CodeTable table;
-        ByteBuffer source;
-        int pendingSecond;
+        private CodeTable table;
+        private ByteBuffer source;
+        private int pendingSecond;
 
         /// <summary>
         /// Decodes the incoming instruction from the buffer
@@ -77,6 +72,7 @@ namespace VCDiff.Decoders
                         mode = 0;
                         size = 0;
                         return VCDiffInstructionType.ERROR;
+
                     case (int)VCDiffResult.EOD:
                         mode = 0;
                         size = 0;
@@ -84,11 +80,13 @@ namespace VCDiff.Decoders
                         //otherwise when parsing interleave we will miss data
                         source.Position = start;
                         return VCDiffInstructionType.EOD;
+
                     default:
                         break;
                 }
             }
-            else { 
+            else
+            {
                 size = instructionSize;
             }
             mode = instructionMode;

@@ -1,16 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using VCDiff.Includes;
 using VCDiff.Shared;
 
 namespace VCDiff.Encoders
 {
     public class ChunkEncoder : IDisposable
     {
-        static int minBlockSize = 32;
+        private static int minBlockSize = 32;
+
         public static int MinBlockSize
         {
             get
@@ -24,13 +20,13 @@ namespace VCDiff.Encoders
             }
         }
 
-        BlockHash dictionary;
-        IByteBuffer oldData;
-        IByteBuffer newData;
-        WindowEncoder windowEncoder;
-        RollingHash hasher;
-        bool interleaved;
-        bool hasChecksum;
+        private BlockHash dictionary;
+        private IByteBuffer oldData;
+        private IByteBuffer newData;
+        private WindowEncoder windowEncoder;
+        private RollingHash hasher;
+        private bool interleaved;
+        private bool hasChecksum;
 
         /// <summary>
         /// Performs the actual encoding of a chunk of data into the VCDiff format
@@ -60,7 +56,7 @@ namespace VCDiff.Encoders
 
             ///If checksum needed
             ///Generate Adler32 checksum for the incoming bytes
-            if(hasChecksum)
+            if (hasChecksum)
             {
                 newData.Position = 0;
                 byte[] bytes = newData.ReadBytes((int)newData.Length);
@@ -141,7 +137,7 @@ namespace VCDiff.Encoders
 
         //currently does not support looking in target
         //only the dictionary
-        long EncodeCopyForBestMatch(ulong hash, long candidateStart, long unencodedStart, long unencodedSize)
+        private long EncodeCopyForBestMatch(ulong hash, long candidateStart, long unencodedStart, long unencodedSize)
         {
             BlockHash.Match bestMatch = new BlockHash.Match();
 
@@ -165,15 +161,15 @@ namespace VCDiff.Encoders
 
         public void Dispose()
         {
-            if(oldData != null)
+            if (oldData != null)
             {
                 oldData.Dispose();
             }
-            if(newData != null)
+            if (newData != null)
             {
                 newData.Dispose();
             }
-            if(windowEncoder != null)
+            if (windowEncoder != null)
             {
                 windowEncoder = null;
             }
