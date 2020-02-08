@@ -96,45 +96,23 @@ namespace VCDiff.Shared
         {
             if (readAll)
             {
-                int end = (int)offset + len > internalBuffer.Length ? internalBuffer.Length : (int)offset + len;
-                int sliceLen = (int)offset + len > internalBuffer.Length ? internalBuffer.Length - (int)offset : len;
-
-                
-                byte[] rbuff = new byte[sliceLen];
-                int rcc = 0;
-                for (int i = (int)offset; i < end; i++)
-                {
-                    rbuff[rcc] = internalBuffer[i];
-                    rcc++;
-                }
-                return rbuff;
+                int sliceLen = offset + len > internalBuffer.Length ? internalBuffer.Length - (int)offset : len;
+                return this.internalBuffer.AsMemory().Slice((int)offset, sliceLen);
             }
 
             long oldPos = buffer.Position;
-            byte[] buf = new byte[len];
+            Memory<byte> buf = new byte[len];
 
-            int actualRead = buffer.Read(buf, 0, len);
+            int actualRead = buffer.Read(buf.Span);
             lastLenRead = actualRead;
             if (actualRead > 0)
             {
-                if (actualRead == len)
-                {
-                    buffer.Position = oldPos;
-                    return buf;
-                }
-
-                byte[] actualData = new byte[actualRead];
-                for (int i = 0; i < actualRead; i++)
-                {
-                    actualData[i] = buf[i];
-                }
-
                 buffer.Position = oldPos;
-                return actualData;
+                return buf[0..actualRead];
             }
 
             buffer.Position = oldPos;
-            return new byte[0];
+            return Memory<byte>.Empty;
         }
 
         public byte ReadByte()
@@ -154,41 +132,21 @@ namespace VCDiff.Shared
         {
             if (readAll)
             {
-                int end = (int)offset + len > internalBuffer.Length ? internalBuffer.Length : (int)offset + len;
-                int realLen = (int)offset + len > internalBuffer.Length ? internalBuffer.Length - (int)offset : len;
-
-                byte[] rbuff = new byte[realLen];
-                int rcc = 0;
-                for (int i = (int)offset; i < end; i++)
-                {
-                    rbuff[rcc] = internalBuffer[i];
-                    rcc++;
-                }
+                int sliceLen = offset + len > internalBuffer.Length ? internalBuffer.Length - (int)offset : len;
+                var slice = this.internalBuffer.AsMemory().Slice((int)offset, sliceLen);
                 offset += len;
-                return rbuff;
+                return slice;
             }
 
-            byte[] buf = new byte[len];
-
-            int actualRead = buffer.Read(buf, 0, len);
+            Memory<byte> buf = new byte[len];
+            int actualRead = buffer.Read(buf.Span);
             lastLenRead = actualRead;
             if (actualRead > 0)
             {
-                if (actualRead == len)
-                {
-                    return buf;
-                }
-
-                byte[] actualData = new byte[actualRead];
-                for (int i = 0; i < actualRead; i++)
-                {
-                    actualData[i] = buf[i];
-                }
-
-                return actualData;
+                return buf[0..actualRead];
             }
 
-            return new byte[0];
+            return Memory<byte>.Empty;
         }
 
         public byte PeekByte()
