@@ -68,17 +68,17 @@ namespace VCDiff.Shared
         {
             this.sameSize = sameSize;
             this.nearSize = nearSize;
-            this.nearCache = new long[nearSize];
-            this.sameCache = new long[sameSize * 256];
+            nearCache = new long[nearSize];
+            sameCache = new long[sameSize * 256];
             nextSlot = 0;
         }
 
         public AddressCache()
         {
-            this.sameSize = DefaultSameCacheSize;
-            this.nearSize = DefaultNearCacheSize;
-            this.nearCache = new long[nearSize];
-            this.sameCache = new long[sameSize * 256];
+            sameSize = DefaultSameCacheSize;
+            nearSize = DefaultNearCacheSize;
+            nearCache = new long[nearSize];
+            sameCache = new long[sameSize * 256];
             nextSlot = 0;
         }
 
@@ -205,7 +205,8 @@ namespace VCDiff.Shared
             {
                 return false;
             }
-            else if (decoded >= here)
+
+            if (decoded >= here)
             {
                 return false;
             }
@@ -244,9 +245,6 @@ namespace VCDiff.Shared
                     case (int)VCDiffResult.EOD:
                         sin.Position = start;
                         return encoded;
-
-                    default:
-                        break;
                 }
 
                 if (IsSelfMode(mode))

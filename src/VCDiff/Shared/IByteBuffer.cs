@@ -18,10 +18,6 @@ namespace VCDiff.Shared
 
         byte PeekByte();
 
-        void Skip(int len);
-
         void Next();
-
-        void BufferAll();
     }
 }

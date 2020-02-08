@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using VCDiff.Includes;
 
 namespace VCDiff.Shared
@@ -29,8 +28,7 @@ namespace VCDiff.Shared
         public const byte ERR = (byte)VCDiffInstructionType.ERROR;
         public const byte EOD = (byte)VCDiffInstructionType.EOD;
 
-        private static readonly byte[] defaultInst1 = new byte[]
-            {
+        private static readonly byte[] defaultInst1 = {
                 R,  // opcode 0
                 A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,  // opcodes 1-18
                 C, C, C, C, C, C, C, C, C, C, C, C, C, C, C, C,  // opcodes 19-34
@@ -54,8 +52,7 @@ namespace VCDiff.Shared
                 C, C, C, C, C, C, C, C, C  // opcodes 247-255
             };
 
-        private static readonly byte[] defaultInst2 = new byte[]
-            {
+        private static readonly byte[] defaultInst2 = {
                 N,  // opcode 0
                 N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N,  // opcodes 1-18
                 N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N,  // opcodes 19-34
@@ -79,8 +76,7 @@ namespace VCDiff.Shared
                 A, A, A, A, A, A, A, A, A  // opcodes 247-255
     };
 
-        private static readonly byte[] defaultSize1 = new byte[]
-            {
+        private static readonly byte[] defaultSize1 = {
                 0,  // opcode 0
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,  // 1-18
                 0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,  // 19-34
@@ -104,8 +100,7 @@ namespace VCDiff.Shared
                 4, 4, 4, 4, 4, 4, 4, 4, 4  // opcodes 247-255
             };
 
-        private static readonly byte[] defaultSize2 = new byte[]
-            {
+        private static readonly byte[] defaultSize2 = {
                 0,  // opcode 0
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // opcodes 1-18
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // opcodes 19-34
@@ -129,8 +124,7 @@ namespace VCDiff.Shared
                 1, 1, 1, 1, 1, 1, 1, 1, 1  // opcodes 247-255
             };
 
-        private static readonly byte[] defaultMode1 = new byte[]
-            {
+        private static readonly byte[] defaultMode1 = {
                 0,  // opcode 0
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // opcodes 1-18
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // opcodes 19-34
@@ -154,8 +148,7 @@ namespace VCDiff.Shared
                 0, 1, 2, 3, 4, 5, 6, 7, 8  // opcodes 247-255
             };
 
-        private static readonly byte[] defaultMode2 = new byte[]
-            {
+        private static readonly byte[] defaultMode2 = {
                 0,  // opcode 0
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // opcodes 1-18
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // opcodes 19-34
@@ -189,22 +182,22 @@ namespace VCDiff.Shared
 
         public CodeTable()
         {
-            inst1 = this.table.AsMemory(0 * kCodeTableSize, kCodeTableSize);
+            inst1 = table.AsMemory(0 * kCodeTableSize, kCodeTableSize);
             defaultInst1.CopyTo(inst1);
 
-            inst2 = this.table.AsMemory(1 * kCodeTableSize, kCodeTableSize);
+            inst2 = table.AsMemory(1 * kCodeTableSize, kCodeTableSize);
             defaultInst2.CopyTo(inst2);
 
-            size1 = this.table.AsMemory(2 * kCodeTableSize, kCodeTableSize);
+            size1 = table.AsMemory(2 * kCodeTableSize, kCodeTableSize);
             defaultSize1.CopyTo(size1);
 
-            size2 = this.table.AsMemory(3 * kCodeTableSize, kCodeTableSize);
+            size2 = table.AsMemory(3 * kCodeTableSize, kCodeTableSize);
             defaultSize2.CopyTo(size2);
 
-            mode1 = this.table.AsMemory(4 * kCodeTableSize, kCodeTableSize);
+            mode1 = table.AsMemory(4 * kCodeTableSize, kCodeTableSize);
             defaultMode1.CopyTo(mode1);
 
-            mode2 = this.table.AsMemory(5 * kCodeTableSize, kCodeTableSize);
+            mode2 = table.AsMemory(5 * kCodeTableSize, kCodeTableSize);
             defaultMode2.CopyTo(mode2);
         }
 
@@ -215,13 +208,13 @@ namespace VCDiff.Shared
                 return false;
             }
 
-            items.CopyTo(this.table, 0);
+            items.CopyTo(table, 0);
             return true;
         }
 
         public IByteBuffer GetBytes()
         {
-            return new ByteBuffer(this.table);
+            return new ByteBuffer(table);
         }
     }
 }

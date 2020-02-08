@@ -38,8 +38,8 @@ namespace VCDiff.Encoders
         /// <param name="checksum">Whether to include checksums for each window</param>
         public ChunkEncoder(BlockHash dictionary, IByteBuffer oldData, RollingHash hash, bool interleaved = false, bool checksum = false)
         {
-            this.hasChecksum = checksum;
-            this.hasher = hash;
+            hasChecksum = checksum;
+            hasher = hash;
             this.oldData = oldData;
             this.dictionary = dictionary;
             this.interleaved = interleaved;
@@ -63,7 +63,7 @@ namespace VCDiff.Encoders
                 checksum = Checksum.ComputeAdler32(bytes);
             }
 
-            windowEncoder = new WindowEncoder(oldData.Length, checksum, this.interleaved, hasChecksum);
+            windowEncoder = new WindowEncoder(oldData.Length, checksum, interleaved, hasChecksum);
 
             oldData.Position = 0;
             newData.Position = 0;

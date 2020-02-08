@@ -7,7 +7,7 @@ namespace VCDiff.Encoders
         private const ulong kMult = 257;
         private const ulong kBase = (1 << 23);
 
-        private int size = 0;
+        private int size;
         private ulong[] removeTable;
         private ulong multiplier;
 

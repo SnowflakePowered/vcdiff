@@ -80,9 +80,6 @@ namespace VCDiff.Decoders
                         //otherwise when parsing interleave we will miss data
                         source.Position = start;
                         return VCDiffInstructionType.EOD;
-
-                    default:
-                        break;
                 }
             }
             else

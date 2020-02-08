@@ -10,7 +10,7 @@ namespace VCDiff.Decoders
         private readonly IByteBuffer delta;
         private readonly IByteBuffer source;
         private CustomCodeTableDecoder customTable;
-        private static readonly byte[] MagicBytes = new byte[] { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
+        private static readonly byte[] MagicBytes = { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
 
         public bool IsSDHCFormat { get; private set; }
 
@@ -35,8 +35,8 @@ namespace VCDiff.Decoders
         internal VCDecoder(IByteBuffer dict, IByteBuffer delta, Stream sout)
         {
             this.delta = delta;
-            this.source = dict;
-            this.outputStream = new ByteStreamWriter(sout);
+            source = dict;
+            outputStream = new ByteStreamWriter(sout);
             IsInitialized = false;
         }
 
@@ -113,9 +113,6 @@ namespace VCDiff.Decoders
             IsSDHCFormat = version == 'S';
 
             IsInitialized = true;
-
-            //buffer all the dictionary up front
-            source.BufferAll();
 
             return VCDiffResult.SUCCESS;
         }

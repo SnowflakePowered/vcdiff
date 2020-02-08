@@ -25,11 +25,11 @@ namespace VCDiff.Encoders
         private IByteBuffer sourceData;
         private long offset;
         private ulong hashTableMask;
-        private long lastBlockAdded = 0;
+        private long lastBlockAdded;
         private long[] hashTable;
         private long[] nextBlockTable;
         private long[] lastBlockTable;
-        private long tableSize = 0;
+        private long tableSize;
         private RollingHash hasher;
 
         public IByteBuffer Source
@@ -402,9 +402,9 @@ namespace VCDiff.Encoders
 
         public class Match
         {
-            private long size = 0;
-            private long sOffset = 0;
-            private long tOffset = 0;
+            private long size;
+            private long sOffset;
+            private long tOffset;
 
             public void ReplaceIfBetterMatch(long csize, long sourcOffset, long targetOffset)
             {

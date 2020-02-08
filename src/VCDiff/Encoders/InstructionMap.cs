@@ -34,7 +34,7 @@ namespace VCDiff.Encoders
             {
                 if ((table.inst1.Span[opcode] != CodeTable.N) && (table.inst2.Span[opcode] != CodeTable.N))
                 {
-                    int found = this.LookFirstOpcode(table.inst1.Span[opcode], table.size1.Span[opcode], table.mode1.Span[opcode]);
+                    int found = LookFirstOpcode(table.inst1.Span[opcode], table.size1.Span[opcode], table.mode1.Span[opcode]);
                     if (found == CodeTable.kNoOpcode) continue;
                     secondMap.Add((byte)found, table.inst2.Span[opcode], table.size2.Span[opcode], table.mode2.Span[opcode], (byte)opcode);
                 }
@@ -83,13 +83,13 @@ namespace VCDiff.Encoders
 
                 if (instmode == null)
                 {
-                    instmode = new int[this.numInstAndModes][];
+                    instmode = new int[numInstAndModes][];
                     opcodes2[opcode] = instmode;
                 }
                 int[] sizeArray = instmode[inst + mode];
                 if (sizeArray == null)
                 {
-                    sizeArray = NewSizeOpcodeArray(this.maxSize + 1);
+                    sizeArray = NewSizeOpcodeArray(maxSize + 1);
                     instmode[inst + mode] = sizeArray;
                 }
                 if (sizeArray[size] == CodeTable.kNoOpcode)
@@ -110,7 +110,7 @@ namespace VCDiff.Encoders
 
             public int LookUp(byte first, byte inst, byte size, byte mode)
             {
-                if (size > this.maxSize)
+                if (size > maxSize)
                 {
                     return CodeTable.kNoOpcode;
                 }

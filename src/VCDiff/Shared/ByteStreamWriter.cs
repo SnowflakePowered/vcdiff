@@ -43,22 +43,22 @@ namespace VCDiff.Shared
 
         public void Write(byte b)
         {
-            this.buffer.WriteByte(b);
+            buffer.WriteByte(b);
         }
 
         public void Write(byte[] b)
         {
-            this.buffer.Write(b, 0, b.Length);
+            buffer.Write(b, 0, b.Length);
         }
 
         public void Write(ReadOnlyMemory<byte> b)
         {
-            this.buffer.Write(b.Span);
+            buffer.Write(b.Span);
         }
 
         public void Dispose()
         {
-            this.buffer.Dispose();
+            buffer.Dispose();
         }
     }
 }

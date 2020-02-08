@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using VCDiff.Includes;
 using VCDiff.Shared;
@@ -13,7 +12,7 @@ namespace VCDiff.Decoders
         private IByteBuffer dict;
         private IByteBuffer target;
         private AddressCache addressCache;
-        private long decodedOnly = 0;
+        private long decodedOnly;
         private long bytesWritten = 0;
         private MemoryStream targetData;
         private CustomCodeTableDecoder? customTable;
@@ -48,7 +47,7 @@ namespace VCDiff.Decoders
             }
             window = w;
             this.sout = sout;
-            this.dict = dictionary;
+            dict = dictionary;
             this.target = target;
             targetData = new MemoryStream();
         }
@@ -82,7 +81,7 @@ namespace VCDiff.Decoders
                     previous.SetLength(0);
                     long initialLength = incoming.Length;
 
-                    InstructionDecoder instrDecoder = new InstructionDecoder(incoming, this.customTable);
+                    InstructionDecoder instrDecoder = new InstructionDecoder(incoming, customTable);
 
                     while (incoming.CanRead && decodedOnly < window.DecodedDeltaLength)
                     {
@@ -108,9 +107,6 @@ namespace VCDiff.Decoders
                                 case VCDiffInstructionType.ERROR:
                                     targetData.SetLength(0);
                                     return VCDiffResult.ERRROR;
-
-                                default:
-                                    break;
                             }
                         }
 
@@ -203,7 +199,7 @@ namespace VCDiff.Decoders
             ByteBuffer addressBuffer = new ByteBuffer(window.AddressesForCopyData);
             ByteBuffer addRunBuffer = new ByteBuffer(window.AddRunData);
 
-            InstructionDecoder instrDecoder = new InstructionDecoder(instructionBuffer, this.customTable);
+            InstructionDecoder instrDecoder = new InstructionDecoder(instructionBuffer, customTable);
 
             VCDiffResult result = VCDiffResult.SUCCESS;
 
@@ -220,9 +216,6 @@ namespace VCDiff.Decoders
                     case VCDiffInstructionType.ERROR:
                         targetData.SetLength(0);
                         return VCDiffResult.ERRROR;
-
-                    default:
-                        break;
                 }
 
                 switch (instruction)

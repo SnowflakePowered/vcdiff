@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
@@ -12,8 +13,8 @@ namespace VCDiff.Encoders
         private RollingHash hasher;
         private int bufferSize;
 
-        private static byte[] MagicBytes = new byte[] { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
-        private static byte[] MagicBytesExtended = new byte[] { 0xD6, 0xC3, 0xC4, (byte)'S', 0x00 };
+        private static byte[] MagicBytes = { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
+        private static byte[] MagicBytesExtended = { 0xD6, 0xC3, 0xC4, (byte)'S', 0x00 };
 
         /// <summary>
         /// The easy public structure for encoding into a vcdiff format
@@ -30,12 +31,12 @@ namespace VCDiff.Encoders
         {
             if (maxBufferSize <= 0) maxBufferSize = 1;
 
-            this.oldData = new ByteStreamReader(source);
-            this.newData = new ByteStreamReader(target);
-            this.outputStreamWriter = new ByteStreamWriter(outputStream);
+            oldData = new ByteStreamReader(source);
+            newData = new ByteStreamReader(target);
+            outputStreamWriter = new ByteStreamWriter(outputStream);
             hasher = new RollingHash(BlockHash.BlockSize);
 
-            this.bufferSize = maxBufferSize * 1024 * 1024;
+            bufferSize = maxBufferSize * 1024 * 1024;
         }
 
         /// <summary>
@@ -67,15 +68,6 @@ namespace VCDiff.Encoders
                 outputStreamWriter.Write(MagicBytesExtended);
             }
 
-            //buffer the whole olddata (dictionary)
-            //otherwise it will be a slow process
-            //even Google's version reads in the entire dictionary file to memory
-            //it is just faster that way because of having to move the memory pointer around
-            //to find all the hash comparisons and stuff.
-            //It is much slower trying to random access read from file with FileStream class
-            //however the newData is read in chunks and processed for memory efficiency and speed
-            oldData.BufferAll();
-
             //read in all the dictionary it is the only thing that needs to be
             BlockHash dictionary = new BlockHash(oldData, 0, hasher);
             dictionary.AddAllBlocks();
@@ -85,13 +77,8 @@ namespace VCDiff.Encoders
 
             while (newData.CanRead)
             {
-                using (ByteBuffer ntarget = new ByteBuffer(newData.ReadBytes(bufferSize)))
-                {
-                    chunker.EncodeChunk(ntarget, outputStreamWriter);
-                }
-
-                //just in case
-                System.GC.Collect();
+                using ByteBuffer ntarget = new ByteBuffer(newData.ReadBytes(bufferSize));
+                chunker.EncodeChunk(ntarget, outputStreamWriter);
             }
 
             return result;

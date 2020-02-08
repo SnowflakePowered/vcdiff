@@ -246,9 +246,6 @@ namespace VCDiff.Decoders
                 case (int)VCDiffResult.EOD:
                     value = 0;
                     return false;
-
-                default:
-                    break;
             }
             chunk.Position = buffer.Position;
             value = parsed;
@@ -279,9 +276,6 @@ namespace VCDiff.Decoders
                 case (int)VCDiffResult.EOD:
                     value = 0;
                     return false;
-
-                default:
-                    break;
             }
             if (parsed > 0xFFFFFFFF)
             {
@@ -513,9 +507,9 @@ namespace VCDiff.Decoders
 
             public ParseableChunk(long s, long len)
             {
-                this.start = s;
-                this.end = s + len;
-                this.position = s;
+                start = s;
+                end = s + len;
+                position = s;
             }
         }
     }
