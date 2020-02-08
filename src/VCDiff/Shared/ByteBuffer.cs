@@ -99,7 +99,6 @@ namespace VCDiff.Shared
 
         public void Dispose()
         {
-            bytes = null;
         }
     }
 }

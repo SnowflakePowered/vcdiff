@@ -12,12 +12,13 @@ namespace VCDiff.Shared
         private Stream buffer;
         private int lastLenRead;
         private bool readAll;
-        private List<byte> internalBuffer;
+        private byte[] internalBuffer;
         private long offset;
 
         public ByteStreamReader(Stream stream)
         {
             buffer = stream;
+            internalBuffer = new byte[stream.Length];
         }
 
         public long Position
@@ -48,7 +49,7 @@ namespace VCDiff.Shared
             {
                 if (readAll)
                 {
-                    return internalBuffer.Count;
+                    return internalBuffer.Length;
                 }
 
                 if (buffer.CanRead)
@@ -64,7 +65,7 @@ namespace VCDiff.Shared
             {
                 if (readAll)
                 {
-                    return offset < internalBuffer.Count;
+                    return offset < internalBuffer.Length;
                 }
 
                 return buffer.CanRead && buffer.Position < buffer.Length;
@@ -76,22 +77,20 @@ namespace VCDiff.Shared
             if (!readAll)
             {
                 offset = 0;
-                internalBuffer = new List<byte>();
-                readAll = true;
+                Span<byte> buff = new byte[1024 * 8];
 
-                byte[] buff = new byte[1024 * 8];
-
-                lastLenRead = buffer.Read(buff, 0, buff.Length);
-
+                lastLenRead = buffer.Read(buff);
+                int bytesCopied = 0;
                 while (lastLenRead > 0 && buffer.CanRead)
                 {
-                    for (int i = 0; i < lastLenRead; i++)
+                    for (int i = 0; i < lastLenRead; i++, bytesCopied++)
                     {
-                        internalBuffer.Add(buff[i]);
+                        internalBuffer[bytesCopied] = buff[i];
                     }
 
-                    lastLenRead = buffer.Read(buff, 0, buff.Length);
+                    lastLenRead = buffer.Read(buff);
                 }
+                readAll = true;
             }
         }
 
@@ -99,10 +98,11 @@ namespace VCDiff.Shared
         {
             if (readAll)
             {
-                int end = (int)offset + len > internalBuffer.Count ? internalBuffer.Count : (int)offset + len;
-                int realLen = (int)offset + len > internalBuffer.Count ? internalBuffer.Count - (int)offset : len;
+                int end = (int)offset + len > internalBuffer.Length ? internalBuffer.Length : (int)offset + len;
+                int sliceLen = (int)offset + len > internalBuffer.Length ? internalBuffer.Length - (int)offset : len;
 
-                byte[] rbuff = new byte[realLen];
+                
+                byte[] rbuff = new byte[sliceLen];
                 int rcc = 0;
                 for (int i = (int)offset; i < end; i++)
                 {
@@ -156,8 +156,8 @@ namespace VCDiff.Shared
         {
             if (readAll)
             {
-                int end = (int)offset + len > internalBuffer.Count ? internalBuffer.Count : (int)offset + len;
-                int realLen = (int)offset + len > internalBuffer.Count ? internalBuffer.Count - (int)offset : len;
+                int end = (int)offset + len > internalBuffer.Length ? internalBuffer.Length : (int)offset + len;
+                int realLen = (int)offset + len > internalBuffer.Length ? internalBuffer.Length - (int)offset : len;
 
                 byte[] rbuff = new byte[realLen];
                 int rcc = 0;
