@@ -2,7 +2,7 @@
 
 namespace VCDiff.Shared
 {
-    public class Adler32
+    internal class Adler32
     {
         /// <summary>
         /// Zlib implementation of the Adler32 Hash

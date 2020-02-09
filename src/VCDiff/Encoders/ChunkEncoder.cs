@@ -9,10 +9,7 @@ namespace VCDiff.Encoders
 
         public static int MinBlockSize
         {
-            get
-            {
-                return minBlockSize;
-            }
+            get => minBlockSize;
             set
             {
                 if (value < 2 || value < BlockHash.BlockSize) return;
@@ -23,7 +20,7 @@ namespace VCDiff.Encoders
         private BlockHash dictionary;
         private IByteBuffer oldData;
         private IByteBuffer newData;
-        private WindowEncoder windowEncoder;
+        private WindowEncoder? windowEncoder;
         private RollingHash hasher;
         private bool interleaved;
         private bool hasChecksum;
@@ -148,10 +145,10 @@ namespace VCDiff.Encoders
             if (bestMatch.TargetOffset > 0)
             {
                 newData.Position = unencodedStart;
-                windowEncoder.Add(newData.ReadBytes((int)bestMatch.TargetOffset).ToArray());
+                windowEncoder?.Add(newData.ReadBytes((int)bestMatch.TargetOffset).ToArray());
             }
 
-            windowEncoder.Copy((int)bestMatch.SourceOffset, (int)bestMatch.Size);
+            windowEncoder?.Copy((int)bestMatch.SourceOffset, (int)bestMatch.Size);
 
             return bestMatch.Size + bestMatch.TargetOffset;
         }
@@ -160,7 +157,6 @@ namespace VCDiff.Encoders
         {
             oldData?.Dispose();
             newData?.Dispose();
-            windowEncoder = null;
         }
     }
 }

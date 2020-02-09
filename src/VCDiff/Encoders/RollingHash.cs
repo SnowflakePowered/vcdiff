@@ -2,7 +2,7 @@
 
 namespace VCDiff.Encoders
 {
-    public class RollingHash
+    internal class RollingHash
     {
         private const ulong kMult = 257;
         private const ulong kBase = (1 << 23);

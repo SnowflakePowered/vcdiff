@@ -4,7 +4,7 @@ using VCDiff.Shared;
 
 namespace VCDiff.Encoders
 {
-    public class InstructionMap
+    internal class InstructionMap
     {
         private CodeTable table;
         private OpcodeMap firstMap;

@@ -9,4 +9,12 @@
     <Version>2.0.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+  <PropertyGroup>
+    <Authors>Metric;chyyran;Snowflake Authors</Authors>
+    <PackageTags>diff;difference;patch;sdch;compare;delta;vcdiff;bsdiff</PackageTags>
+    <RepositoryUrl>https://github.com/SnowflakePowered/vcdiff</RepositoryUrl>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <Title>vcdiff</Title>
+    <Description>A fast, pure C# implementation of the VCDIFF algorithm.</Description>
+  </PropertyGroup>
 </Project>

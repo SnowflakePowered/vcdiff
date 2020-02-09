@@ -12,19 +12,11 @@ namespace VCDiff.Decoders
         private IByteBuffer dict;
         private IByteBuffer target;
         private AddressCache addressCache;
-        private long decodedOnly;
-        private long bytesWritten = 0;
         private MemoryStream targetData;
         private CustomCodeTableDecoder? customTable;
 
         //the total bytes decoded
-        public long Decoded
-        {
-            get
-            {
-                return decodedOnly;
-            }
-        }
+        public long Decoded { get; private set; }
 
         /// <summary>
         /// The main decoder loop for the data
@@ -81,7 +73,7 @@ namespace VCDiff.Decoders
 
                 InstructionDecoder instrDecoder = new InstructionDecoder(incoming, customTable);
 
-                while (incoming.CanRead && decodedOnly < window.DecodedDeltaLength)
+                while (incoming.CanRead && Decoded < window.DecodedDeltaLength)
                 {
                     int decodedSize = 0;
                     byte mode = 0;
@@ -104,7 +96,7 @@ namespace VCDiff.Decoders
 
                             case VCDiffInstructionType.ERROR:
                                 targetData.SetLength(0);
-                                return VCDiffResult.ERRROR;
+                                return VCDiffResult.ERROR;
                         }
                     }
 
@@ -144,7 +136,7 @@ namespace VCDiff.Decoders
 
                         default:
                             targetData.SetLength(0);
-                            return VCDiffResult.ERRROR;
+                            return VCDiffResult.ERROR;
                     }
 
                     if (result == VCDiffResult.EOD)
@@ -178,7 +170,7 @@ namespace VCDiff.Decoders
 
                 if (adler != window.Checksum)
                 {
-                    result = VCDiffResult.ERRROR;
+                    result = VCDiffResult.ERROR;
                 }
             }
 
@@ -200,7 +192,7 @@ namespace VCDiff.Decoders
 
             VCDiffResult result = VCDiffResult.SUCCESS;
 
-            while (decodedOnly < window.DecodedDeltaLength && instructionBuffer.CanRead)
+            while (Decoded < window.DecodedDeltaLength && instructionBuffer.CanRead)
             {
                 VCDiffInstructionType instruction = instrDecoder.Next(out int decodedSize, out byte mode);
 
@@ -212,7 +204,7 @@ namespace VCDiff.Decoders
 
                     case VCDiffInstructionType.ERROR:
                         targetData.SetLength(0);
-                        return VCDiffResult.ERRROR;
+                        return VCDiffResult.ERROR;
                 }
 
                 switch (instruction)
@@ -231,7 +223,7 @@ namespace VCDiff.Decoders
 
                     default:
                         targetData.SetLength(0);
-                        return VCDiffResult.ERRROR;
+                        return VCDiffResult.ERROR;
                 }
             }
 
@@ -241,7 +233,7 @@ namespace VCDiff.Decoders
 
                 if (adler != window.Checksum)
                 {
-                    result = VCDiffResult.ERRROR;
+                    result = VCDiffResult.ERROR;
                 }
             }
 
@@ -251,13 +243,13 @@ namespace VCDiff.Decoders
 
         private VCDiffResult DecodeCopy(int size, byte mode, ByteBuffer addresses)
         {
-            long here = window.SourceLength + decodedOnly;
+            long here = window.SourceLength + Decoded;
             long decoded = addressCache.DecodeAddress(here, mode, addresses);
 
             switch ((VCDiffResult)decoded)
             {
-                case VCDiffResult.ERRROR:
-                    return VCDiffResult.ERRROR;
+                case VCDiffResult.ERROR:
+                    return VCDiffResult.ERROR;
 
                 case VCDiffResult.EOD:
                     return VCDiffResult.EOD;
@@ -265,21 +257,21 @@ namespace VCDiff.Decoders
                 default:
                     if (decoded < 0 || decoded > here)
                     {
-                        return VCDiffResult.ERRROR;
+                        return VCDiffResult.ERROR;
                     }
                     break;
             }
 
-            if (decoded + size > window.SourceLength) return VCDiffResult.ERRROR;
+            if (decoded + size > window.SourceLength) return VCDiffResult.ERROR;
             dict.Position = decoded;
             var rbytes = dict.ReadBytes(size).Span;
             sout.Write(rbytes);
             targetData.Write(rbytes.ToArray());
-            decodedOnly += size;
+            Decoded += size;
             return VCDiffResult.SUCCESS;
 
-            ///will come back to this once
-            ///target data reading is implemented
+            // will come back to this once
+            // target data reading is implemented
            /*if(decoded < window.SourceLength)
            {
                 long partial = window.SourceLength - decoded;
@@ -326,7 +318,7 @@ namespace VCDiff.Decoders
                 targetData.WriteByte(b);
             }
 
-            decodedOnly += size;
+            Decoded += size;
 
             return VCDiffResult.SUCCESS;
         }
@@ -346,7 +338,7 @@ namespace VCDiff.Decoders
             var rbytes = addRun.ReadBytes(size).Span;
             sout.Write(rbytes);
             targetData.Write(rbytes);
-            decodedOnly += size;
+            Decoded += size;
             return VCDiffResult.SUCCESS;
         }
 

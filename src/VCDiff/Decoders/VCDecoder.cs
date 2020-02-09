@@ -4,35 +4,42 @@ using VCDiff.Shared;
 
 namespace VCDiff.Decoders
 {
-    public class VCDecoder
+    /// <summary>
+    /// A simple VCDIFF decoder class.
+    /// </summary>
+    public class VcDecoder
     {
         private readonly ByteStreamWriter outputStream;
         private readonly IByteBuffer delta;
         private readonly IByteBuffer source;
-        private CustomCodeTableDecoder customTable;
+        private CustomCodeTableDecoder? customTable;
         private static readonly byte[] MagicBytes = { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
 
-        public bool IsSDHCFormat { get; private set; }
+        /// <summary>
+        /// If the provided delta is in Shared-Dictionary Compression over HTTP (Sandwich) protocol.
+        /// </summary>
+        public bool IsSDCHFormat { get; private set; }
 
+        /// <summary>
+        /// If the decoder has been initialized.
+        /// </summary>
         public bool IsInitialized { get; private set; }
 
         /// <summary>
-        /// Dict is the dictionary file
-        /// Delta is the diff file
-        /// Sout is the stream for output
+        /// Creates a new VCDIFF decoder.
         /// </summary>
-        /// <param name="source">Dictionary</param>
-        /// <param name="delta">Target file / Diff / Delta file</param>
-        /// <param name="outputStream">Output Stream</param>
-        public VCDecoder(Stream source, Stream delta, Stream outputStream)
+        /// <param name="source">The dictionary stream, or the base file.</param>
+        /// <param name="delta">The stream containing the VCDIFF delta.</param>
+        /// <param name="outputStream">The stream to write the output in.</param>
+        public VcDecoder(Stream source, Stream delta, Stream outputStream)
         {
-            this.delta = new ByteBuffer(delta);
-            this.source = new ByteBuffer(source);
+            this.delta = new ByteStreamReader(delta);
+            this.source = new ByteStreamReader(source);
             this.outputStream = new ByteStreamWriter(outputStream);
             IsInitialized = false;
         }
 
-        internal VCDecoder(IByteBuffer dict, IByteBuffer delta, Stream sout)
+        internal VcDecoder(IByteBuffer dict, IByteBuffer delta, Stream sout)
         {
             this.delta = delta;
             source = dict;
@@ -70,28 +77,28 @@ namespace VCDiff.Decoders
 
             if (V != MagicBytes[0])
             {
-                return VCDiffResult.ERRROR;
+                return VCDiffResult.ERROR;
             }
 
             if (C != MagicBytes[1])
             {
-                return VCDiffResult.ERRROR;
+                return VCDiffResult.ERROR;
             }
 
             if (D != MagicBytes[2])
             {
-                return VCDiffResult.ERRROR;
+                return VCDiffResult.ERROR;
             }
 
             if (version != 0x00 && version != 'S')
             {
-                return VCDiffResult.ERRROR;
+                return VCDiffResult.ERROR;
             }
 
             //compression not supported
             if ((hdr & (int)VCDiffCodeFlags.VCDDECOMPRESS) != 0)
             {
-                return VCDiffResult.ERRROR;
+                return VCDiffResult.ERROR;
             }
 
             //custom code table!
@@ -110,7 +117,7 @@ namespace VCDiff.Decoders
                 }
             }
 
-            IsSDHCFormat = version == 'S';
+            IsSDCHFormat = version == 'S';
 
             IsInitialized = true;
 
@@ -129,7 +136,7 @@ namespace VCDiff.Decoders
             if (!IsInitialized)
             {
                 bytesWritten = 0;
-                return VCDiffResult.ERRROR;
+                return VCDiffResult.ERROR;
             }
 
             VCDiffResult result = VCDiffResult.SUCCESS;
@@ -142,11 +149,11 @@ namespace VCDiff.Decoders
                 //delta is streamed in order aka not random access
                 WindowDecoder w = new WindowDecoder(source.Length, delta);
 
-                if (w.Decode(IsSDHCFormat))
+                if (w.Decode(IsSDCHFormat))
                 {
                     using (BodyDecoder body = new BodyDecoder(w, source, delta, outputStream))
                     {
-                        if (IsSDHCFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
+                        if (IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
                         {
                             //interleaved
                             //decodedinterleave actually has an internal loop for waiting and streaming the incoming rest of the interleaved window
@@ -161,7 +168,7 @@ namespace VCDiff.Decoders
                         }
                         //technically add could be 0 if it is all copy instructions
                         //so do an or check on those two
-                        else if (IsSDHCFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) && w.InstructionAndSizesLength > 0)
+                        else if (IsSDCHFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) && w.InstructionAndSizesLength > 0)
                         {
                             //not interleaved
                             //expects the full window to be available
@@ -176,7 +183,7 @@ namespace VCDiff.Decoders
 
                             bytesWritten += body.Decoded;
                         }
-                        else if (!IsSDHCFormat)
+                        else if (!IsSDCHFormat)
                         {
                             //not interleaved
                             //expects the full window to be available
@@ -193,7 +200,7 @@ namespace VCDiff.Decoders
                         else
                         {
                             //invalid file
-                            return VCDiffResult.ERRROR;
+                            return VCDiffResult.ERROR;
                         }
                     }
                 }

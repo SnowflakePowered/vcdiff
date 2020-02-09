@@ -1,9 +1,21 @@
 ﻿namespace VCDiff.Includes
 {
+    /// <summary>
+    /// The result of a VCDIFF Operation.
+    /// </summary>
     public enum VCDiffResult
     {
+        /// <summary>
+        /// The diff operation was successful.
+        /// </summary>
         SUCCESS = 0,
-        ERRROR = -1,
+        /// <summary>
+        /// An error occurred during the diff operation.
+        /// </summary>
+        ERROR = -1,
+        /// <summary>
+        /// End of stream encountered.
+        /// </summary>
         EOD = -2
     }
 
@@ -33,7 +45,7 @@
     //     application-defined code table is to be used for decoding the delta
     //     instructions. [...]"
     //
-    public enum VCDiffCodeFlags
+    internal enum VCDiffCodeFlags
     {
         VCDDECOMPRESS = 0x01,
         VCDCODETABLE = 0x02
@@ -70,7 +82,7 @@
     //     The Win_Indicator byte MUST NOT have more than one of the bits
     //     set (non-zero).  It MAY have none of these bits set."
     //
-    public enum VCDiffWindowFlags
+    internal enum VCDiffWindowFlags
     {
         VCDSOURCE = 0x01,
         VCDTARGET = 0x02,
@@ -106,7 +118,7 @@
     //     non-zero, that the corresponding parts are compressed."
     // [Secondary compressors are not supported, so open-vcdiff decoding will fail
     //  if these bits are not all zero.]
-    public enum VCDiffCompressFlags
+    internal enum VCDiffCompressFlags
     {
         VCDDATACOMP = 0x01,
         VCDINSTCOMP = 0x02,
@@ -127,15 +139,14 @@
     // the lowest bits of the address.)  The number of NEAR and SAME modes
     // depends on the defined size of the address cache; since this number is
     // variable, these modes cannot be specified as enum values.
-    public enum VCDiffModes
+    internal enum VCDiffModes
     {
         SELF = 0,
         HERE = 1,
         FIRST = 2,
         MAX = byte.MaxValue + 1
     }
-
-    public enum VCDiffInstructionType
+    internal enum VCDiffInstructionType
     {
         NOOP = 0,
         ADD = 1,

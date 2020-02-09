@@ -68,7 +68,7 @@ namespace VCDiff.Decoders
             {
                 switch (size = VarIntBE.ParseInt32(source))
                 {
-                    case (int)VCDiffResult.ERRROR:
+                    case (int)VCDiffResult.ERROR:
                         mode = 0;
                         size = 0;
                         return VCDiffInstructionType.ERROR;

@@ -29,7 +29,7 @@ namespace VCDiff.Shared
                 }
                 if (result > (int32MaxValue >> 7))
                 {
-                    return (int)VCDiffResult.ERRROR;
+                    return (int)VCDiffResult.ERROR;
                 }
                 result = result << 7;
                 sin.Next();
@@ -50,7 +50,7 @@ namespace VCDiff.Shared
                 }
                 if (result > (int64MaxValue >> 7))
                 {
-                    return (long)VCDiffResult.ERRROR;
+                    return (long)VCDiffResult.ERROR;
                 }
                 result = result << 7;
                 sin.Next();

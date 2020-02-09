@@ -219,7 +219,7 @@ namespace VCDiff.Shared
             long start = sin.Position;
             if (here < 0)
             {
-                return (int)VCDiffResult.ERRROR;
+                return (int)VCDiffResult.ERROR;
             }
 
             if (!sin.CanRead)
@@ -239,7 +239,7 @@ namespace VCDiff.Shared
 
                 switch (encoded)
                 {
-                    case (int)VCDiffResult.ERRROR:
+                    case (int)VCDiffResult.ERROR:
                         return encoded;
 
                     case (int)VCDiffResult.EOD:
@@ -261,13 +261,13 @@ namespace VCDiff.Shared
                 }
                 else
                 {
-                    return (int)VCDiffResult.ERRROR;
+                    return (int)VCDiffResult.ERROR;
                 }
             }
 
             if (!IsDecodedAddressValid(decoded, here))
             {
-                return (int)VCDiffResult.ERRROR;
+                return (int)VCDiffResult.ERROR;
             }
             UpdateCache(decoded);
             return decoded;

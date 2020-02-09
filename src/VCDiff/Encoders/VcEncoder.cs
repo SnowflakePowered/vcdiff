@@ -5,29 +5,28 @@ using VCDiff.Shared;
 
 namespace VCDiff.Encoders
 {
-    public class VCCoder
+    /// <summary>
+    /// A simple VCDIFF Encoder class.
+    /// </summary>
+    public class VcEncoder
     {
-        private IByteBuffer oldData;
-        private IByteBuffer newData;
-        private ByteStreamWriter outputStreamWriter;
-        private RollingHash hasher;
-        private int bufferSize;
+        private readonly IByteBuffer oldData;
+        private readonly IByteBuffer newData;
+        private readonly ByteStreamWriter outputStreamWriter;
+        private readonly RollingHash hasher;
+        private readonly int bufferSize;
 
-        private static byte[] MagicBytes = { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
-        private static byte[] MagicBytesExtended = { 0xD6, 0xC3, 0xC4, (byte)'S', 0x00 };
+        private static readonly byte[] MagicBytes = { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
+        private static readonly byte[] MagicBytesExtended = { 0xD6, 0xC3, 0xC4, (byte)'S', 0x00 };
 
         /// <summary>
-        /// The easy public structure for encoding into a vcdiff format
-        /// Simply instantiate it with the proper streams and use the Encode() function.
-        /// Does not check if data is equal already. You will need to do that.
-        /// Returns VCDiffResult: should always return success, unless either the dict or the target streams have 0 bytes
-        /// See the VCDecoder for decoding vcdiff format
+        /// Creates a new VCDIFF Encoder.
         /// </summary>
-        /// <param name="source">The dictionary (previous data)</param>
-        /// <param name="target">The new data</param>
-        /// <param name="outputStream">The output stream</param>
-        /// <param name="maxBufferSize">The maximum buffer size for window chunking. It is in Megabytes. 2 would mean 2 megabytes etc. Default is 1.</param>
-        public VCCoder(Stream source, Stream target, Stream outputStream, int maxBufferSize = 1)
+        /// <param name="source">The dictionary (source file).</param>
+        /// <param name="target">The target to create the diff from.</param>
+        /// <param name="outputStream">The stream to write the diff into.</param>
+        /// <param name="maxBufferSize">The maximum buffer size for window chunking in megabytes (MiB).</param>
+        public VcEncoder(Stream source, Stream target, Stream outputStream, int maxBufferSize = 1)
         {
             if (maxBufferSize <= 0) maxBufferSize = 1;
 
@@ -40,16 +39,16 @@ namespace VCDiff.Encoders
         }
 
         /// <summary>
-        /// Encodes the file
+        /// Calculates the diff for the file.
         /// </summary>
-        /// <param name="interleaved">Set this to true to enable SDHC interleaved vcdiff google format</param>
-        /// <param name="checksum">Set this to true to add checksum for encoded data windows</param>
-        /// <returns></returns>
+        /// <param name="interleaved">Whether to output in SDCH interleaved diff format.</param>
+        /// <param name="checksum">Whether to include Adler32 checksums for encoded data windows</param>
+        /// <returns><see cref="VCDiffResult.SUCCESS"/> if successful, <see cref="VCDiffResult.ERROR"/> if the source or target are zero-length.</returns>
         public VCDiffResult Encode(bool interleaved = false, bool checksum = false)
         {
             if (newData.Length == 0 || oldData.Length == 0)
             {
-                return VCDiffResult.ERRROR;
+                return VCDiffResult.ERROR;
             }
 
             VCDiffResult result = VCDiffResult.SUCCESS;
@@ -57,8 +56,8 @@ namespace VCDiff.Encoders
             oldData.Position = 0;
             newData.Position = 0;
 
-            //file header
-            //write magic bytes
+            // file header
+            // write magic bytes
             if (!interleaved && !checksum)
             {
                 outputStreamWriter.Write(MagicBytes);

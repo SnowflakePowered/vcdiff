@@ -2,7 +2,7 @@
 
 namespace VCDiff.Shared
 {
-    public class Checksum
+    internal class Checksum
     {
         public static uint ComputeAdler32(ReadOnlyMemory<byte> buffer)
         {

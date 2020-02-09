@@ -239,7 +239,7 @@ namespace VCDiff.Decoders
             int parsed = VarIntBE.ParseInt32(buffer);
             switch (parsed)
             {
-                case (int)VCDiffResult.ERRROR:
+                case (int)VCDiffResult.ERROR:
                     value = 0;
                     return false;
 
@@ -269,7 +269,7 @@ namespace VCDiff.Decoders
             long parsed = VarIntBE.ParseInt64(buffer);
             switch (parsed)
             {
-                case (int)VCDiffResult.ERRROR:
+                case (int)VCDiffResult.ERROR:
                     value = 0;
                     return false;
 
@@ -279,7 +279,7 @@ namespace VCDiff.Decoders
             }
             if (parsed > 0xFFFFFFFF)
             {
-                returnCode = (int)VCDiffResult.ERRROR;
+                returnCode = (int)VCDiffResult.ERROR;
                 value = 0;
                 return false;
             }
@@ -299,7 +299,7 @@ namespace VCDiff.Decoders
             sourceLength = outLength;
             if (sourceLength > from)
             {
-                returnCode = (int)VCDiffResult.ERRROR;
+                returnCode = (int)VCDiffResult.ERROR;
                 sourceLength = 0;
                 sourcePosition = 0;
                 return false;
@@ -313,7 +313,7 @@ namespace VCDiff.Decoders
             sourcePosition = outPos;
             if (sourcePosition > from)
             {
-                returnCode = (int)VCDiffResult.ERRROR;
+                returnCode = (int)VCDiffResult.ERROR;
                 sourceLength = 0;
                 sourcePosition = 0;
                 return false;
@@ -322,7 +322,7 @@ namespace VCDiff.Decoders
             long segmentEnd = sourcePosition + sourceLength;
             if (segmentEnd > from)
             {
-                returnCode = (int)VCDiffResult.ERRROR;
+                returnCode = (int)VCDiffResult.ERROR;
                 sourceLength = 0;
                 sourcePosition = 0;
                 return false;
@@ -354,7 +354,7 @@ namespace VCDiff.Decoders
                         winIndicator = 0;
                         sourceSegmentLength = 0;
                         sourceSegmentPosition = 0;
-                        returnCode = (int)VCDiffResult.ERRROR;
+                        returnCode = (int)VCDiffResult.ERROR;
                         return false;
                     }
                     return ParseSourceSegmentLengthAndPosition(decodedTargetSize, out sourceSegmentLength, out sourceSegmentPosition);
@@ -395,12 +395,12 @@ namespace VCDiff.Decoders
         {
             if (!ParseByte(out deltaIndicator))
             {
-                returnCode = (int)VCDiffResult.ERRROR;
+                returnCode = (int)VCDiffResult.ERROR;
                 return false;
             }
             if ((deltaIndicator & ((int)VCDiffCompressFlags.VCDDATACOMP | (int)VCDiffCompressFlags.VCDINSTCOMP | (int)VCDiffCompressFlags.VCDADDRCOMP)) > 0)
             {
-                returnCode = (int)VCDiffResult.ERRROR;
+                returnCode = (int)VCDiffResult.ERROR;
                 return false;
             }
             return true;
@@ -432,7 +432,7 @@ namespace VCDiff.Decoders
 
             if (deltaEncodingLength != totalLen)
             {
-                returnCode = (int)VCDiffResult.ERRROR;
+                returnCode = (int)VCDiffResult.ERROR;
                 return false;
             }
 
