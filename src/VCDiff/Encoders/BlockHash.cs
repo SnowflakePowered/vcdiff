@@ -304,6 +304,30 @@ namespace VCDiff.Encoders
             long sindex = start;
             long tindex = tstart;
 
+            int vectorSize = Vector<byte>.Count;
+
+            if (sindex - vectorSize > 0 && tindex - vectorSize > 0)
+            {
+                for (; bytesFound <= maxBytes - vectorSize; bytesFound += vectorSize)
+                {
+                    sindex -= vectorSize;
+                    tindex -= vectorSize;
+                    source.Position = sindex;
+                    target.Position = tindex;
+                    var lb = source.ReadBytes(vectorSize).Span;
+                    var rb = target.ReadBytes(vectorSize).Span;
+                    if (lb.Length < vectorSize || rb.Length < vectorSize) break;
+                    var lv = new Vector<byte>(lb);
+                    var rv = new Vector<byte>(rb);
+                    if (Vector.EqualsAll(lv, rv)) continue;
+                    source.Position -= vectorSize;
+                    target.Position -= vectorSize;
+                    sindex += vectorSize;
+                    tindex += vectorSize;
+                    break;
+                }
+            }
+
             while (bytesFound < maxBytes)
             {
                 --sindex;

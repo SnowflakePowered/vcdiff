@@ -87,6 +87,10 @@ namespace VCDiff.Tests
             using var targetStream = File.OpenRead("b.test");
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
+            using var md5 = MD5.Create();
+            var originalHash = md5.ComputeHash(targetStream);
+            targetStream.Position = 0;
+
             VCCoder coder = new VCCoder(srcStream, targetStream, deltaStream);
             VCDiffResult result = coder.Encode(interleaved: true); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
@@ -105,6 +109,10 @@ namespace VCDiff.Tests
                 Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long chunk));
                 bytesWritten += chunk;
             }
+
+            outputStream.Position = 0;
+            var outputHash = md5.ComputeHash(outputStream);
+            Assert.Equal(originalHash, outputHash);
         }
     }
 }
