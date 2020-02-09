@@ -54,8 +54,8 @@ namespace VCDiff.Encoders
         {
             uint checksum = 0;
 
-            ///If checksum needed
-            ///Generate Adler32 checksum for the incoming bytes
+            // If checksum needed
+            // Generate Adler32 checksum for the incoming bytes
             if (hasChecksum)
             {
                 newData.Position = 0;
@@ -138,7 +138,7 @@ namespace VCDiff.Encoders
         {
             BlockHash.Match bestMatch = new BlockHash.Match();
 
-            dictionary.FindBestMatch(hash, candidateStart, unencodedStart, unencodedSize, newData, bestMatch);
+            dictionary.FindBestMatch(hash, candidateStart, unencodedStart, unencodedSize, newData, ref bestMatch);
 
             if (bestMatch.Size < MinBlockSize)
             {
@@ -158,18 +158,9 @@ namespace VCDiff.Encoders
 
         public void Dispose()
         {
-            if (oldData != null)
-            {
-                oldData.Dispose();
-            }
-            if (newData != null)
-            {
-                newData.Dispose();
-            }
-            if (windowEncoder != null)
-            {
-                windowEncoder = null;
-            }
+            oldData?.Dispose();
+            newData?.Dispose();
+            windowEncoder = null;
         }
     }
 }

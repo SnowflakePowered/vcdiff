@@ -9,10 +9,7 @@ namespace VCDiff.Encoders
 
         public static int BlockSize
         {
-            get
-            {
-                return blockSize;
-            }
+            get => blockSize;
             set
             {
                 if (value < 2) return;
@@ -22,7 +19,6 @@ namespace VCDiff.Encoders
 
         private static int maxMatchesToCheck = (blockSize >= 32) ? 32 : (32 * (32 / blockSize));
         private const int maxProbes = 16;
-        private IByteBuffer sourceData;
         private long offset;
         private ulong hashTableMask;
         private long lastBlockAdded;
@@ -32,21 +28,7 @@ namespace VCDiff.Encoders
         private long tableSize;
         private RollingHash hasher;
 
-        public IByteBuffer Source
-        {
-            get
-            {
-                return sourceData;
-            }
-        }
-
-        public long SourceSize
-        {
-            get
-            {
-                return sourceData.Length;
-            }
-        }
+        public IByteBuffer Source { get; }
 
         /// <summary>
         /// Create a hash lookup table for the data
@@ -58,7 +40,7 @@ namespace VCDiff.Encoders
         {
             maxMatchesToCheck = (blockSize >= 32) ? 32 : (32 * (32 / blockSize));
             this.hasher = hasher;
-            sourceData = sin;
+            this.Source = sin;
             this.offset = offset;
             tableSize = CalcTableSize();
 
@@ -90,7 +72,7 @@ namespace VCDiff.Encoders
 
         private long CalcTableSize()
         {
-            long min = (sourceData.Length / sizeof(int)) + 1;
+            long min = (this.Source.Length / sizeof(int)) + 1;
             long size = 1;
 
             while (size < min)
@@ -108,7 +90,7 @@ namespace VCDiff.Encoders
                 return 0;
             }
 
-            if ((sourceData.Length > 0) && (size > (min * 2)))
+            if ((Source.Length > 0) && (size > (min * 2)))
             {
                 return 0;
             }
@@ -123,17 +105,11 @@ namespace VCDiff.Encoders
             }
         }
 
-        public long NextIndexToAdd
-        {
-            get
-            {
-                return (lastBlockAdded + 1) * blockSize;
-            }
-        }
+        public long NextIndexToAdd => (lastBlockAdded + 1) * blockSize;
 
         public void AddAllBlocksThroughIndex(long index)
         {
-            if (index > sourceData.Length)
+            if (index > Source.Length)
             {
                 return;
             }
@@ -144,25 +120,25 @@ namespace VCDiff.Encoders
                 return;
             }
 
-            if (sourceData.Length < blockSize)
+            if (Source.Length < blockSize)
             {
                 return;
             }
 
             long endLimit = index;
-            long lastLegalHashIndex = (sourceData.Length - blockSize);
+            long lastLegalHashIndex = (Source.Length - blockSize);
 
             if (endLimit > lastLegalHashIndex)
             {
                 endLimit = lastLegalHashIndex + 1;
             }
 
-            long offset = sourceData.Position + NextIndexToAdd;
-            long end = sourceData.Position + endLimit;
-            sourceData.Position = offset;
+            long offset = Source.Position + NextIndexToAdd;
+            long end = Source.Position + endLimit;
+            Source.Position = offset;
             while (offset < end)
             {
-                AddBlock(hasher.Hash(sourceData.ReadBytes(blockSize)));
+                AddBlock(hasher.Hash(Source.ReadBytes(blockSize)));
                 offset += blockSize;
             }
         }
@@ -171,7 +147,7 @@ namespace VCDiff.Encoders
         {
             get
             {
-                return sourceData.Length / blockSize;
+                return Source.Length / blockSize;
             }
         }
 
@@ -197,7 +173,7 @@ namespace VCDiff.Encoders
         /// <param name="targetSize">the data left to encode</param>
         /// <param name="target">the target buffer</param>
         /// <param name="m">the match object to use</param>
-        public void FindBestMatch(ulong hash, long candidateStart, long targetStart, long targetSize, IByteBuffer target, Match m)
+        public void FindBestMatch(ulong hash, long candidateStart, long targetStart, long targetSize, IByteBuffer target, ref Match m)
         {
             int matchCounter = 0;
 
@@ -219,7 +195,7 @@ namespace VCDiff.Encoders
                 targetMatchOffset -= leftMatching;
                 matchSize += leftMatching;
 
-                long sourceBytesToRight = sourceData.Length - sourceMatchEnd;
+                long sourceBytesToRight = Source.Length - sourceMatchEnd;
                 long targetBytesToRight = targetSize - targetMatchEnd;
                 long rightLimit = Math.Min(sourceBytesToRight, targetBytesToRight);
 
@@ -267,16 +243,16 @@ namespace VCDiff.Encoders
 
         public void AddAllBlocks()
         {
-            AddAllBlocksThroughIndex(sourceData.Length);
+            AddAllBlocksThroughIndex(Source.Length);
         }
 
         public bool BlockContentsMatch(long block1, long toffset, IByteBuffer target)
         {
             //this sets up the positioning of the buffers
             //as well as testing the first byte
-            sourceData.Position = block1 * blockSize;
-            if (!sourceData.CanRead) return false;
-            byte lb = sourceData.ReadByte();
+            Source.Position = block1 * blockSize;
+            if (!Source.CanRead) return false;
+            byte lb = Source.ReadByte();
             target.Position = toffset;
             if (!target.CanRead) return false;
             byte rb = target.ReadByte();
@@ -295,9 +271,9 @@ namespace VCDiff.Encoders
             //we already compared the first byte so moving on!
             int i = 1;
 
-            long srcLength = sourceData.Length;
+            long srcLength = Source.Length;
             long trgLength = target.Length;
-            long offset1 = sourceData.Position;
+            long offset1 = Source.Position;
             long offset2 = target.Position;
 
             while (i < blockSize)
@@ -306,7 +282,7 @@ namespace VCDiff.Encoders
                 {
                     return false;
                 }
-                byte lb = sourceData.ReadByte();
+                byte lb = Source.ReadByte();
                 byte rb = target.ReadByte();
                 if (lb != rb)
                 {
@@ -360,8 +336,8 @@ namespace VCDiff.Encoders
                 if (sindex < 0 || tindex < 0) break;
                 //has to be done this way or a race condition will happen
                 //if the sourcce and target are the same buffer
-                sourceData.Position = sindex;
-                byte lb = sourceData.ReadByte();
+                Source.Position = sindex;
+                byte lb = Source.ReadByte();
                 target.Position = tindex;
                 byte rb = target.ReadByte();
                 if (lb != rb) break;
@@ -375,15 +351,15 @@ namespace VCDiff.Encoders
             long sindex = end;
             long tindex = tstart;
             long bytesFound = 0;
-            long srcLength = sourceData.Length;
+            long srcLength = Source.Length;
             long trgLength = target.Length;
-            sourceData.Position = end;
+            Source.Position = end;
             target.Position = tstart;
             while (bytesFound < maxBytes)
             {
                 if (sindex >= srcLength || tindex >= trgLength) break;
-                if (!sourceData.CanRead) break;
-                byte lb = sourceData.ReadByte();
+                if (!Source.CanRead) break;
+                byte lb = Source.ReadByte();
                 if (!target.CanRead) break;
                 byte rb = target.ReadByte();
                 if (lb != rb) break;
@@ -400,7 +376,7 @@ namespace VCDiff.Encoders
             return (matchCounter > maxMatchesToCheck);
         }
 
-        public class Match
+        public ref struct Match
         {
             private long size;
             private long sOffset;
@@ -408,37 +384,17 @@ namespace VCDiff.Encoders
 
             public void ReplaceIfBetterMatch(long csize, long sourcOffset, long targetOffset)
             {
-                if (csize > size)
-                {
-                    size = csize;
-                    sOffset = sourcOffset;
-                    tOffset = targetOffset;
-                }
+                if (csize <= size) return;
+                size = csize;
+                sOffset = sourcOffset;
+                tOffset = targetOffset;
             }
 
-            public long Size
-            {
-                get
-                {
-                    return size;
-                }
-            }
+            public long Size => size;
 
-            public long SourceOffset
-            {
-                get
-                {
-                    return sOffset;
-                }
-            }
+            public long SourceOffset => sOffset;
 
-            public long TargetOffset
-            {
-                get
-                {
-                    return tOffset;
-                }
-            }
+            public long TargetOffset => tOffset;
         }
     }
 }

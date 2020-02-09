@@ -90,7 +90,7 @@
             <param name="offset">the offset usually 0</param>
             <param name="hasher">the hashing method</param>
         </member>
-        <member name="M:VCDiff.Encoders.BlockHash.FindBestMatch(System.UInt64,System.Int64,System.Int64,System.Int64,VCDiff.Shared.IByteBuffer,VCDiff.Encoders.BlockHash.Match)">
+        <member name="M:VCDiff.Encoders.BlockHash.FindBestMatch(System.UInt64,System.Int64,System.Int64,System.Int64,VCDiff.Shared.IByteBuffer,VCDiff.Encoders.BlockHash.Match@)">
             <summary>
             Finds the best matching block for the candidate
             </summary>
