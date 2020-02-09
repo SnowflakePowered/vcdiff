@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
@@ -7,7 +8,7 @@ namespace VCDiff.Decoders
     /// <summary>
     /// A simple VCDIFF decoder class.
     /// </summary>
-    public class VcDecoder
+    public class VcDecoder : IDisposable
     {
         private readonly ByteStreamWriter outputStream;
         private readonly IByteBuffer delta;
@@ -23,7 +24,7 @@ namespace VCDiff.Decoders
         /// <summary>
         /// If the decoder has been initialized.
         /// </summary>
-        public bool IsInitialized { get; private set; }
+        private bool IsInitialized { get; set; }
 
         /// <summary>
         /// Creates a new VCDIFF decoder.
@@ -53,7 +54,7 @@ namespace VCDiff.Decoders
         /// is available in the stream
         /// </summary>
         /// <returns></returns>
-        public VCDiffResult Initialize()
+        private VCDiffResult Initialize()
         {
             if (!delta.CanRead) return VCDiffResult.EOD;
 
@@ -133,10 +134,14 @@ namespace VCDiff.Decoders
         /// <returns></returns>
         public VCDiffResult Decode(out long bytesWritten)
         {
-            if (!IsInitialized)
+            if (!this.IsInitialized)
             {
-                bytesWritten = 0;
-                return VCDiffResult.ERROR;
+                var initializeResult = this.Initialize();
+                if (initializeResult != VCDiffResult.SUCCESS || !this.IsInitialized)
+                {
+                    bytesWritten = 0;
+                    return initializeResult;
+                }
             }
 
             VCDiffResult result = VCDiffResult.SUCCESS;
@@ -151,57 +156,55 @@ namespace VCDiff.Decoders
 
                 if (w.Decode(IsSDCHFormat))
                 {
-                    using (BodyDecoder body = new BodyDecoder(w, source, delta, outputStream))
+                    using BodyDecoder body = new BodyDecoder(w, source, delta, outputStream);
+                    if (IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
                     {
-                        if (IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
+                        //interleaved
+                        //decodedinterleave actually has an internal loop for waiting and streaming the incoming rest of the interleaved window
+                        result = body.DecodeInterleave();
+
+                        if (result != VCDiffResult.SUCCESS && result != VCDiffResult.EOD)
                         {
-                            //interleaved
-                            //decodedinterleave actually has an internal loop for waiting and streaming the incoming rest of the interleaved window
-                            result = body.DecodeInterleave();
-
-                            if (result != VCDiffResult.SUCCESS && result != VCDiffResult.EOD)
-                            {
-                                return result;
-                            }
-
-                            bytesWritten += body.Decoded;
+                            return result;
                         }
-                        //technically add could be 0 if it is all copy instructions
-                        //so do an or check on those two
-                        else if (IsSDCHFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) && w.InstructionAndSizesLength > 0)
+
+                        bytesWritten += body.Decoded;
+                    }
+                    //technically add could be 0 if it is all copy instructions
+                    //so do an or check on those two
+                    else if (IsSDCHFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) && w.InstructionAndSizesLength > 0)
+                    {
+                        //not interleaved
+                        //expects the full window to be available
+                        //in the stream
+
+                        result = body.Decode();
+
+                        if (result != VCDiffResult.SUCCESS)
                         {
-                            //not interleaved
-                            //expects the full window to be available
-                            //in the stream
-
-                            result = body.Decode();
-
-                            if (result != VCDiffResult.SUCCESS)
-                            {
-                                return result;
-                            }
-
-                            bytesWritten += body.Decoded;
+                            return result;
                         }
-                        else if (!IsSDCHFormat)
+
+                        bytesWritten += body.Decoded;
+                    }
+                    else if (!IsSDCHFormat)
+                    {
+                        //not interleaved
+                        //expects the full window to be available
+                        //in the stream
+                        result = body.Decode();
+
+                        if (result != VCDiffResult.SUCCESS)
                         {
-                            //not interleaved
-                            //expects the full window to be available
-                            //in the stream
-                            result = body.Decode();
-
-                            if (result != VCDiffResult.SUCCESS)
-                            {
-                                return result;
-                            }
-
-                            bytesWritten += body.Decoded;
+                            return result;
                         }
-                        else
-                        {
-                            //invalid file
-                            return VCDiffResult.ERROR;
-                        }
+
+                        bytesWritten += body.Decoded;
+                    }
+                    else
+                    {
+                        //invalid file
+                        return VCDiffResult.ERROR;
                     }
                 }
                 else
@@ -211,6 +214,16 @@ namespace VCDiff.Decoders
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Disposes the decoder
+        /// </summary>
+        public void Dispose()
+        {
+            outputStream.Dispose();
+            delta.Dispose();
+            source.Dispose();
         }
     }
 }

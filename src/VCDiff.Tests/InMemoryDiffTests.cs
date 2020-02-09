@@ -29,7 +29,6 @@ namespace VCDiff.Tests
             deltaStream.Position = 0;
 
             VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
-            Assert.Equal(VCDiffResult.SUCCESS, decoder.Initialize());
             Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
 
             Assert.Equal("Goodbye World", Encoding.UTF8.GetString(outputStream.ToArray()));
@@ -52,7 +51,6 @@ namespace VCDiff.Tests
             deltaStream.Position = 0;
 
             VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
-            Assert.Equal(VCDiffResult.SUCCESS, decoder.Initialize());
             Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
 
             Assert.Equal("Goodbye World", Encoding.UTF8.GetString(outputStream.ToArray()));
@@ -74,7 +72,6 @@ namespace VCDiff.Tests
             deltaStream.Position = 0;
 
             VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
-            Assert.Equal(VCDiffResult.SUCCESS, decoder.Initialize());
 
             long bytesWritten = 0;
 

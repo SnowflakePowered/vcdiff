@@ -27,7 +27,6 @@ namespace VCDiff.Tests
             deltaStream.Position = 0;
 
             VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
-            Assert.Equal(VCDiffResult.SUCCESS, decoder.Initialize());
             Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
 
             Assert.NotEqual(0, bytesWritten);
@@ -49,7 +48,6 @@ namespace VCDiff.Tests
             deltaStream.Position = 0;
 
             VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
-            Assert.Equal(VCDiffResult.SUCCESS, decoder.Initialize());
             Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
         }
 
@@ -73,7 +71,6 @@ namespace VCDiff.Tests
             deltaStream.Position = 0;
 
             VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
-            Assert.Equal(VCDiffResult.SUCCESS, decoder.Initialize());
             Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
             outputStream.Position = 0;
             var outputHash = md5.ComputeHash(outputStream);
@@ -100,7 +97,6 @@ namespace VCDiff.Tests
             deltaStream.Position = 0;
 
             VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
-            Assert.Equal(VCDiffResult.SUCCESS, decoder.Initialize());
 
             long bytesWritten = 0;
 

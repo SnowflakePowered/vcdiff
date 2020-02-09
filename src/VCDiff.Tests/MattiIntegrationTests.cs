@@ -37,7 +37,6 @@ namespace VCDiff.Tests
             var sPatched = new MemoryStream(new byte[size], true);
 
             var decoder = new VcDecoder(sOld, sDelta, sPatched);
-            Assert.Equal(VCDiffResult.SUCCESS, decoder.Initialize());
             Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
 
 
