@@ -12,7 +12,7 @@ namespace VCDiff.Decoders
         private long deltaEncodingStart;
         private ParseableChunk chunk;
         private byte deltaIndicator;
-        private long dictionarySize;
+        private readonly long dictionarySize;
         private byte winIndicator;
         private long sourceLength;
         private long sourcePosition;
@@ -28,103 +28,31 @@ namespace VCDiff.Decoders
 
         public Memory<byte> AddressesForCopyData { get; private set; }
 
-        public long AddRunLength
-        {
-            get
-            {
-                return addRunLength;
-            }
-        }
+        public long AddRunLength => addRunLength;
 
-        public long InstructionAndSizesLength
-        {
-            get
-            {
-                return instructionAndSizesLength;
-            }
-        }
+        public long InstructionAndSizesLength => instructionAndSizesLength;
 
-        public long AddressesForCopyLength
-        {
-            get
-            {
-                return addressForCopyLength;
-            }
-        }
+        public long AddressesForCopyLength => addressForCopyLength;
 
-        public byte WinIndicator
-        {
-            get
-            {
-                return winIndicator;
-            }
-        }
+        public byte WinIndicator => winIndicator;
 
-        public long SourcePosition
-        {
-            get
-            {
-                return sourcePosition;
-            }
-        }
+        public long SourcePosition => sourcePosition;
 
-        public long SourceLength
-        {
-            get
-            {
-                return sourceLength;
-            }
-        }
+        public long SourceLength => sourceLength;
 
-        public long DecodedDeltaLength
-        {
-            get
-            {
-                return targetLength;
-            }
-        }
+        public long DecodedDeltaLength => targetLength;
 
-        public long DeltaStart
-        {
-            get
-            {
-                return deltaEncodingStart;
-            }
-        }
+        public long DeltaStart => deltaEncodingStart;
 
-        public long DeltaLength
-        {
-            get
-            {
-                return deltaEncodingStart + deltaEncodingLength;
-            }
-        }
+        public long DeltaLength => deltaEncodingStart + deltaEncodingLength;
 
-        public byte DeltaIndicator
-        {
-            get
-            {
-                return deltaIndicator;
-            }
-        }
+        public byte DeltaIndicator => deltaIndicator;
 
-        public uint Checksum
-        {
-            get
-            {
-                return checksum;
-            }
-        }
+        public uint Checksum => checksum;
 
         public bool HasChecksum { get; private set; }
 
-        public int Result
-        {
-            get
-            {
-                return returnCode;
-            }
-        }
+        public int Result => returnCode;
 
         /// <summary>
         /// Parses the window from the data
@@ -430,13 +358,10 @@ namespace VCDiff.Decoders
             long deltaHeaderLength = chunk.ParsedSize - deltaEncodingStart;
             long totalLen = deltaHeaderLength + addRunLength + instructionsLength + addressLength;
 
-            if (deltaEncodingLength != totalLen)
-            {
-                returnCode = (int)VCDiffResult.ERROR;
-                return false;
-            }
+            if (deltaEncodingLength == totalLen) return true;
+            returnCode = (int)VCDiffResult.ERROR;
+            return false;
 
-            return true;
         }
 
         public class ParseableChunk
@@ -445,52 +370,19 @@ namespace VCDiff.Decoders
             private long position;
             private long start;
 
-            public long UnparsedSize
-            {
-                get
-                {
-                    return end - position;
-                }
-            }
+            public long UnparsedSize => end - position;
 
-            public long End
-            {
-                get
-                {
-                    return end;
-                }
-            }
+            public long End => end;
 
-            public bool IsEmpty
-            {
-                get
-                {
-                    return 0 == UnparsedSize;
-                }
-            }
+            public bool IsEmpty => 0 == UnparsedSize;
 
-            public long Start
-            {
-                get
-                {
-                    return start;
-                }
-            }
+            public long Start => start;
 
-            public long ParsedSize
-            {
-                get
-                {
-                    return position - start;
-                }
-            }
+            public long ParsedSize => position - start;
 
             public long Position
             {
-                get
-                {
-                    return position;
-                }
+                get => position;
                 set
                 {
                     if (position < start)

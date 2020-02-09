@@ -6,14 +6,6 @@ namespace VCDiff.Encoders
     internal class ChunkEncoder : IDisposable
     {
         public int MinBlockSize { get; }
-        //{
-        //    get => minBlockSize;
-        //    set
-        //    {
-        //        if (value < 2 || value < BlockHash.BlockSize) return;
-        //        minBlockSize = value;
-        //    }
-        //}
 
         private BlockHash dictionary;
         private IByteBuffer oldData;
@@ -128,7 +120,7 @@ namespace VCDiff.Encoders
             {
                 int len = (int)(newData.Length - nextEncode);
                 newData.Position = nextEncode;
-                windowEncoder.Add(newData.ReadBytes(len).ToArray());
+                windowEncoder.Add(newData.ReadBytes(len).Span);
             }
 
             //output the final window
@@ -151,7 +143,7 @@ namespace VCDiff.Encoders
             if (bestMatch.TargetOffset > 0)
             {
                 newData.Position = unencodedStart;
-                windowEncoder?.Add(newData.ReadBytes((int)bestMatch.TargetOffset).ToArray());
+                windowEncoder?.Add(newData.ReadBytes((int)bestMatch.TargetOffset).Span);
             }
 
             windowEncoder?.Copy((int)bestMatch.SourceOffset, (int)bestMatch.Size);
@@ -163,6 +155,7 @@ namespace VCDiff.Encoders
         {
             oldData?.Dispose();
             newData?.Dispose();
+            windowEncoder?.Dispose();
         }
     }
 }

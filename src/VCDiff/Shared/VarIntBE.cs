@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using VCDiff.Includes;
 
 namespace VCDiff.Shared
@@ -88,14 +89,14 @@ namespace VCDiff.Shared
             return length;
         }
 
-        public static int AppendInt32(int v, List<byte> buffer)
+        public static int AppendInt32(int v, MemoryStream buffer)
         {
             Span<byte> varint = stackalloc byte[int32Max];
             int length = EncodeInt32(v, varint);
             int start = int32Max - length;
             for (int i = start; i < int32Max; i++)
             {
-                buffer.Add(varint[i]);
+                buffer.WriteByte(varint[i]);
             }
             return length;
         }
@@ -124,14 +125,14 @@ namespace VCDiff.Shared
             return length;
         }
 
-        public static int AppendInt64(long v, List<byte> buffer)
+        public static int AppendInt64(long v, MemoryStream buffer)
         {
             Span<byte> varint = stackalloc byte[int64Max];
             int length = EncodeInt64(v, varint);
             int start = int64Max - length;
             for (int i = start; i < int64Max; i++)
             {
-                buffer.Add(varint[i]);
+                buffer.WriteByte(varint[i]);
             }
 
             return length;
