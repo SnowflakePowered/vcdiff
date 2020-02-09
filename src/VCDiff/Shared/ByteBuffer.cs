@@ -1,13 +1,33 @@
 ﻿using System;
+using System.Buffers;
+using System.IO;
 
 namespace VCDiff.Shared
 {
     internal class ByteBuffer : IByteBuffer
     {
         private readonly ReadOnlyMemory<byte> bytes;
+        private MemoryHandle byteHandle;
+        private readonly unsafe void* bytePtr;
         private readonly int length;
         private int offset;
 
+        private readonly MemoryStream? copyStream;
+        public ByteBuffer(Stream copyStream)
+        {
+            this.copyStream = new MemoryStream();
+            copyStream.CopyTo(this.copyStream);
+            this.copyStream.Seek(0, SeekOrigin.Begin);
+            offset = 0;
+            this.bytes = new ReadOnlyMemory<byte>(this.copyStream.GetBuffer(),0, (int)copyStream.Length);
+            this.byteHandle = this.bytes.Pin();
+            unsafe
+            {
+                this.bytePtr = this.byteHandle.Pointer;
+            }
+
+            length = this.bytes.Length;
+        }
         /// <summary>
         /// Basically a simple wrapper for byte[] arrays
         /// for easier reading and parsing
@@ -17,6 +37,12 @@ namespace VCDiff.Shared
         {
             offset = 0;
             this.bytes = bytes != null ? new ReadOnlyMemory<byte>(bytes) : Memory<byte>.Empty;
+            this.byteHandle = this.bytes.Pin();
+            unsafe
+            {
+                this.bytePtr = this.byteHandle.Pointer;
+            }
+
             length = this.bytes.Length;
         }
 
@@ -24,16 +50,15 @@ namespace VCDiff.Shared
         {
             offset = 0;
             this.bytes = bytes;
+            this.byteHandle = bytes.Pin();
+            unsafe
+            {
+                this.bytePtr = this.byteHandle.Pointer;
+            }
             length = this.bytes.Length;
         }
 
-        public bool CanRead
-        {
-            get
-            {
-                return offset < length;
-            }
-        }
+        public bool CanRead => offset < length;
 
         public long Position
         {
@@ -50,7 +75,10 @@ namespace VCDiff.Shared
         public byte PeekByte()
         {
             if (offset >= length) throw new Exception("Trying to read past End of Buffer");
-            return bytes.Span[offset];
+            unsafe
+            {
+                return *((byte*)this.bytePtr + offset);
+            }
         }
 
         public ReadOnlyMemory<byte> PeekBytes(int len)
@@ -62,7 +90,10 @@ namespace VCDiff.Shared
         public byte ReadByte()
         {
             if (offset >= length) throw new Exception("Trying to read past End of Buffer");
-            return bytes.Span[offset++];
+            unsafe
+            {
+                return *((byte*)this.bytePtr + offset++);
+            }
         }
 
         public ReadOnlyMemory<byte> ReadBytes(int len)
@@ -77,13 +108,10 @@ namespace VCDiff.Shared
             offset++;
         }
 
-        public void Skip(int len)
-        {
-            offset += len;
-        }
-
         public void Dispose()
         {
+            this.byteHandle.Dispose();
+            this.copyStream?.Dispose();
         }
     }
 }

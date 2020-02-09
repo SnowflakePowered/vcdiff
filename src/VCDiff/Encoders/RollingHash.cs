@@ -84,10 +84,11 @@ namespace VCDiff.Encoders
         /// <returns></returns>
         public ulong Hash(ReadOnlyMemory<byte> bytes)
         {
-            ulong h = HashFirstTwoBytes(bytes.Span);
+            var span = bytes.Span;
+            ulong h = HashFirstTwoBytes(span);
             for (int i = 2; i < bytes.Length; i++)
             {
-                h = HashStep(h, bytes.Span[i]);
+                h = HashStep(h, span[i]);
             }
             return h;
         }

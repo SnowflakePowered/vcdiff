@@ -26,8 +26,8 @@ namespace VCDiff.Decoders
         /// <param name="outputStream">Output Stream</param>
         public VCDecoder(Stream source, Stream delta, Stream outputStream)
         {
-            this.delta = new ByteStreamReader(delta);
-            this.source = new ByteStreamReader(source);
+            this.delta = new ByteBuffer(delta);
+            this.source = new ByteBuffer(source);
             this.outputStream = new ByteStreamWriter(outputStream);
             IsInitialized = false;
         }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace VCDiff.Shared
@@ -8,14 +9,12 @@ namespace VCDiff.Shared
     //also has a helper function for reading all the bytes in at once
     internal class ByteStreamReader : IByteBuffer
     {
-        private readonly MemoryStream buffer;
+        private readonly Stream buffer;
         private int lastLenRead;
 
         public ByteStreamReader(Stream stream)
         {
-            buffer = new MemoryStream();
-            stream.CopyTo(buffer);
-            buffer.Seek(0, SeekOrigin.Begin);
+            buffer = stream;
         }
 
         public long Position
@@ -23,10 +22,9 @@ namespace VCDiff.Shared
             get => buffer.Position;
             set
             {
+
                 if (buffer.CanRead && value >= 0)
-                {
                     buffer.Seek(value, SeekOrigin.Begin);
-                }
             }
         }
 
@@ -34,34 +32,45 @@ namespace VCDiff.Shared
 
         public bool CanRead => buffer.CanRead && buffer.Position < buffer.Length;
 
+
         public ReadOnlyMemory<byte> PeekBytes(int len)
         {
             long oldPos = buffer.Position;
-            return buffer.GetBuffer().AsMemory((int)oldPos, (int)Math.Min(len, buffer.Length - oldPos));
+            Memory<byte> buf = new byte[len];
+
+            int actualRead = buffer.Read(buf.Span);
+            lastLenRead = actualRead;
+            if (actualRead > 0)
+            {
+                buffer.Seek(oldPos, SeekOrigin.Begin);
+                return buf[..actualRead];
+            }
+
+            buffer.Seek(oldPos, SeekOrigin.Begin);
+            return Memory<byte>.Empty;
         }
 
         public byte ReadByte()
         {
-            if (!CanRead) throw new Exception("Trying to read past end of buffer");
             lastLenRead = buffer.ReadByte();
             if (lastLenRead > -1)
-            {
-                return (byte) lastLenRead;
-            }
+                return (byte)lastLenRead;
             return 0;
         }
 
         public ReadOnlyMemory<byte> ReadBytes(int len)
         {
-            var bytes = this.PeekBytes(len);
-            this.buffer.Seek(len, SeekOrigin.Current);
-            return bytes;
+            Memory<byte> buf = new byte[len];
+            int actualRead = buffer.Read(buf.Span);
+            lastLenRead = actualRead;
+            return actualRead > 0 ? buf[..actualRead] : Memory<byte>.Empty;
         }
 
         public byte PeekByte()
         {
-            if (!CanRead) throw new Exception("Trying to read past end of buffer");
-            return buffer.GetBuffer()[buffer.Position];
+            byte b = ReadByte();
+            buffer.Seek(-1, SeekOrigin.Current);
+            return b;
         }
 
         //increases the offset by 1

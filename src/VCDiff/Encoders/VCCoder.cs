@@ -31,7 +31,7 @@ namespace VCDiff.Encoders
         {
             if (maxBufferSize <= 0) maxBufferSize = 1;
 
-            oldData = new ByteStreamReader(source);
+            oldData = new ByteBuffer(source);
             newData = new ByteStreamReader(target);
             outputStreamWriter = new ByteStreamWriter(outputStream);
             hasher = new RollingHash(BlockHash.BlockSize);
