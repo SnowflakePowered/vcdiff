@@ -308,7 +308,12 @@ namespace VCDiff.Encoders
                     target.Position = tindex;
                     var lb = source.ReadBytes(vectorSize).Span;
                     var rb = target.ReadBytes(vectorSize).Span;
-                    if (lb.Length < vectorSize || rb.Length < vectorSize) break;
+                    if (lb.Length < vectorSize || rb.Length < vectorSize)
+                    {
+                        source.Position -= vectorSize;
+                        target.Position -= vectorSize;
+                        break;
+                    }
                     var lv = new Vector<byte>(lb);
                     var rv = new Vector<byte>(rb);
                     if (Vector.EqualsAll(lv, rv)) continue;
@@ -352,7 +357,12 @@ namespace VCDiff.Encoders
             {
                 var lb = source.ReadBytes(vectorSize).Span;
                 var rb = target.ReadBytes(vectorSize).Span;
-                if (lb.Length < vectorSize || rb.Length < vectorSize) break;
+                if (lb.Length < vectorSize || rb.Length < vectorSize)
+                {
+                    source.Position -= vectorSize;
+                    target.Position -= vectorSize;
+                    break;
+                }
                 var lv = new Vector<byte>(lb);
                 var rv = new Vector<byte>(rb);
                 if (Vector.EqualsAll(lv, rv)) continue;
