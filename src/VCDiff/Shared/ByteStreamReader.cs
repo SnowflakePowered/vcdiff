@@ -33,7 +33,7 @@ namespace VCDiff.Shared
         public bool CanRead => buffer.CanRead && buffer.Position < buffer.Length;
 
 
-        public ReadOnlyMemory<byte> PeekBytes(int len)
+        public Memory<byte> PeekBytes(int len)
         {
             long oldPos = buffer.Position;
             Memory<byte> buf = new byte[len];
@@ -58,7 +58,7 @@ namespace VCDiff.Shared
             return 0;
         }
 
-        public ReadOnlyMemory<byte> ReadBytes(int len)
+        public Memory<byte> ReadBytes(int len)
         {
             Memory<byte> buf = new byte[len];
             int actualRead = buffer.Read(buf.Span);

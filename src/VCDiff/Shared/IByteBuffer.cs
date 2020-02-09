@@ -10,11 +10,11 @@ namespace VCDiff.Shared
 
         bool CanRead { get; }
 
-        ReadOnlyMemory<byte> ReadBytes(int len);
+        Memory<byte> ReadBytes(int len);
 
         byte ReadByte();
 
-        ReadOnlyMemory<byte> PeekBytes(int len);
+        Memory<byte> PeekBytes(int len);
 
         byte PeekByte();
 

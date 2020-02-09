@@ -22,11 +22,11 @@ namespace VCDiff.Decoders
         private long addressForCopyLength;
         private uint checksum;
 
-        public ReadOnlyMemory<byte> AddRunData { get; private set; }
+        public Memory<byte> AddRunData { get; private set; }
 
-        public ReadOnlyMemory<byte> InstructionsAndSizesData { get; private set; }
+        public Memory<byte> InstructionsAndSizesData { get; private set; }
 
-        public ReadOnlyMemory<byte> AddressesForCopyData { get; private set; }
+        public Memory<byte> AddressesForCopyData { get; private set; }
 
         public long AddRunLength
         {

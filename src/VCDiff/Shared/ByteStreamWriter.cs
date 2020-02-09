@@ -51,10 +51,11 @@ namespace VCDiff.Shared
             buffer.Write(b, 0, b.Length);
         }
 
-        public void Write(ReadOnlyMemory<byte> b)
+        public void Write(ReadOnlySpan<byte> b)
         {
-            buffer.Write(b.Span);
+            buffer.Write(b);
         }
+
 
         public void Dispose()
         {

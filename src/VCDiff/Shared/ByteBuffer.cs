@@ -6,7 +6,7 @@ namespace VCDiff.Shared
 {
     internal class ByteBuffer : IByteBuffer
     {
-        private readonly ReadOnlyMemory<byte> bytes;
+        private readonly Memory<byte> bytes;
         private MemoryHandle byteHandle;
         private readonly unsafe void* bytePtr;
         private readonly int length;
@@ -19,7 +19,7 @@ namespace VCDiff.Shared
             copyStream.CopyTo(this.copyStream);
             this.copyStream.Seek(0, SeekOrigin.Begin);
             offset = 0;
-            this.bytes = new ReadOnlyMemory<byte>(this.copyStream.GetBuffer(),0, (int)copyStream.Length);
+            this.bytes = new Memory<byte>(this.copyStream.GetBuffer(),0, (int)copyStream.Length);
             this.byteHandle = this.bytes.Pin();
             unsafe
             {
@@ -36,7 +36,7 @@ namespace VCDiff.Shared
         public ByteBuffer(byte[] bytes)
         {
             offset = 0;
-            this.bytes = bytes != null ? new ReadOnlyMemory<byte>(bytes) : Memory<byte>.Empty;
+            this.bytes = bytes != null ? new Memory<byte>(bytes) : Memory<byte>.Empty;
             this.byteHandle = this.bytes.Pin();
             unsafe
             {
@@ -46,7 +46,7 @@ namespace VCDiff.Shared
             length = this.bytes.Length;
         }
 
-        public ByteBuffer(ReadOnlyMemory<byte> bytes)
+        public ByteBuffer(Memory<byte> bytes)
         {
             offset = 0;
             this.bytes = bytes;
@@ -81,7 +81,7 @@ namespace VCDiff.Shared
             }
         }
 
-        public ReadOnlyMemory<byte> PeekBytes(int len)
+        public Memory<byte> PeekBytes(int len)
         {
             int sliceLen = offset + len > bytes.Length ? bytes.Length - offset : len;
             return bytes.Slice(offset, sliceLen);
@@ -96,7 +96,7 @@ namespace VCDiff.Shared
             }
         }
 
-        public ReadOnlyMemory<byte> ReadBytes(int len)
+        public Memory<byte> ReadBytes(int len)
         {
             var slice = PeekBytes(len);
             offset += len;

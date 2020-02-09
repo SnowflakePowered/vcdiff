@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 using VCDiff.Shared;
 
 namespace VCDiff.Encoders
@@ -27,8 +28,7 @@ namespace VCDiff.Encoders
         private long[] lastBlockTable;
         private long tableSize;
         private RollingHash hasher;
-
-        public IByteBuffer Source { get; }
+        private readonly IByteBuffer source;
 
         /// <summary>
         /// Create a hash lookup table for the data
@@ -40,7 +40,7 @@ namespace VCDiff.Encoders
         {
             maxMatchesToCheck = (kBlockSize >= 32) ? 32 : (32 * (32 / kBlockSize));
             this.hasher = hasher;
-            this.Source = sin;
+            this.source = sin;
             this.offset = offset;
             tableSize = CalcTableSize();
 
@@ -72,7 +72,7 @@ namespace VCDiff.Encoders
 
         private long CalcTableSize()
         {
-            long min = (this.Source.Length / sizeof(int)) + 1;
+            long min = (this.source.Length / sizeof(int)) + 1;
             long size = 1;
 
             while (size < min)
@@ -90,7 +90,7 @@ namespace VCDiff.Encoders
                 return 0;
             }
 
-            if ((Source.Length > 0) && (size > (min * 2)))
+            if ((source.Length > 0) && (size > (min * 2)))
             {
                 return 0;
             }
@@ -109,7 +109,7 @@ namespace VCDiff.Encoders
 
         public void AddAllBlocksThroughIndex(long index)
         {
-            if (index > Source.Length)
+            if (index > source.Length)
             {
                 return;
             }
@@ -120,25 +120,25 @@ namespace VCDiff.Encoders
                 return;
             }
 
-            if (Source.Length < kBlockSize)
+            if (source.Length < kBlockSize)
             {
                 return;
             }
 
             long endLimit = index;
-            long lastLegalHashIndex = (Source.Length - kBlockSize);
+            long lastLegalHashIndex = (source.Length - kBlockSize);
 
             if (endLimit > lastLegalHashIndex)
             {
                 endLimit = lastLegalHashIndex + 1;
             }
 
-            long offset = Source.Position + NextIndexToAdd;
-            long end = Source.Position + endLimit;
-            Source.Position = offset;
+            long offset = source.Position + NextIndexToAdd;
+            long end = source.Position + endLimit;
+            source.Position = offset;
             while (offset < end)
             {
-                AddBlock(hasher.Hash(Source.ReadBytes(kBlockSize)));
+                AddBlock(hasher.Hash(source.ReadBytes(kBlockSize)));
                 offset += kBlockSize;
             }
         }
@@ -147,7 +147,7 @@ namespace VCDiff.Encoders
         {
             get
             {
-                return Source.Length / kBlockSize;
+                return source.Length / kBlockSize;
             }
         }
 
@@ -195,7 +195,7 @@ namespace VCDiff.Encoders
                 targetMatchOffset -= leftMatching;
                 matchSize += leftMatching;
 
-                long sourceBytesToRight = Source.Length - sourceMatchEnd;
+                long sourceBytesToRight = source.Length - sourceMatchEnd;
                 long targetBytesToRight = targetSize - targetMatchEnd;
                 long rightLimit = Math.Min(sourceBytesToRight, targetBytesToRight);
 
@@ -243,16 +243,16 @@ namespace VCDiff.Encoders
 
         public void AddAllBlocks()
         {
-            AddAllBlocksThroughIndex(Source.Length);
+            AddAllBlocksThroughIndex(source.Length);
         }
 
         public bool BlockContentsMatch(long block1, long toffset, IByteBuffer target)
         {
             //this sets up the positioning of the buffers
             //as well as testing the first byte
-            this.Source.Position = block1 * kBlockSize;
-            if (!this.Source.CanRead) return false;
-            byte lb = this.Source.ReadByte();
+            this.source.Position = block1 * kBlockSize;
+            if (!this.source.CanRead) return false;
+            byte lb = this.source.ReadByte();
             target.Position = toffset;
             if (!target.CanRead) return false;
             byte rb = target.ReadByte();
@@ -263,7 +263,7 @@ namespace VCDiff.Encoders
         //this doesn't appear to be used anywhere even though it is included in googles code
         public bool BlockCompareWords(IByteBuffer target)
         {
-            var block1 = this.Source.PeekBytes(kBlockSize).Span;
+            var block1 = this.source.PeekBytes(kBlockSize).Span;
             var block2 = target.PeekBytes(kBlockSize).Span;
 
             return block1.SequenceCompareTo(block2) == 0;
@@ -311,8 +311,8 @@ namespace VCDiff.Encoders
                 if (sindex < 0 || tindex < 0) break;
                 //has to be done this way or a race condition will happen
                 //if the sourcce and target are the same buffer
-                Source.Position = sindex;
-                byte lb = Source.ReadByte();
+                source.Position = sindex;
+                byte lb = source.ReadByte();
                 target.Position = tindex;
                 byte rb = target.ReadByte();
                 if (lb != rb) break;
@@ -326,15 +326,30 @@ namespace VCDiff.Encoders
             long sindex = end;
             long tindex = tstart;
             long bytesFound = 0;
-            long srcLength = Source.Length;
+            long srcLength = source.Length;
             long trgLength = target.Length;
-            Source.Position = end;
+            source.Position = end;
             target.Position = tstart;
+            int vectorSize = Vector<byte>.Count;
+
+            for (; bytesFound <= maxBytes - vectorSize; bytesFound += vectorSize)
+            {
+                var lb = source.ReadBytes(vectorSize).Span;
+                var rb = target.ReadBytes(vectorSize).Span;
+                if (lb.Length < vectorSize || rb.Length < vectorSize) break;
+                var lv = new Vector<byte>(lb);
+                var rv = new Vector<byte>(rb);
+                if (Vector.EqualsAll(lv, rv)) continue;
+                source.Position -= vectorSize;
+                target.Position -= vectorSize;
+                break;
+            }
+
             while (bytesFound < maxBytes)
             {
                 if (sindex >= srcLength || tindex >= trgLength) break;
-                if (!Source.CanRead) break;
-                byte lb = Source.ReadByte();
+                if (!source.CanRead) break;
+                byte lb = source.ReadByte();
                 if (!target.CanRead) break;
                 byte rb = target.ReadByte();
                 if (lb != rb) break;
