@@ -1,6 +1,6 @@
 # vcdiff
 
-![Nuget](https://img.shields.io/nuget/v/VCdiff)
+[![Nuget](https://img.shields.io/nuget/v/VCdiff)](https://www.nuget.org/packages/VCDiff)
 
 This is a hard fork of [VCDiff](https://github.com/Metric/VCDiff), originally written by [Metric](https://github.com/Metric), written primarily for use in Snowflake.
 
