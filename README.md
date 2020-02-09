@@ -19,7 +19,7 @@ Vector intrinsics and the `Span<T>` and `Memory<T>` memory APIs require .netstan
 # Encoding Data
 The dictionary must be a file or data that is already in memory. The file must be fully read in first in order to encode properly. This is just how the algorithm works for VCDiff. The encode function is blocking.
 
-```
+```csharp
 using VCDiff.Include;
 using VCDiff.Encoders;
 using VCDiff.Shared;
@@ -28,7 +28,7 @@ void DoEncode() {
     using(FileStream output = new FileStream("...some output path", FileMode.Create, FileAccess.Write))
     using(FileStream dict = new FileStream("..dictionary / old file path", FileMode.Open, FileAccess.Read))
     using(FileStream target = new FileStream("..target data / new data path", FileMode.Open, FileMode.Read)) {
-        VCCoder coder = new VCCoder(dict, target, output);
+        VcEncoder coder = new VcEncoder(dict, target, output);
         VCDiffResult result = coder.Encode(); //encodes with no checksum and not interleaved
         if(result != VCDiffResult.SUCCESS) {
             //error was not able to encode properly
@@ -39,39 +39,35 @@ void DoEncode() {
 ```
 
 Encoding with checksum or interleaved or both
-```
-bool interleaved = true;
-bool checksum = false;
 
-coder.Encode(interleaved, checksum);
-
-checksum = true;
-coder.Encode(interleaved, checksum);
+```csharp
+encoder.Encode(interleaved: true, checksum: false);
+encoder.Encode(interleaved: true, checksum: true);
+encoder.Encode(interleaved: false, checksum: true);
 ```
 
 Modifying the default chunk size for windows
 
-```
+```csharp
 int windowSize = 2; //in Megabytes. The default is 1MB window chunks.
 
-VCCoder coder = new VCCoder(dict, target, output, windowSize)
+VcEnoder coder = new VcEncoder(dict, target, output, windowSize)
 ```
 
 Modifying the default minimum copy encode size. Which means the match must be >= MinBlockSize in order to qualify as match for copying from dictionary file.
-```
-ChunkEncoder.MinBlockSize = 16; 
-//Default is 32 bytes. Lowering this can improve the delta compression for small files. 
-//Please keep it a power of 2.
-//Anything lower than 2 or BlockHash.BlockSize is ignored.
+
+```csharp
+// chunkSize is the minimum copy encode size.
+// Default is 32 bytes. Lowering this can improve the delta compression for small files. 
+// It must be a power of 2. 
+VcEncoder coder = new VcEncoder(dict, target, output, blockSize: 8, chunkSize: 16);
 ```
 
 Modifying the default BlockSize for hashing
-```
-BlockHash.BlockSize = 32; 
-//increasing this for large files with lots of similar data can improve results.
-//the default is 16. Please keep it a power of two. 
-//Lowering it for small files can also improve results. 
-//Anything lower than 2 will be ignored.
+
+```csharp
+// Increasing blockSize for large files with similar data can improve results.
+VcEncoder coder = new VcEncoder(dict, target, output, blockSize: 32);
 ```
 
 # Decoding Data
@@ -79,25 +75,18 @@ The dictionary must be a file or data that is already in memory. The file must b
 
 Due note the interleaved version of a delta file is meant for streaming and it is supported by the decoder already. However, non-interleaved expects access for reading the full delta file at one time. The delta file is still streamed, but must be able to read fully in sequential order.
 
-```
+```csharp
 using VCDiff.Include;
 using VCDiff.Decoders;
 using VCDiff.Shared;
 
 void DoDecode() {
-    using(FileStream output = new FileStream("...some output path", FileMode.Create, FileAccess.Write))
-    using(FileStream dict = new FileStream("..dictionary / old file path", FileMode.Open, FileAccess.Read))
-    using(FileStream target = new FileStream("..delta encoded part", FileMode.Open, FileMode.Read)) {
+    using (FileStream output = new FileStream("...some output path", FileMode.Create, FileAccess.Write))
+    using (FileStream dict = new FileStream("..dictionary / old file path", FileMode.Open, FileAccess.Read))
+    using (FileStream target = new FileStream("..delta encoded part", FileMode.Open, FileMode.Read)) {
         VCDecoder decoder = new VCDecoder(dict, target, output);
 
-        //You must call decoder.Start() first. The header of the delta file must be available before calling decoder.Start()
-
-        VCDiffResult result = decoder.Start();
-
-        if(result != VCDiffResult.SUCCESS) {
-            //error abort
-        }
-
+        // The header of the delta file must be available before the first call to decoder.Decode().
         long bytesWritten = 0;
         result = decoder.Decode(out bytesWritten);
 
@@ -105,7 +94,7 @@ void DoDecode() {
             //error decoding
         }
 
-        //if success bytesWritten will contain the number of bytes that were decoded
+        // if success bytesWritten will contain the number of bytes that were decoded
     }
 }
 
@@ -124,18 +113,16 @@ while(bytesWritten < someSizeThatYouAreExpecting) {
 
     bytesWritten += thisChunk;
 
-    //yes with three Rs.
-    if(result == VCDiffResult.ERRROR) {
-        //it failed to decode something
-        //could be an issue that the window failed to parse
-        //or actual data failed to decode properly
+    if (result == VCDiffResult.ERROR) {
+        // it failed to decode something
+        // could be an issue that the window failed to parse
+        // or actual data failed to decode properly
         break;
     }
 
-    //otherwise continue on if you get SUCCESS or EOD (End of Data);
-    //because only you know when you will have the data finished loading
-    //the decoder doesn't care if nothing is available and it will keep trying until more is
-    //it is best to do this in a separate thread as it is blocking.
+    // otherwise continue on if you get SUCCESS or EOD (End of Data);
+    // because only you know when you will have the data finished loading
+    // the decoder doesn't care if nothing is available and it will keep trying until more is
 }
 ```
 
