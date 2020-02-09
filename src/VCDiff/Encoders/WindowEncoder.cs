@@ -208,7 +208,7 @@ namespace VCDiff.Encoders
             //begin of delta encoding
             long sizeBeforeDelta = sout.Position;
             VarIntBE.AppendInt32((int)targetLength, sout); //final target length after decoding
-            sout.Write(0x00); //uncompressed
+            sout.Write(0x00); // uncompressed
 
             // [Here is where a secondary compressor would be used
             //  if the encoder and decoder supported that feature.]

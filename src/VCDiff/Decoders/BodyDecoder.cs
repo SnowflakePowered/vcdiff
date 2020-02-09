@@ -243,10 +243,10 @@ namespace VCDiff.Decoders
 
         private VCDiffResult DecodeCopy(int size, byte mode, ByteBuffer addresses)
         {
-            long here = window.SourceLength + Decoded;
-            long decoded = addressCache.DecodeAddress(here, mode, addresses);
+            long hereAddress = window.SourceLength + Decoded;
+            long decodedAddress = addressCache.DecodeAddress(hereAddress, mode, addresses);
 
-            switch ((VCDiffResult)decoded)
+            switch ((VCDiffResult)decodedAddress)
             {
                 case VCDiffResult.ERROR:
                     return VCDiffResult.ERROR;
@@ -255,47 +255,55 @@ namespace VCDiff.Decoders
                     return VCDiffResult.EOD;
 
                 default:
-                    if (decoded < 0 || decoded > here)
+                    if (decodedAddress < 0 || decodedAddress > hereAddress)
                     {
                         return VCDiffResult.ERROR;
                     }
                     break;
             }
 
-            if (decoded + size > window.SourceLength) return VCDiffResult.ERROR;
-            dict.Position = decoded;
-            var rbytes = dict.ReadBytes(size).Span;
-            sout.Write(rbytes);
-            targetData.Write(rbytes.ToArray());
-            Decoded += size;
-            return VCDiffResult.SUCCESS;
-
-            // will come back to this once
-            // target data reading is implemented
-           /*if(decoded < window.SourceLength)
-           {
-                long partial = window.SourceLength - decoded;
-                dict.Position = decoded;
-                sout.writeBytes(dict.ReadBytes((int)partial));
-                bytesWritten += partial;
-                size -= (int)partial;
-           }
-
-            decoded -= window.SourceLength;
-
-            while(size > (bytesDecoded - decoded))
+            if (decodedAddress + size <= window.SourceLength)
             {
-                long partial = bytesDecoded - decoded;
-                target.Position = decoded;
-                sout.writeBytes(target.ReadBytes((int)partial));
-                decoded += partial;
-                size -= (int)partial;
-                bytesWritten += partial;
+                dict.Position = decodedAddress;
+                var rbytes = dict.ReadBytes(size).Span;
+                sout.Write(rbytes);
+                targetData.Write(rbytes);
+                this.Decoded += size;
+                return VCDiffResult.SUCCESS;
+            }
+            
+            // original function ends here.
+
+            if (decodedAddress < window.SourceLength)
+            {
+                long partialCopySize = window.SourceLength - decodedAddress;
+                dict.Position = decodedAddress;
+                var rbytes = dict.ReadBytes(size).Span;
+                sout.Write(rbytes);
+                targetData.Write(rbytes);
+                this.Decoded += partialCopySize;
+                decodedAddress += partialCopySize;
+                size -= (int)partialCopySize;
             }
 
-            target.Position = decoded;
-            sout.writeBytes(target.ReadBytes(size));*/
+            decodedAddress -= window.SourceLength;
+            while (size > (this.Decoded - decodedAddress))
+            {
+                long partialCopySize = window.SourceLength - decodedAddress;
+                dict.Position = decodedAddress;
+                var rbytes = target.ReadBytes((int)partialCopySize).Span;
 
+                sout.Write(rbytes);
+                targetData.Write(rbytes);
+                size -= (int)partialCopySize;
+                this.Decoded += partialCopySize;
+            }
+            target.Position = decodedAddress;
+            var frbytes = target.ReadBytes(size).Span;
+            sout.Write(frbytes);
+            targetData.Write(frbytes);
+
+            return VCDiffResult.SUCCESS;
         }
 
         private VCDiffResult DecodeRun(int size, ByteBuffer addRun)
