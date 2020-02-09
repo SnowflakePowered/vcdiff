@@ -1,11 +1,20 @@
-# open-vcdiff C# implementation
+# vcdiff
+
+![Nuget](https://img.shields.io/nuget/v/VCdiff)
+
+This is a hard fork of [VCDiff](https://github.com/Metric/VCDiff), originally written by [Metric](https://github.com/Metric), written primarily for use in Snowflake.
+
+Large chunks have been rewritten, and heavily optimized to be *extremely fast*, using `Vector<byte>` intrinsics, as well as `Memory<byte>` and `Span<byte>` APIs to eke out every bit of performance possible, performing close if not equal to the C++ `open-vcdiff` library. Non-scientific preliminary testing shows up to a 20x speedup compared to the original library when diffing a 2MB file. 
+
+The original readme follows:
 
 This is a full implementation of open-vcdiff in C# based on [Google's open-vcdiff](https://github.com/google/open-vcdiff). This is written entirely in C# - no external C++ libraries required. This includes proper SDHC support with interleaving and checksums. The only thing it does not support is encoding with a custom CodeTable currently. Will be added later if requested, or feel free to add it in and send a pull request.
 
 It is fully compatible with Google's open-vcdiff for encoding and decoding. If you find any bugs please let me know. I tried to test as thoroughly as possible between this and Google's github version. The largest file I tested with was 10MB. Should be able to support up to 2-4GB depending on your system.
 
 ## Requirements
-Should be able to compile with any .Net platform greater than equal to 2.5. Mono should be able to compile it as well.
+Vector intrinsics and the `Span<T>` and `Memory<T>` memory APIs require .netstandard 2.1.
+
 
 # Encoding Data
 The dictionary must be a file or data that is already in memory. The file must be fully read in first in order to encode properly. This is just how the algorithm works for VCDiff. The encode function is blocking.
