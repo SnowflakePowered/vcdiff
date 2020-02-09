@@ -100,13 +100,14 @@
             <param name="googleVersion">if true will check for checksum and if interleaved</param>
             <returns></returns>
         </member>
-        <member name="M:VCDiff.Encoders.BlockHash.#ctor(VCDiff.Shared.IByteBuffer,System.Int32,VCDiff.Encoders.RollingHash)">
+        <member name="M:VCDiff.Encoders.BlockHash.#ctor(VCDiff.Shared.IByteBuffer,System.Int32,VCDiff.Encoders.RollingHash,System.Int32)">
             <summary>
             Create a hash lookup table for the data
             </summary>
             <param name="sin">the data to create the table for</param>
             <param name="offset">the offset usually 0</param>
             <param name="hasher">the hashing method</param>
+            <param name="blockSize">The block size to use</param>
         </member>
         <member name="M:VCDiff.Encoders.BlockHash.FindBestMatch(System.UInt64,System.Int64,System.Int64,System.Int64,VCDiff.Shared.IByteBuffer,VCDiff.Encoders.BlockHash.Match@)">
             <summary>
@@ -119,7 +120,7 @@
             <param name="target">the target buffer</param>
             <param name="m">the match object to use</param>
         </member>
-        <member name="M:VCDiff.Encoders.ChunkEncoder.#ctor(VCDiff.Encoders.BlockHash,VCDiff.Shared.IByteBuffer,VCDiff.Encoders.RollingHash,System.Boolean,System.Boolean)">
+        <member name="M:VCDiff.Encoders.ChunkEncoder.#ctor(VCDiff.Encoders.BlockHash,VCDiff.Shared.IByteBuffer,VCDiff.Encoders.RollingHash,System.Boolean,System.Boolean,System.Int32)">
             <summary>
             Performs the actual encoding of a chunk of data into the VCDiff format
             </summary>
@@ -128,6 +129,8 @@
             <param name="hash">The rolling hash object</param>
             <param name="interleaved">Whether to interleave the data or not</param>
             <param name="checksum">Whether to include checksums for each window</param>
+            <param name="minBlockSize">The minimum block size to use. Defaults to 32, and must be a power of 2.
+                This value must also be smaller than the block size of the dictionary.</param>
         </member>
         <member name="M:VCDiff.Encoders.ChunkEncoder.EncodeChunk(VCDiff.Shared.IByteBuffer,VCDiff.Shared.ByteStreamWriter)">
             <summary>
@@ -209,7 +212,7 @@
             A simple VCDIFF Encoder class.
             </summary>
         </member>
-        <member name="M:VCDiff.Encoders.VcEncoder.#ctor(System.IO.Stream,System.IO.Stream,System.IO.Stream,System.Int32)">
+        <member name="M:VCDiff.Encoders.VcEncoder.#ctor(System.IO.Stream,System.IO.Stream,System.IO.Stream,System.Int32,System.Int32,System.Int32)">
             <summary>
             Creates a new VCDIFF Encoder.
             </summary>
@@ -217,6 +220,8 @@
             <param name="target">The target to create the diff from.</param>
             <param name="outputStream">The stream to write the diff into.</param>
             <param name="maxBufferSize">The maximum buffer size for window chunking in megabytes (MiB).</param>
+            <param name="blockSize">The block size to use.</param>
+            <param name="chunkSize">The chunk size to use. Defaults to twice the block size.</param>
         </member>
         <member name="M:VCDiff.Encoders.VcEncoder.Encode(System.Boolean,System.Boolean)">
             <summary>

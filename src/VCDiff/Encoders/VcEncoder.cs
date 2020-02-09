@@ -18,6 +18,8 @@ namespace VCDiff.Encoders
 
         private static readonly byte[] MagicBytes = { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
         private static readonly byte[] MagicBytesExtended = { 0xD6, 0xC3, 0xC4, (byte)'S', 0x00 };
+        private readonly int blockSize;
+        private readonly int chunkSize;
 
         /// <summary>
         /// Creates a new VCDIFF Encoder.
@@ -26,16 +28,19 @@ namespace VCDiff.Encoders
         /// <param name="target">The target to create the diff from.</param>
         /// <param name="outputStream">The stream to write the diff into.</param>
         /// <param name="maxBufferSize">The maximum buffer size for window chunking in megabytes (MiB).</param>
-        public VcEncoder(Stream source, Stream target, Stream outputStream, int maxBufferSize = 1)
+        /// <param name="blockSize">The block size to use.</param>
+        /// <param name="chunkSize">The chunk size to use. Defaults to twice the block size.</param>
+        public VcEncoder(Stream source, Stream target, Stream outputStream, int maxBufferSize = 1, int blockSize = 16, int chunkSize = 0)
         {
             if (maxBufferSize <= 0) maxBufferSize = 1;
+            this.blockSize = blockSize;
+            this.chunkSize = chunkSize < 2 ? this.blockSize * 2 : chunkSize;
+            this.oldData = new ByteBuffer(source);
+            this.newData = new ByteStreamReader(target);
+            this.outputStreamWriter = new ByteStreamWriter(outputStream);
+            this.hasher = new RollingHash(this.blockSize);
 
-            oldData = new ByteBuffer(source);
-            newData = new ByteStreamReader(target);
-            outputStreamWriter = new ByteStreamWriter(outputStream);
-            hasher = new RollingHash(BlockHash.BlockSize);
-
-            bufferSize = maxBufferSize * 1024 * 1024;
+            this.bufferSize = maxBufferSize * 1024 * 1024;
         }
 
         /// <summary>
@@ -68,11 +73,11 @@ namespace VCDiff.Encoders
             }
 
             //read in all the dictionary it is the only thing that needs to be
-            BlockHash dictionary = new BlockHash(oldData, 0, hasher);
+            BlockHash dictionary = new BlockHash(oldData, 0, hasher, blockSize);
             dictionary.AddAllBlocks();
             oldData.Position = 0;
 
-            ChunkEncoder chunker = new ChunkEncoder(dictionary, oldData, hasher, interleaved, checksum);
+            ChunkEncoder chunker = new ChunkEncoder(dictionary, oldData, hasher, interleaved, checksum, chunkSize);
 
             while (newData.CanRead)
             {

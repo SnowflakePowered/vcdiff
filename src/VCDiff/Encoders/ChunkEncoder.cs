@@ -5,17 +5,15 @@ namespace VCDiff.Encoders
 {
     internal class ChunkEncoder : IDisposable
     {
-        private static int minBlockSize = 32;
-
-        public static int MinBlockSize
-        {
-            get => minBlockSize;
-            set
-            {
-                if (value < 2 || value < BlockHash.BlockSize) return;
-                minBlockSize = value;
-            }
-        }
+        public int MinBlockSize { get; }
+        //{
+        //    get => minBlockSize;
+        //    set
+        //    {
+        //        if (value < 2 || value < BlockHash.BlockSize) return;
+        //        minBlockSize = value;
+        //    }
+        //}
 
         private BlockHash dictionary;
         private IByteBuffer oldData;
@@ -33,12 +31,20 @@ namespace VCDiff.Encoders
         /// <param name="hash">The rolling hash object</param>
         /// <param name="interleaved">Whether to interleave the data or not</param>
         /// <param name="checksum">Whether to include checksums for each window</param>
-        public ChunkEncoder(BlockHash dictionary, IByteBuffer oldData, RollingHash hash, bool interleaved = false, bool checksum = false)
+        /// <param name="minBlockSize">The minimum block size to use. Defaults to 32, and must be a power of 2.
+        ///     This value must also be smaller than the block size of the dictionary.</param>
+        public ChunkEncoder(BlockHash dictionary, IByteBuffer oldData, 
+            RollingHash hash, bool interleaved = false, bool checksum = false, int minBlockSize = 32)
         {
-            hasChecksum = checksum;
-            hasher = hash;
+            this.hasChecksum = checksum;
+            this.hasher = hash;
             this.oldData = oldData;
             this.dictionary = dictionary;
+            this.MinBlockSize = minBlockSize;
+            if (this.MinBlockSize < 2 || this.MinBlockSize < this.dictionary.blockSize)
+            {
+
+            }
             this.interleaved = interleaved;
         }
 
@@ -68,16 +74,16 @@ namespace VCDiff.Encoders
             this.newData = newData;
             long nextEncode = newData.Position;
             long targetEnd = newData.Length;
-            long startOfLastBlock = targetEnd - BlockHash.BlockSize;
+            long startOfLastBlock = targetEnd - this.dictionary.blockSize;
             long candidatePos = nextEncode;
 
             //create the first hash
-            ulong hash = hasher.Hash(newData.PeekBytes(BlockHash.BlockSize));
+            ulong hash = hasher.Hash(newData.PeekBytes(this.dictionary.blockSize));
 
             while (true)
             {
                 //if less than block size exit and then write as an ADD
-                if (newData.Length - nextEncode < BlockHash.BlockSize)
+                if (newData.Length - nextEncode < this.dictionary.blockSize)
                 {
                     break;
                 }
@@ -97,7 +103,7 @@ namespace VCDiff.Encoders
 
                     newData.Position = candidatePos;
                     //cannot use rolling hash since we skipped so many
-                    hash = hasher.Hash(newData.ReadBytes(BlockHash.BlockSize));
+                    hash = hasher.Hash(newData.ReadBytes(this.dictionary.blockSize));
                 }
                 else
                 {
@@ -110,7 +116,7 @@ namespace VCDiff.Encoders
                     //in order to properly calculate the rolling hash
                     newData.Position = candidatePos;
                     byte peek0 = newData.ReadByte();
-                    newData.Position = candidatePos + BlockHash.BlockSize;
+                    newData.Position = candidatePos + this.dictionary.blockSize;
                     byte peek1 = newData.ReadByte();
                     hash = hasher.UpdateHash(hash, peek0, peek1);
                     candidatePos++;

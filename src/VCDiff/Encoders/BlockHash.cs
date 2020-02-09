@@ -6,19 +6,9 @@ namespace VCDiff.Encoders
 {
     internal class BlockHash
     {
-        private static int kBlockSize = 16;
+        internal int blockSize = 16;
 
-        public static int BlockSize
-        {
-            get => kBlockSize;
-            set
-            {
-                if (value < 2) return;
-                kBlockSize = value;
-            }
-        }
-
-        private static int maxMatchesToCheck = (kBlockSize >= 32) ? 32 : (32 * (32 / kBlockSize));
+        private int maxMatchesToCheck;
         private const int maxProbes = 16;
         private long offset;
         private ulong hashTableMask;
@@ -36,9 +26,11 @@ namespace VCDiff.Encoders
         /// <param name="sin">the data to create the table for</param>
         /// <param name="offset">the offset usually 0</param>
         /// <param name="hasher">the hashing method</param>
-        public BlockHash(IByteBuffer sin, int offset, RollingHash hasher)
+        /// <param name="blockSize">The block size to use</param>
+        public BlockHash(IByteBuffer sin, int offset, RollingHash hasher, int blockSize = 16)
         {
-            maxMatchesToCheck = (kBlockSize >= 32) ? 32 : (32 * (32 / kBlockSize));
+            this.blockSize = blockSize;
+            this.maxMatchesToCheck = (this.blockSize >= 32) ? 32 : (32 * (32 / this.blockSize));
             this.hasher = hasher;
             this.source = sin;
             this.offset = offset;
@@ -105,7 +97,7 @@ namespace VCDiff.Encoders
             }
         }
 
-        public long NextIndexToAdd => (lastBlockAdded + 1) * kBlockSize;
+        public long NextIndexToAdd => (lastBlockAdded + 1) * blockSize;
 
         public void AddAllBlocksThroughIndex(long index)
         {
@@ -114,19 +106,19 @@ namespace VCDiff.Encoders
                 return;
             }
 
-            long lastAdded = lastBlockAdded * kBlockSize;
+            long lastAdded = lastBlockAdded * blockSize;
             if (index <= lastAdded)
             {
                 return;
             }
 
-            if (source.Length < kBlockSize)
+            if (source.Length < blockSize)
             {
                 return;
             }
 
             long endLimit = index;
-            long lastLegalHashIndex = (source.Length - kBlockSize);
+            long lastLegalHashIndex = (source.Length - blockSize);
 
             if (endLimit > lastLegalHashIndex)
             {
@@ -138,8 +130,8 @@ namespace VCDiff.Encoders
             source.Position = offset;
             while (offset < end)
             {
-                AddBlock(hasher.Hash(source.ReadBytes(kBlockSize)));
-                offset += kBlockSize;
+                AddBlock(hasher.Hash(source.ReadBytes(blockSize)));
+                offset += blockSize;
             }
         }
 
@@ -147,7 +139,7 @@ namespace VCDiff.Encoders
         {
             get
             {
-                return source.Length / kBlockSize;
+                return source.Length / blockSize;
             }
         }
 
@@ -181,13 +173,13 @@ namespace VCDiff.Encoders
                 blockNumber >= 0 && !TooManyMatches(ref matchCounter);
                 blockNumber = NextMatchingBlock(blockNumber, candidateStart, target))
             {
-                long sourceMatchOffset = blockNumber * kBlockSize;
-                long sourceStart = blockNumber * kBlockSize;
-                long sourceMatchEnd = sourceMatchOffset + kBlockSize;
+                long sourceMatchOffset = blockNumber * blockSize;
+                long sourceStart = blockNumber * blockSize;
+                long sourceMatchEnd = sourceMatchOffset + blockSize;
                 long targetMatchOffset = candidateStart - targetStart;
-                long targetMatchEnd = targetMatchOffset + kBlockSize;
+                long targetMatchEnd = targetMatchOffset + blockSize;
 
-                long matchSize = kBlockSize;
+                long matchSize = blockSize;
 
                 long limitBytesToLeft = Math.Min(sourceMatchOffset, targetMatchOffset);
                 long leftMatching = MatchingBytesToLeft(sourceMatchOffset, targetStart + targetMatchOffset, target, limitBytesToLeft);
@@ -250,7 +242,7 @@ namespace VCDiff.Encoders
         {
             //this sets up the positioning of the buffers
             //as well as testing the first byte
-            this.source.Position = block1 * kBlockSize;
+            this.source.Position = block1 * blockSize;
             if (!this.source.CanRead) return false;
             byte lb = this.source.ReadByte();
             target.Position = toffset;
@@ -263,8 +255,8 @@ namespace VCDiff.Encoders
         //this doesn't appear to be used anywhere even though it is included in googles code
         public bool BlockCompareWords(IByteBuffer target)
         {
-            var block1 = this.source.PeekBytes(kBlockSize).Span;
-            var block2 = target.PeekBytes(kBlockSize).Span;
+            var block1 = this.source.PeekBytes(blockSize).Span;
+            var block2 = target.PeekBytes(blockSize).Span;
 
             return block1.SequenceCompareTo(block2) == 0;
         }
