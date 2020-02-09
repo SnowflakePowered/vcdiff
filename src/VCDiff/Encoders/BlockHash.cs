@@ -353,7 +353,7 @@ namespace VCDiff.Encoders
             target.Position = tstart;
             int vectorSize = Vector<byte>.Count;
 
-            for (; bytesFound <= maxBytes - vectorSize; bytesFound += vectorSize)
+            for (; bytesFound <= maxBytes - vectorSize; bytesFound += vectorSize, tindex += vectorSize, sindex += vectorSize)
             {
                 var lb = source.ReadBytes(vectorSize).Span;
                 var rb = target.ReadBytes(vectorSize).Span;
