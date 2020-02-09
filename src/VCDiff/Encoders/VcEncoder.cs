@@ -8,7 +8,7 @@ namespace VCDiff.Encoders
     /// <summary>
     /// A simple VCDIFF Encoder class.
     /// </summary>
-    public class VcEncoder
+    public class VcEncoder : IDisposable
     {
         private readonly IByteBuffer oldData;
         private readonly IByteBuffer newData;
@@ -81,6 +81,16 @@ namespace VCDiff.Encoders
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Disposes the encoder.
+        /// </summary>
+        public void Dispose()
+        {
+            oldData.Dispose();
+            newData.Dispose();
+            outputStreamWriter.Dispose();
         }
     }
 }

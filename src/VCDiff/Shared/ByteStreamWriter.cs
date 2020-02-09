@@ -7,8 +7,6 @@ namespace VCDiff.Shared
     {
         private Stream buffer;
 
-        private bool isLittle;
-
         /// <summary>
         /// Wrapper class for writing to streams
         /// with a little bit easier functionality
@@ -19,27 +17,9 @@ namespace VCDiff.Shared
         public ByteStreamWriter(Stream s)
         {
             buffer = s;
-            isLittle = BitConverter.IsLittleEndian;
         }
 
-        public byte[] ToArray()
-        {
-            if (buffer.GetType().Equals(typeof(MemoryStream)))
-            {
-                MemoryStream buff = (MemoryStream)buffer;
-                return buff.ToArray();
-            }
-
-            return new byte[0];
-        }
-
-        public long Position
-        {
-            get
-            {
-                return buffer.Position;
-            }
-        }
+        public long Position => buffer.Position;
 
         public void Write(byte b)
         {
@@ -55,7 +35,6 @@ namespace VCDiff.Shared
         {
             buffer.Write(b);
         }
-
 
         public void Dispose()
         {

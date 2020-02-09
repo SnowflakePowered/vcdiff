@@ -67,7 +67,7 @@ namespace VCDiff.Decoders
                 //try to read in all interleaved bytes
                 //if not then it will buffer for next time
                 previous.Write(target.ReadBytes((int)interleaveLength).Span);
-                ByteBuffer incoming = new ByteBuffer(previous.ToArray());
+                using ByteBuffer incoming = new ByteBuffer(previous.ToArray());
                 previous.SetLength(0);
                 long initialLength = incoming.Length;
 
@@ -184,9 +184,9 @@ namespace VCDiff.Decoders
         /// <returns></returns>
         public VCDiffResult Decode()
         {
-            ByteBuffer instructionBuffer = new ByteBuffer(window.InstructionsAndSizesData);
-            ByteBuffer addressBuffer = new ByteBuffer(window.AddressesForCopyData);
-            ByteBuffer addRunBuffer = new ByteBuffer(window.AddRunData);
+            using ByteBuffer instructionBuffer = new ByteBuffer(window.InstructionsAndSizesData);
+            using ByteBuffer addressBuffer = new ByteBuffer(window.AddressesForCopyData);
+            using ByteBuffer addRunBuffer = new ByteBuffer(window.AddRunData);
 
             InstructionDecoder instrDecoder = new InstructionDecoder(instructionBuffer, customTable);
 

@@ -81,6 +81,11 @@
             <param name="bytesWritten">bytes decoded for all available windows</param>
             <returns></returns>
         </member>
+        <member name="M:VCDiff.Decoders.VcDecoder.Dispose">
+            <summary>
+            Disposes the decoder
+            </summary>
+        </member>
         <member name="M:VCDiff.Decoders.WindowDecoder.#ctor(System.Int64,VCDiff.Shared.IByteBuffer)">
             <summary>
             Parses the window from the data
@@ -220,6 +225,11 @@
             <param name="interleaved">Whether to output in SDCH interleaved diff format.</param>
             <param name="checksum">Whether to include Adler32 checksums for encoded data windows</param>
             <returns><see cref="F:VCDiff.Includes.VCDiffResult.SUCCESS"/> if successful, <see cref="F:VCDiff.Includes.VCDiffResult.ERROR"/> if the source or target are zero-length.</returns>
+        </member>
+        <member name="M:VCDiff.Encoders.VcEncoder.Dispose">
+            <summary>
+            Disposes the encoder.
+            </summary>
         </member>
         <member name="T:VCDiff.Includes.VCDiffResult">
             <summary>
