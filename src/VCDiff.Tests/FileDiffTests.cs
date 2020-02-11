@@ -284,8 +284,8 @@ namespace VCDiff.Tests
             using var targetStream = File.OpenRead("b.test");
             using var deltaStream = File.OpenRead("sample.xdelta");
             using var md5 = MD5.Create();
-            var originalHash = md5.ComputeHash(targetStream);
             targetStream.Position = 0;
+            var originalHash = md5.ComputeHash(targetStream);
 
             using var outputStream = new MemoryStream();
 
@@ -296,8 +296,8 @@ namespace VCDiff.Tests
 
             using VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
             Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
-            var outputHash = md5.ComputeHash(outputStream);
             outputStream.Position = 0;
+            var outputHash = md5.ComputeHash(outputStream);
             Assert.Equal(originalHash, outputHash);
         }
 
@@ -308,8 +308,8 @@ namespace VCDiff.Tests
             using var targetStream = File.OpenRead("b.test");
             using var deltaStream = File.OpenRead("sample_nosmallstr.xdelta");
             using var md5 = MD5.Create();
-            var originalHash = md5.ComputeHash(targetStream);
             targetStream.Position = 0;
+            var originalHash = md5.ComputeHash(targetStream);
 
             using var outputStream = new MemoryStream();
 
@@ -320,8 +320,8 @@ namespace VCDiff.Tests
 
             using VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
             Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
-            var outputHash = md5.ComputeHash(outputStream);
             outputStream.Position = 0;
+            var outputHash = md5.ComputeHash(outputStream);
             Assert.Equal(originalHash, outputHash);
         }
 

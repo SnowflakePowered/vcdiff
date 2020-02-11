@@ -273,7 +273,7 @@ namespace VCDiff.Decoders
             // Copy all data from source segment
             if (decodedAddress + size <= window.SourceSegmentLength)
             {
-                source.Position = decodedAddress;
+                source.Position = decodedAddress + window.SourceSegmentOffset;
                 var rbytes = source.ReadBytes(size).Span;
                 outputStream.Write(rbytes);
                 targetData.Write(rbytes);
@@ -286,7 +286,7 @@ namespace VCDiff.Decoders
             {
                 // ... plus some data from source segment
                 long partialCopySize = window.SourceSegmentLength - decodedAddress;
-                source.Position = decodedAddress;
+                source.Position = decodedAddress + +window.SourceSegmentOffset;
                 var rbytes = source.ReadBytes((int)partialCopySize).Span;
                 outputStream.Write(rbytes);
                 targetData.Write(rbytes);
@@ -296,23 +296,34 @@ namespace VCDiff.Decoders
             }
 
             decodedAddress -= window.SourceSegmentLength;
-            // address is now based at start of target window
-            while (size > (this.TotalBytesDecoded - decodedAddress))
+            bool overlap = decodedAddress + size >= this.TotalBytesDecoded;
+            if (overlap)
             {
-                // Recursive copy that extends into the yet-to-be-copied target data
-                long partialCopySize = this.TotalBytesDecoded - decodedAddress;
-                var rbytes = targetData.GetBuffer().AsSpan((int)decodedAddress, (int)partialCopySize);
-                outputStream.Write(rbytes);
-                targetData.Write(rbytes);
-                this.TotalBytesDecoded += partialCopySize;
-                decodedAddress += partialCopySize;
-                size -= (int)partialCopySize;
+                int availableData = (int)(this.TotalBytesDecoded - decodedAddress);
+                byte[] buffer = new byte[availableData];
+                var originalTotalBytes = this.TotalBytesDecoded;
+                for (int i = 0; i < size; i += availableData)
+                {
+                    int toCopy = (size - i < availableData) ? size - i : availableData;
+
+                    targetData.Position = decodedAddress + i;
+                    targetData.Read(buffer, 0, toCopy);
+
+                    targetData.Position = originalTotalBytes + i;
+                    outputStream.Write(buffer[..toCopy]);
+                    targetData.Write(buffer, 0, toCopy);
+                    this.TotalBytesDecoded += toCopy;
+                }
             }
-            var leftoverBytes = targetData.GetBuffer().AsSpan((int)decodedAddress, (int)size);
-            outputStream.Write(leftoverBytes);
-            targetData.Write(leftoverBytes);
-            this.TotalBytesDecoded += size;
+            else
+            {
+                var fbytes = targetData.GetBuffer().AsSpan((int)decodedAddress, (int)size);
+                outputStream.Write(fbytes);
+                targetData.Write(fbytes);
+                this.TotalBytesDecoded += size;
+            }
             return VCDiffResult.SUCCESS;
+
         }
 
         private VCDiffResult DecodeRun(int size, ByteBuffer addRun)
