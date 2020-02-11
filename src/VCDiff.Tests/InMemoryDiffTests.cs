@@ -4,6 +4,7 @@ using System.Text;
 using VCDiff.Decoders;
 using VCDiff.Encoders;
 using VCDiff.Includes;
+using VCDiff.Shared;
 using Xunit;
 
 namespace VCDiff.Tests
@@ -43,7 +44,7 @@ namespace VCDiff.Tests
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
-            VCDiffResult result = coder.Encode(checksum: true); //encodes with no checksum and not interleaved
+            VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.SDCH); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
             srcStream.Position = 0;

@@ -50,7 +50,7 @@ namespace VCDiff.Decoders
 
         public uint Checksum => checksum;
 
-        public bool HasChecksum { get; private set; }
+        public ChecksumFormat ChecksumFormat { get; private set; }
 
         public int Result => returnCode;
 
@@ -68,49 +68,39 @@ namespace VCDiff.Decoders
         }
 
         /// <summary>
-        /// Decodes the window header - Parses it basically
+        /// Decodes the window header.
         /// </summary>
-        /// <param name="googleVersion">if true will check for checksum and if interleaved</param>
+        /// <param name="isSdch">If the delta uses SDCH extensions.</param>
         /// <returns></returns>
-        public bool Decode(bool googleVersion)
+        public bool Decode(bool isSdch)
         {
-            bool success = false;
-
-            success = ParseWindowIndicatorAndSegment(dictionarySize, 0, false, out winIndicator, out sourceLength, out sourcePosition);
-
-            if (!success)
+            if (!ParseWindowIndicatorAndSegment(dictionarySize, 0, false, out winIndicator, out sourceLength, out sourcePosition))
             {
                 return false;
             }
 
-            success = ParseWindowLengths(out targetLength);
-
-            if (!success)
+            if (!ParseWindowLengths(out targetLength))
             {
                 return false;
             }
 
-            success = ParseDeltaIndicator();
-
-            if (!success)
+            if (!ParseDeltaIndicator())
             {
                 return false;
             }
 
-            HasChecksum = false;
-            if ((winIndicator & (int)VCDiffWindowFlags.VCDCHECKSUM) != 0 && googleVersion)
+            this.ChecksumFormat = ChecksumFormat.None;
+            if ((winIndicator & (int)VCDiffWindowFlags.VCDCHECKSUM) != 0)
             {
-                HasChecksum = true;
+                this.ChecksumFormat = isSdch ? ChecksumFormat.SDCH : ChecksumFormat.Xdelta3;
             }
 
-            success = ParseSectionLengths(HasChecksum, out addRunLength, out instructionAndSizesLength, out addressForCopyLength, out checksum);
-
-            if (!success)
+            if (!ParseSectionLengths(this.ChecksumFormat, out addRunLength, out instructionAndSizesLength, out addressForCopyLength, out checksum))
             {
                 return false;
             }
 
-            if (googleVersion && addRunLength == 0 && addressForCopyLength == 0 && instructionAndSizesLength > 0)
+            if (isSdch && addRunLength == 0 && addressForCopyLength == 0 && instructionAndSizesLength > 0)
             {
                 //interleave format
                 return true;
@@ -334,14 +324,14 @@ namespace VCDiff.Decoders
             return true;
         }
 
-        public bool ParseSectionLengths(bool hasChecksum, out long addRunLength, out long instructionsLength, out long addressLength, out uint checksum)
+        public bool ParseSectionLengths(ChecksumFormat checksumFormat, out long addRunLength, out long instructionsLength, out long addressLength, out uint checksum)
         {
             ParseInt32(out int outAdd);
             ParseInt32(out int outInstruct);
             ParseInt32(out int outAddress);
             checksum = 0;
 
-            if (hasChecksum)
+            if (checksumFormat != ChecksumFormat.None)
             {
                 ParseUInt32(out checksum);
             }

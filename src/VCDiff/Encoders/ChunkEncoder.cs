@@ -13,7 +13,7 @@ namespace VCDiff.Encoders
         private WindowEncoder? windowEncoder;
         private RollingHash hasher;
         private bool interleaved;
-        private bool hasChecksum;
+        private ChecksumFormat checksumFormat;
 
         /// <summary>
         /// Performs the actual encoding of a chunk of data into the VCDiff format
@@ -22,21 +22,17 @@ namespace VCDiff.Encoders
         /// <param name="oldData">The data for the dictionary hash table</param>
         /// <param name="hash">The rolling hash object</param>
         /// <param name="interleaved">Whether to interleave the data or not</param>
-        /// <param name="checksum">Whether to include checksums for each window</param>
+        /// <param name="checksumFormat">The format of the checksums for each window.</param>
         /// <param name="minBlockSize">The minimum block size to use. Defaults to 32, and must be a power of 2.
         ///     This value must also be smaller than the block size of the dictionary.</param>
         public ChunkEncoder(BlockHash dictionary, IByteBuffer oldData, 
-            RollingHash hash, bool interleaved = false, bool checksum = false, int minBlockSize = 32)
+            RollingHash hash, ChecksumFormat checksumFormat, bool interleaved = false, int minBlockSize = 32)
         {
-            this.hasChecksum = checksum;
+            this.checksumFormat = checksumFormat;
             this.hasher = hash;
             this.oldData = oldData;
             this.dictionary = dictionary;
             this.MinBlockSize = minBlockSize;
-            if (this.MinBlockSize < 2 || this.MinBlockSize < this.dictionary.blockSize)
-            {
-                throw new ArgumentException($"{MinBlockSize} can not be less than 2 or the blocksize of the dictionary {this.dictionary.blockSize}.");
-            }
             this.interleaved = interleaved;
         }
 
@@ -47,18 +43,18 @@ namespace VCDiff.Encoders
         /// <param name="sout">the out stream</param>
         public void EncodeChunk(IByteBuffer newData, ByteStreamWriter sout)
         {
-            uint checksum = 0;
+            newData.Position = 0;
+            ReadOnlyMemory<byte> checksumBytes = newData.ReadBytes((int)newData.Length);
 
-            // If checksum needed
-            // Generate Adler32 checksum for the incoming bytes
-            if (hasChecksum)
+            uint checksum = this.checksumFormat switch
             {
-                newData.Position = 0;
-                ReadOnlyMemory<byte> bytes = newData.ReadBytes((int)newData.Length);
-                checksum = Checksum.ComputeAdler32(bytes);
-            }
+                ChecksumFormat.SDCH => Checksum.ComputeGoogleAdler32(checksumBytes),
+                ChecksumFormat.Xdelta3 => Checksum.ComputeXdelta3Adler32(checksumBytes),
+                ChecksumFormat.None => 0,
+                _ => 0
+            };
 
-            windowEncoder = new WindowEncoder(oldData.Length, checksum, interleaved, hasChecksum);
+            windowEncoder = new WindowEncoder(oldData.Length, checksum, this.checksumFormat, this.interleaved);
 
             oldData.Position = 0;
             newData.Position = 0;

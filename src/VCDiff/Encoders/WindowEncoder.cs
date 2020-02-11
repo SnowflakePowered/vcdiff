@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using VCDiff.Includes;
 using VCDiff.Shared;
@@ -20,7 +18,7 @@ namespace VCDiff.Encoders
         private MemoryStream dataForAddAndRun;
         private MemoryStream addressForCopy;
 
-        public bool HasChecksum { get; }
+        public ChecksumFormat ChecksumFormat { get; }
 
         public bool IsInterleaved { get; }
 
@@ -29,11 +27,11 @@ namespace VCDiff.Encoders
         //This is a window encoder for the VCDIFF format
         //if you are not including a checksum simply pass 0 to checksum
         //it will be ignored
-        public WindowEncoder(long dictionarySize, uint checksum, bool interleaved = false, bool hasChecksum = false)
+        public WindowEncoder(long dictionarySize, uint checksum, ChecksumFormat checksumFormat, bool interleaved)
         {
-            Checksum = checksum;
-            HasChecksum = hasChecksum;
-            IsInterleaved = interleaved;
+            this.Checksum = checksum;
+            this.ChecksumFormat = checksumFormat;
+            this.IsInterleaved = interleaved;
             this.dictionarySize = dictionarySize;
 
             // The encoder currently doesn't support encoding with a custom table
@@ -140,33 +138,39 @@ namespace VCDiff.Encoders
 
         private int CalculateLengthOfTheDeltaEncoding()
         {
-            if (!IsInterleaved)
+            if (IsInterleaved)
             {
-                int lengthOfDelta = VarIntBE.CalcInt32Length((int)targetLength) +
-                1 +
-                VarIntBE.CalcInt32Length((int)dataForAddAndRun.Length) +
-                VarIntBE.CalcInt32Length((int)instructionAndSizes.Length) +
-                VarIntBE.CalcInt32Length((int)addressForCopy.Length) +
-                (int)dataForAddAndRun.Length +
-                (int)instructionAndSizes.Length +
-                (int)addressForCopy.Length
-                + (this.HasChecksum ? VarIntBE.CalcInt64Length(this.Checksum) : 0);
-
-                return lengthOfDelta;
-            }
-            else
-            {
-                int lengthOfDelta = VarIntBE.CalcInt32Length((int)targetLength) +
+                return VarIntBE.CalcInt32Length((int)targetLength) +
                 1 +
                 VarIntBE.CalcInt32Length(0) +
                 VarIntBE.CalcInt32Length((int)instructionAndSizes.Length) +
                 VarIntBE.CalcInt32Length(0) +
                 0 +
                 (int)instructionAndSizes.Length
-                + (this.HasChecksum ? VarIntBE.CalcInt64Length(Checksum) : 0);
-
-                return lengthOfDelta;
+                // interleaved implies SDCH checksum if any.
+                + (this.ChecksumFormat == ChecksumFormat.SDCH ? VarIntBE.CalcInt64Length(Checksum) : 0);
             }
+
+            int lengthOfDelta = VarIntBE.CalcInt32Length((int)targetLength) +
+            1 +
+            VarIntBE.CalcInt32Length((int)dataForAddAndRun.Length) +
+            VarIntBE.CalcInt32Length((int)instructionAndSizes.Length) +
+            VarIntBE.CalcInt32Length((int)addressForCopy.Length) +
+            (int)dataForAddAndRun.Length +
+            (int)instructionAndSizes.Length +
+            (int)addressForCopy.Length;
+
+            if (this.ChecksumFormat == ChecksumFormat.SDCH)
+            {
+                lengthOfDelta += VarIntBE.CalcInt64Length(Checksum);
+            }
+            else if (this.ChecksumFormat == ChecksumFormat.Xdelta3)
+            {
+                lengthOfDelta += 4;
+            }
+
+            return lengthOfDelta;
+
         }
 
         public void Output(ByteStreamWriter sout)
@@ -179,7 +183,7 @@ namespace VCDiff.Encoders
             VarIntBE.CalcInt32Length(lengthOfDelta);
 
             //Google's Checksum Implementation Support
-            if (HasChecksum)
+            if (this.ChecksumFormat != ChecksumFormat.None)
             {
                 sout.Write((byte)VCDiffWindowFlags.VCDSOURCE | (byte)VCDiffWindowFlags.VCDCHECKSUM); //win indicator
             }
@@ -208,9 +212,16 @@ namespace VCDiff.Encoders
                 VarIntBE.AppendInt32((int)addressForCopy.Length, sout); //length of addresses for copys
 
                 //Google Checksum Support
-                if (HasChecksum)
+                if (this.ChecksumFormat == ChecksumFormat.SDCH)
                 {
-                    VarIntBE.AppendInt64(Checksum, sout);
+                    VarIntBE.AppendInt64(this.Checksum, sout);
+                } 
+                // Xdelta checksu support.
+                else if (this.ChecksumFormat == ChecksumFormat.Xdelta3)
+                {
+                    Span<byte> checksum = stackalloc [] {
+                        (byte)(this.Checksum >> 24), (byte)(this.Checksum >> 16), (byte)(this.Checksum >> 8), (byte)(this.Checksum & 0x000000FF) };
+                    sout.Write(checksum);
                 }
 
                 sout.Write(dataForAddAndRun.GetBuffer().AsSpan(0, (int)dataForAddAndRun.Length)); //data section for adds and runs
@@ -225,7 +236,7 @@ namespace VCDiff.Encoders
                 VarIntBE.AppendInt32(0, sout); //length of addresses for copys
 
                 //Google Checksum Support
-                if (HasChecksum)
+                if (this.ChecksumFormat == ChecksumFormat.SDCH)
                 {
                     VarIntBE.AppendInt64(Checksum, sout);
                 }

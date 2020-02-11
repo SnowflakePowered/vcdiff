@@ -37,7 +37,7 @@ namespace VCDiff.Decoders
             this.delta = new ByteStreamReader(delta);
             this.source = new ByteStreamReader(source);
             this.outputStream = new ByteStreamWriter(outputStream);
-            IsInitialized = false;
+            this.IsInitialized = false;
         }
 
         internal VcDecoder(IByteBuffer dict, IByteBuffer delta, Stream sout)
@@ -118,9 +118,9 @@ namespace VCDiff.Decoders
                 }
             }
 
-            IsSDCHFormat = version == 'S';
+            this.IsSDCHFormat = version == 'S';
 
-            IsInitialized = true;
+            this.IsInitialized = true;
 
             return VCDiffResult.SUCCESS;
         }
@@ -154,10 +154,10 @@ namespace VCDiff.Decoders
                 //delta is streamed in order aka not random access
                 WindowDecoder w = new WindowDecoder(source.Length, delta);
 
-                if (w.Decode(IsSDCHFormat))
+                if (w.Decode(this.IsSDCHFormat))
                 {
                     using BodyDecoder body = new BodyDecoder(w, source, delta, outputStream);
-                    if (IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
+                    if (this.IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
                     {
                         //interleaved
                         //decodedinterleave actually has an internal loop for waiting and streaming the incoming rest of the interleaved window
@@ -172,7 +172,7 @@ namespace VCDiff.Decoders
                     }
                     //technically add could be 0 if it is all copy instructions
                     //so do an or check on those two
-                    else if (IsSDCHFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) && w.InstructionAndSizesLength > 0)
+                    else if (this.IsSDCHFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) && w.InstructionAndSizesLength > 0)
                     {
                         //not interleaved
                         //expects the full window to be available

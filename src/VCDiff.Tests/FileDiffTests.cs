@@ -5,6 +5,7 @@ using System.Text;
 using VCDiff.Decoders;
 using VCDiff.Encoders;
 using VCDiff.Includes;
+using VCDiff.Shared;
 using Xunit;
 
 namespace VCDiff.Tests
@@ -43,7 +44,7 @@ namespace VCDiff.Tests
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
-            VCDiffResult result = coder.Encode(checksum: false); 
+            VCDiffResult result = coder.Encode(); 
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
             srcStream.Position = 0;
@@ -69,7 +70,7 @@ namespace VCDiff.Tests
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
-            VCDiffResult result = coder.Encode(checksum: false);
+            VCDiffResult result = coder.Encode();
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
             srcStream.Position = 0;
@@ -95,7 +96,7 @@ namespace VCDiff.Tests
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
-            VCDiffResult result = coder.Encode(checksum: false);
+            VCDiffResult result = coder.Encode();
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
             srcStream.Position = 0;
@@ -121,7 +122,7 @@ namespace VCDiff.Tests
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
-            VCDiffResult result = coder.Encode(checksum: false);
+            VCDiffResult result = coder.Encode();
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
             srcStream.Position = 0;
@@ -147,7 +148,7 @@ namespace VCDiff.Tests
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
-            VCDiffResult result = coder.Encode(checksum: false);
+            VCDiffResult result = coder.Encode();
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
             srcStream.Position = 0;
@@ -173,7 +174,7 @@ namespace VCDiff.Tests
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
-            VCDiffResult result = coder.Encode(checksum: true);
+            VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.SDCH);
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
             srcStream.Position = 0;
@@ -197,12 +198,13 @@ namespace VCDiff.Tests
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
-            VCDiffResult result = coder.Encode(checksum: true); //encodes with no checksum and not interleaved
+            VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.SDCH); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
             srcStream.Position = 0;
             targetStream.Position = 0;
             deltaStream.Position = 0;
+            File.WriteAllBytes("patch1.wch", deltaStream.ToArray());
 
             using VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
             Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
@@ -220,7 +222,7 @@ namespace VCDiff.Tests
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
-            VCDiffResult result = coder.Encode(checksum: true); //encodes with no checksum and not interleaved
+            VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.SDCH); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
             srcStream.Position = 0;
@@ -232,7 +234,6 @@ namespace VCDiff.Tests
             outputStream.Position = 0;
             var outputHash = md5.ComputeHash(outputStream);
             Assert.Equal(originalHash, outputHash);
-            File.WriteAllBytes("patch1.new", deltaStream.ToArray());
         }
 
 
@@ -248,7 +249,7 @@ namespace VCDiff.Tests
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
-            VCDiffResult result = coder.Encode(checksum: false); //encodes with no checksum and not interleaved
+            VCDiffResult result = coder.Encode(); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
             srcStream.Position = 0;
@@ -260,6 +261,7 @@ namespace VCDiff.Tests
             outputStream.Position = 0;
             var outputHash = md5.ComputeHash(outputStream);
             Assert.Equal(originalHash, outputHash);
+            File.WriteAllBytes("patch1.nch", deltaStream.ToArray());
         }
 
         [Fact]
@@ -274,7 +276,7 @@ namespace VCDiff.Tests
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: 8);
-            VCDiffResult result = coder.Encode(checksum: true); //encodes with no checksum and not interleaved
+            VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.SDCH); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
             srcStream.Position = 0;
@@ -300,7 +302,7 @@ namespace VCDiff.Tests
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: 32);
-            VCDiffResult result = coder.Encode(checksum: true); //encodes with no checksum and not interleaved
+            VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.SDCH); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
             srcStream.Position = 0;

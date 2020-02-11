@@ -95,9 +95,9 @@
         </member>
         <member name="M:VCDiff.Decoders.WindowDecoder.Decode(System.Boolean)">
             <summary>
-            Decodes the window header - Parses it basically
+            Decodes the window header.
             </summary>
-            <param name="googleVersion">if true will check for checksum and if interleaved</param>
+            <param name="isSdch">If the delta uses SDCH extensions.</param>
             <returns></returns>
         </member>
         <member name="M:VCDiff.Encoders.BlockHash.#ctor(VCDiff.Shared.IByteBuffer,System.Int32,VCDiff.Encoders.RollingHash,System.Int32)">
@@ -120,7 +120,7 @@
             <param name="target">the target buffer</param>
             <param name="m">the match object to use</param>
         </member>
-        <member name="M:VCDiff.Encoders.ChunkEncoder.#ctor(VCDiff.Encoders.BlockHash,VCDiff.Shared.IByteBuffer,VCDiff.Encoders.RollingHash,System.Boolean,System.Boolean,System.Int32)">
+        <member name="M:VCDiff.Encoders.ChunkEncoder.#ctor(VCDiff.Encoders.BlockHash,VCDiff.Shared.IByteBuffer,VCDiff.Encoders.RollingHash,VCDiff.Shared.ChecksumFormat,System.Boolean,System.Int32)">
             <summary>
             Performs the actual encoding of a chunk of data into the VCDiff format
             </summary>
@@ -128,7 +128,7 @@
             <param name="oldData">The data for the dictionary hash table</param>
             <param name="hash">The rolling hash object</param>
             <param name="interleaved">Whether to interleave the data or not</param>
-            <param name="checksum">Whether to include checksums for each window</param>
+            <param name="checksumFormat">The format of the checksums for each window.</param>
             <param name="minBlockSize">The minimum block size to use. Defaults to 32, and must be a power of 2.
                 This value must also be smaller than the block size of the dictionary.</param>
         </member>
@@ -220,16 +220,27 @@
             <param name="target">The target to create the diff from.</param>
             <param name="outputStream">The stream to write the diff into.</param>
             <param name="maxBufferSize">The maximum buffer size for window chunking in megabytes (MiB).</param>
-            <param name="blockSize">The block size to use.</param>
-            <param name="chunkSize">The chunk size to use. Defaults to twice the block size.</param>
+            <param name="blockSize">
+            The block size to use. Must be a power of two. No match smaller than this block size will be identified.
+            Increasing blockSize by a factor of two will halve the amount of memory needed for the next block table, and will halve the setup time
+            for a new BlockHash.  However, it also doubles the minimum match length that is guaranteed to be found. 
+            </param>
+            <param name="chunkSize">
+            The minimum size of a string match that is worth putting into a COPY. This must be bigger than twice the block size.</param>
+            <exception cref="T:System.ArgumentException">If an invalid blockSize or chunkSize is used..</exception>
         </member>
-        <member name="M:VCDiff.Encoders.VcEncoder.Encode(System.Boolean,System.Boolean)">
+        <member name="M:VCDiff.Encoders.VcEncoder.Encode(System.Boolean,VCDiff.Shared.ChecksumFormat)">
             <summary>
-            Calculates the diff for the file.
+            Calculate and write a diff for the file.
             </summary>
             <param name="interleaved">Whether to output in SDCH interleaved diff format.</param>
-            <param name="checksum">Whether to include Adler32 checksums for encoded data windows</param>
-            <returns><see cref="F:VCDiff.Includes.VCDiffResult.SUCCESS"/> if successful, <see cref="F:VCDiff.Includes.VCDiffResult.ERROR"/> if the source or target are zero-length.</returns>
+            <param name="checksumFormat">
+            Whether to include Adler32 checksums for encoded data windows. If interleaved is true, <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/>
+            is not supported.
+            </param>
+            <returns>
+            <see cref="F:VCDiff.Includes.VCDiffResult.SUCCESS"/> if successful, <see cref="F:VCDiff.Includes.VCDiffResult.ERROR"/> if the source or target are zero-length.</returns>
+            <exception cref="T:System.ArgumentException">If interleaved is true, and <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/> is chosen.</exception>
         </member>
         <member name="M:VCDiff.Encoders.VcEncoder.Dispose">
             <summary>
@@ -281,6 +292,26 @@
             to encode into BE properly
             </summary>
             <param name="s"></param>
+        </member>
+        <member name="T:VCDiff.Shared.ChecksumFormat">
+            <summary>
+            Which checksum format to output.
+            </summary>
+        </member>
+        <member name="F:VCDiff.Shared.ChecksumFormat.None">
+            <summary>
+            Do not emit a checksum.
+            </summary>
+        </member>
+        <member name="F:VCDiff.Shared.ChecksumFormat.SDCH">
+            <summary>
+            Emit a Google compatible SDCH checksum.
+            </summary>
+        </member>
+        <member name="F:VCDiff.Shared.ChecksumFormat.Xdelta3">
+            <summary>
+            Emit an Xdelta3 checksum.
+            </summary>
         </member>
         <member name="F:VCDiff.Shared.CodeTable.kNoOpcode">
             <summary>

@@ -164,9 +164,9 @@ namespace VCDiff.Decoders
                 }
             }
 
-            if (window.HasChecksum)
+            if (window.ChecksumFormat == ChecksumFormat.SDCH)
             {
-                uint adler = Checksum.ComputeAdler32(targetData.ToArray());
+                uint adler = Checksum.ComputeGoogleAdler32(targetData.GetBuffer().AsMemory(0, (int)targetData.Length));
 
                 if (adler != window.Checksum)
                 {
@@ -227,9 +227,9 @@ namespace VCDiff.Decoders
                 }
             }
 
-            if (window.HasChecksum)
+            if (window.ChecksumFormat == ChecksumFormat.SDCH)
             {
-                uint adler = Checksum.ComputeAdler32(targetData.ToArray());
+                uint adler = Checksum.ComputeGoogleAdler32(targetData.GetBuffer().AsMemory(0, (int)targetData.Length));
 
                 if (adler != window.Checksum)
                 {
