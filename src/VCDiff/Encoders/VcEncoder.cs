@@ -12,7 +12,7 @@ namespace VCDiff.Encoders
     {
         private readonly IByteBuffer oldData;
         private readonly IByteBuffer newData;
-        private readonly ByteStreamWriter outputStreamWriter;
+        private readonly Stream outputStream;
         private readonly RollingHash hasher;
         private readonly int bufferSize;
 
@@ -43,7 +43,7 @@ namespace VCDiff.Encoders
             this.chunkSize = chunkSize < 2 ? this.blockSize * 2 : chunkSize;
             this.oldData = new ByteBuffer(source);
             this.newData = new ByteStreamReader(target);
-            this.outputStreamWriter = new ByteStreamWriter(outputStream);
+            this.outputStream = outputStream;
             this.hasher = new RollingHash(this.blockSize);
             this.bufferSize = maxBufferSize * 1024 * 1024;
 
@@ -87,11 +87,11 @@ namespace VCDiff.Encoders
             // write magic bytes
             if (!interleaved && checksumFormat != ChecksumFormat.SDCH)
             {
-                outputStreamWriter.Write(MagicBytes);
+                outputStream.Write(MagicBytes);
             }
             else
             {
-                outputStreamWriter.Write(MagicBytesExtended);
+                outputStream.Write(MagicBytesExtended);
             }
 
             //read in all the dictionary it is the only thing that needs to be
@@ -104,7 +104,7 @@ namespace VCDiff.Encoders
             while (newData.CanRead)
             {
                 using ByteBuffer ntarget = new ByteBuffer(newData.ReadBytes(bufferSize));
-                chunker.EncodeChunk(ntarget, outputStreamWriter);
+                chunker.EncodeChunk(ntarget, outputStream);
             }
 
             return result;
@@ -117,7 +117,6 @@ namespace VCDiff.Encoders
         {
             oldData.Dispose();
             newData.Dispose();
-            outputStreamWriter.Dispose();
         }
     }
 }

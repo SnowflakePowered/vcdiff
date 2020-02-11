@@ -101,26 +101,26 @@ namespace VCDiff.Shared
             return length;
         }
 
-        public static int AppendInt32(int v, ByteStreamWriter sout)
+        public static int AppendInt32(int v, Stream sout)
         {
             Span<byte> varint = stackalloc byte[int32Max];
             int length = EncodeInt32(v, varint);
             int start = int32Max - length;
             for (int i = start; i < int32Max; i++)
             {
-                sout.Write(varint[i]);
+                sout.WriteByte(varint[i]);
             }
             return length;
         }
 
-        public static int AppendInt64(long v, ByteStreamWriter sout)
+        public static int AppendInt64(long v, Stream sout)
         {
             Span<byte> varint = stackalloc byte[int64Max];
             int length = EncodeInt64(v, varint);
             int start = int64Max - length;
             for (int i = start; i < int64Max; i++)
             {
-                sout.Write(varint[i]);
+                sout.WriteByte(varint[i]);
             }
             return length;
         }

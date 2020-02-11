@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using VCDiff.Shared;
 
 namespace VCDiff.Encoders
@@ -40,8 +41,8 @@ namespace VCDiff.Encoders
         /// Encodes the data using the settings from initialization
         /// </summary>
         /// <param name="newData">the target data</param>
-        /// <param name="sout">the out stream</param>
-        public void EncodeChunk(IByteBuffer newData, ByteStreamWriter sout)
+        /// <param name="outputStream">the out stream</param>
+        public void EncodeChunk(IByteBuffer newData, Stream outputStream)
         {
             newData.Position = 0;
             ReadOnlyMemory<byte> checksumBytes = newData.ReadBytes((int)newData.Length);
@@ -120,7 +121,7 @@ namespace VCDiff.Encoders
             }
 
             //output the final window
-            windowEncoder.Output(sout);
+            windowEncoder.Output(outputStream);
         }
 
         //currently does not support looking in target

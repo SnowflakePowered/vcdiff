@@ -132,12 +132,12 @@
             <param name="minBlockSize">The minimum block size to use. Defaults to 32, and must be a power of 2.
                 This value must also be smaller than the block size of the dictionary.</param>
         </member>
-        <member name="M:VCDiff.Encoders.ChunkEncoder.EncodeChunk(VCDiff.Shared.IByteBuffer,VCDiff.Shared.ByteStreamWriter)">
+        <member name="M:VCDiff.Encoders.ChunkEncoder.EncodeChunk(VCDiff.Shared.IByteBuffer,System.IO.Stream)">
             <summary>
             Encodes the data using the settings from initialization
             </summary>
             <param name="newData">the target data</param>
-            <param name="sout">the out stream</param>
+            <param name="outputStream">the out stream</param>
         </member>
         <member name="M:VCDiff.Encoders.InstructionMap.#ctor">
             <summary>
@@ -283,15 +283,6 @@
             for easier reading and parsing
             </summary>
             <param name="bytes"></param>
-        </member>
-        <member name="M:VCDiff.Shared.ByteStreamWriter.#ctor(System.IO.Stream)">
-            <summary>
-            Wrapper class for writing to streams
-            with a little bit easier functionality
-            also detects whether it is little endian
-            to encode into BE properly
-            </summary>
-            <param name="s"></param>
         </member>
         <member name="T:VCDiff.Shared.ChecksumFormat">
             <summary>

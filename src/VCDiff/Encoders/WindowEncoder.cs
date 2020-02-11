@@ -173,7 +173,7 @@ namespace VCDiff.Encoders
 
         }
 
-        public void Output(ByteStreamWriter sout)
+        public void Output(Stream sout)
         {
             int lengthOfDelta = CalculateLengthOfTheDeltaEncoding();
             int windowSize = lengthOfDelta +
@@ -185,11 +185,11 @@ namespace VCDiff.Encoders
             //Google's Checksum Implementation Support
             if (this.ChecksumFormat != ChecksumFormat.None)
             {
-                sout.Write((byte)VCDiffWindowFlags.VCDSOURCE | (byte)VCDiffWindowFlags.VCDCHECKSUM); //win indicator
+                sout.WriteByte((byte)VCDiffWindowFlags.VCDSOURCE | (byte)VCDiffWindowFlags.VCDCHECKSUM); //win indicator
             }
             else
             {
-                sout.Write((byte)VCDiffWindowFlags.VCDSOURCE); //win indicator
+                sout.WriteByte((byte)VCDiffWindowFlags.VCDSOURCE); //win indicator
             }
             VarIntBE.AppendInt32((int)dictionarySize, sout); //dictionary size
             VarIntBE.AppendInt32(0, sout); //dictionary start position 0 is default aka encompass the whole dictionary
@@ -199,7 +199,7 @@ namespace VCDiff.Encoders
             //begin of delta encoding
             long sizeBeforeDelta = sout.Position;
             VarIntBE.AppendInt32((int)targetLength, sout); //final target length after decoding
-            sout.Write(0x00); // uncompressed
+            sout.WriteByte(0x00); // uncompressed
 
             // [Here is where a secondary compressor would be used
             //  if the encoder and decoder supported that feature.]

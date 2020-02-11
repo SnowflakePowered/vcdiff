@@ -236,7 +236,7 @@ namespace VCDiff.Tests
         }
 
         [Fact]
-        public void NoInterleavedXdelta3_Test()
+        public void InterleaveFailXdelta3_Test()
         {
             using var srcStream = File.OpenRead("a.test");
             using var targetStream = File.OpenRead("b.test");
