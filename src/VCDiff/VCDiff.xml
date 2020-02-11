@@ -4,7 +4,7 @@
         <name>VCDiff</name>
     </assembly>
     <members>
-        <member name="M:VCDiff.Decoders.BodyDecoder.#ctor(VCDiff.Decoders.WindowDecoder,VCDiff.Shared.IByteBuffer,VCDiff.Shared.IByteBuffer,VCDiff.Shared.ByteStreamWriter,VCDiff.Decoders.CustomCodeTableDecoder)">
+        <member name="M:VCDiff.Decoders.BodyDecoder.#ctor(VCDiff.Decoders.WindowDecoder,VCDiff.Shared.IByteBuffer,VCDiff.Shared.IByteBuffer,System.IO.Stream,VCDiff.Decoders.CustomCodeTableDecoder)">
             <summary>
             The main decoder loop for the data
             </summary>

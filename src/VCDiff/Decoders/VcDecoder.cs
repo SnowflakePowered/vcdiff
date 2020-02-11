@@ -10,7 +10,7 @@ namespace VCDiff.Decoders
     /// </summary>
     public class VcDecoder : IDisposable
     {
-        private readonly ByteStreamWriter outputStream;
+        private readonly Stream outputStream;
         private readonly IByteBuffer delta;
         private readonly IByteBuffer source;
         private CustomCodeTableDecoder? customTable;
@@ -36,16 +36,16 @@ namespace VCDiff.Decoders
         {
             this.delta = new ByteStreamReader(delta);
             this.source = new ByteStreamReader(source);
-            this.outputStream = new ByteStreamWriter(outputStream);
+            this.outputStream = outputStream;
             this.IsInitialized = false;
         }
 
-        internal VcDecoder(IByteBuffer dict, IByteBuffer delta, Stream sout)
+        internal VcDecoder(IByteBuffer dict, IByteBuffer delta, Stream outputStream)
         {
             this.delta = delta;
-            source = dict;
-            outputStream = new ByteStreamWriter(sout);
-            IsInitialized = false;
+            this.source = dict;
+            this.outputStream = outputStream;
+            this.IsInitialized = false;
         }
 
         /// <summary>

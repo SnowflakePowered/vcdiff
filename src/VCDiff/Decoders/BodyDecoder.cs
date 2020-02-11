@@ -8,7 +8,7 @@ namespace VCDiff.Decoders
     internal class BodyDecoder : IDisposable
     {
         private WindowDecoder window;
-        private ByteStreamWriter outputStream;
+        private Stream outputStream;
         private IByteBuffer source;
         private IByteBuffer delta;
         private AddressCache addressCache;
@@ -26,7 +26,7 @@ namespace VCDiff.Decoders
         /// <param name="delta">The delta</param>
         /// <param name="decodedTarget">the out stream</param>
         /// <param name="customTable">custom table if any. Default is null.</param>
-        public BodyDecoder(WindowDecoder w, IByteBuffer source, IByteBuffer delta, ByteStreamWriter decodedTarget, CustomCodeTableDecoder? customTable = null)
+        public BodyDecoder(WindowDecoder w, IByteBuffer source, IByteBuffer delta, Stream decodedTarget, CustomCodeTableDecoder? customTable = null)
         {
             if (customTable != null)
             {
@@ -174,6 +174,8 @@ namespace VCDiff.Decoders
                 }
             }
 
+            targetData.Seek(0, SeekOrigin.Begin);
+            targetData.CopyTo(outputStream);
             targetData.SetLength(0);
             return result;
         }
@@ -246,6 +248,8 @@ namespace VCDiff.Decoders
                 }
             }
 
+            targetData.Seek(0, SeekOrigin.Begin);
+            targetData.CopyTo(outputStream);
             targetData.SetLength(0);
             return result;
         }
@@ -275,7 +279,7 @@ namespace VCDiff.Decoders
             {
                 source.Position = decodedAddress + window.SourceSegmentOffset;
                 var rbytes = source.ReadBytes(size).Span;
-                outputStream.Write(rbytes);
+                //outputStream.Write(rbytes);
                 targetData.Write(rbytes);
                 this.TotalBytesDecoded += size;
                 return VCDiffResult.SUCCESS;
@@ -288,7 +292,7 @@ namespace VCDiff.Decoders
                 long partialCopySize = window.SourceSegmentLength - decodedAddress;
                 source.Position = decodedAddress + +window.SourceSegmentOffset;
                 var rbytes = source.ReadBytes((int)partialCopySize).Span;
-                outputStream.Write(rbytes);
+                //outputStream.Write(rbytes);
                 targetData.Write(rbytes);
                 this.TotalBytesDecoded += partialCopySize;
                 decodedAddress += partialCopySize;
@@ -305,7 +309,7 @@ namespace VCDiff.Decoders
                 {
                     int toCopy = (size - i < availableData) ? size - i : availableData;
                     var tbytesBuf = tbytes.AsSpan((int)decodedAddress + i, toCopy);
-                    outputStream.Write(tbytesBuf);
+                    //outputStream.Write(tbytesBuf);
                     targetData.Write(tbytesBuf);
                     this.TotalBytesDecoded += toCopy;
                 }
@@ -313,7 +317,7 @@ namespace VCDiff.Decoders
             else
             {
                 var fbytes = targetData.GetBuffer().AsSpan((int)decodedAddress, size);
-                outputStream.Write(fbytes);
+                //outputStream.Write(fbytes);
                 targetData.Write(fbytes);
                 this.TotalBytesDecoded += size;
             }
@@ -337,7 +341,7 @@ namespace VCDiff.Decoders
 
             for (int i = 0; i < size; i++)
             {
-                outputStream.Write(b);
+                //outputStream.Write(b);
                 targetData.WriteByte(b);
             }
 
@@ -359,7 +363,7 @@ namespace VCDiff.Decoders
             }
 
             var rbytes = addRun.ReadBytes(size).Span;
-            outputStream.Write(rbytes);
+            //outputStream.Write(rbytes);
             targetData.Write(rbytes);
             TotalBytesDecoded += size;
             return VCDiffResult.SUCCESS;
