@@ -232,6 +232,34 @@ namespace VCDiff.Tests
             outputStream.Position = 0;
             var outputHash = md5.ComputeHash(outputStream);
             Assert.Equal(originalHash, outputHash);
+            File.WriteAllBytes("patch1.new", deltaStream.ToArray());
+        }
+
+
+        [Fact]
+        public void NoChecksumHash_Test()
+        {
+            using var srcStream = File.OpenRead("a.test");
+            using var targetStream = File.OpenRead("b.test");
+            using var md5 = MD5.Create();
+            var originalHash = md5.ComputeHash(targetStream);
+            targetStream.Position = 0;
+
+            using var deltaStream = new MemoryStream();
+            using var outputStream = new MemoryStream();
+            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
+            VCDiffResult result = coder.Encode(checksum: false); //encodes with no checksum and not interleaved
+            Assert.Equal(VCDiffResult.SUCCESS, result);
+
+            srcStream.Position = 0;
+            targetStream.Position = 0;
+            deltaStream.Position = 0;
+
+            using VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
+            Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
+            outputStream.Position = 0;
+            var outputHash = md5.ComputeHash(outputStream);
+            Assert.Equal(originalHash, outputHash);
         }
 
         [Fact]
