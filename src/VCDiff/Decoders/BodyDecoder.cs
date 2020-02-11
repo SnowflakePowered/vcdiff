@@ -300,24 +300,19 @@ namespace VCDiff.Decoders
             if (overlap)
             {
                 int availableData = (int)(this.TotalBytesDecoded - decodedAddress);
-                byte[] buffer = new byte[availableData];
-                var originalTotalBytes = this.TotalBytesDecoded;
+                var tbytes = targetData.GetBuffer();
                 for (int i = 0; i < size; i += availableData)
                 {
                     int toCopy = (size - i < availableData) ? size - i : availableData;
-
-                    targetData.Position = decodedAddress + i;
-                    targetData.Read(buffer, 0, toCopy);
-
-                    targetData.Position = originalTotalBytes + i;
-                    outputStream.Write(buffer[..toCopy]);
-                    targetData.Write(buffer, 0, toCopy);
+                    var tbytesBuf = tbytes.AsSpan((int)decodedAddress + i, toCopy);
+                    outputStream.Write(tbytesBuf);
+                    targetData.Write(tbytesBuf);
                     this.TotalBytesDecoded += toCopy;
                 }
             }
             else
             {
-                var fbytes = targetData.GetBuffer().AsSpan((int)decodedAddress, (int)size);
+                var fbytes = targetData.GetBuffer().AsSpan((int)decodedAddress, size);
                 outputStream.Write(fbytes);
                 targetData.Write(fbytes);
                 this.TotalBytesDecoded += size;
