@@ -168,7 +168,7 @@ namespace VCDiff.Decoders
                             return result;
                         }
 
-                        bytesWritten += body.Decoded;
+                        bytesWritten += body.TotalBytesDecoded;
                     }
                     //technically add could be 0 if it is all copy instructions
                     //so do an or check on those two
@@ -185,7 +185,7 @@ namespace VCDiff.Decoders
                             return result;
                         }
 
-                        bytesWritten += body.Decoded;
+                        bytesWritten += body.TotalBytesDecoded;
                     }
                     else if (!IsSDCHFormat)
                     {
@@ -199,7 +199,7 @@ namespace VCDiff.Decoders
                             return result;
                         }
 
-                        bytesWritten += body.Decoded;
+                        bytesWritten += body.TotalBytesDecoded;
                     }
                     else
                     {

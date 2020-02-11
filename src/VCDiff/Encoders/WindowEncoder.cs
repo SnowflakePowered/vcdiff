@@ -216,12 +216,12 @@ namespace VCDiff.Encoders
                 {
                     VarIntBE.AppendInt64(this.Checksum, sout);
                 } 
-                // Xdelta checksu support.
+                // Xdelta checksum support.
                 else if (this.ChecksumFormat == ChecksumFormat.Xdelta3)
                 {
-                    Span<byte> checksum = stackalloc [] {
+                    Span<byte> checksumBytes = stackalloc [] {
                         (byte)(this.Checksum >> 24), (byte)(this.Checksum >> 16), (byte)(this.Checksum >> 8), (byte)(this.Checksum & 0x000000FF) };
-                    sout.Write(checksum);
+                    sout.Write(checksumBytes);
                 }
 
                 sout.Write(dataForAddAndRun.GetBuffer().AsSpan(0, (int)dataForAddAndRun.Length)); //data section for adds and runs

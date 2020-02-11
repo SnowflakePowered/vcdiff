@@ -14,8 +14,8 @@ namespace VCDiff.Decoders
         private byte deltaIndicator;
         private readonly long dictionarySize;
         private byte winIndicator;
-        private long sourceLength;
-        private long sourcePosition;
+        private long sourceSegmentLength;
+        private long sourceSegmentOffset;
         private long targetLength;
         private long addRunLength;
         private long instructionAndSizesLength;
@@ -36,17 +36,11 @@ namespace VCDiff.Decoders
 
         public byte WinIndicator => winIndicator;
 
-        public long SourcePosition => sourcePosition;
+        public long SourceSegmentOffset => sourceSegmentOffset;
 
-        public long SourceLength => sourceLength;
+        public long SourceSegmentLength => sourceSegmentLength;
 
-        public long DecodedDeltaLength => targetLength;
-
-        public long DeltaStart => deltaEncodingStart;
-
-        public long DeltaLength => deltaEncodingStart + deltaEncodingLength;
-
-        public byte DeltaIndicator => deltaIndicator;
+        public long TargetWindowLength => targetLength;
 
         public uint Checksum => checksum;
 
@@ -74,7 +68,7 @@ namespace VCDiff.Decoders
         /// <returns></returns>
         public bool Decode(bool isSdch)
         {
-            if (!ParseWindowIndicatorAndSegment(dictionarySize, 0, false, out winIndicator, out sourceLength, out sourcePosition))
+            if (!ParseWindowIndicatorAndSegment(dictionarySize, 0, false, out winIndicator, out sourceSegmentLength, out sourceSegmentOffset))
             {
                 return false;
             }
@@ -331,9 +325,18 @@ namespace VCDiff.Decoders
             ParseInt32(out int outAddress);
             checksum = 0;
 
-            if (checksumFormat != ChecksumFormat.None)
+            if (checksumFormat == ChecksumFormat.SDCH)
             {
                 ParseUInt32(out checksum);
+            } 
+            else if (checksumFormat == ChecksumFormat.Xdelta3)
+            {
+                // xdelta checksum is stored as a 4-part byte array
+                ParseByte(out byte chk0);
+                ParseByte(out byte chk1);
+                ParseByte(out byte chk2);
+                ParseByte(out byte chk3);
+                checksum = (uint)(chk0 << 24 | chk1 << 16 | chk2 << 8 | chk3);
             }
 
             addRunLength = outAdd;

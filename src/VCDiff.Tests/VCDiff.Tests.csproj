@@ -28,6 +28,12 @@
     <None Update="empty.test">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="sample.xdelta">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="sample_nosmallstr.xdelta">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="size-overflow-32">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

@@ -204,7 +204,6 @@ namespace VCDiff.Tests
             srcStream.Position = 0;
             targetStream.Position = 0;
             deltaStream.Position = 0;
-            File.WriteAllBytes("patch1.wch", deltaStream.ToArray());
 
             using VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
             Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
@@ -236,6 +235,95 @@ namespace VCDiff.Tests
             Assert.Equal(originalHash, outputHash);
         }
 
+        [Fact]
+        public void NoInterleavedXdelta3_Test()
+        {
+            using var srcStream = File.OpenRead("a.test");
+            using var targetStream = File.OpenRead("b.test");
+            using var md5 = MD5.Create();
+            var originalHash = md5.ComputeHash(targetStream);
+            targetStream.Position = 0;
+
+            using var deltaStream = new MemoryStream();
+            using var outputStream = new MemoryStream();
+            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
+            Assert.Throws<ArgumentException>(() => coder.Encode(interleaved: true, checksumFormat: ChecksumFormat.Xdelta3)); //encodes with no checksum and not interleaved
+        }
+
+        [Fact]
+        public void Xdelta3ChecksumHash_Test()
+        {
+            using var srcStream = File.OpenRead("a.test");
+            using var targetStream = File.OpenRead("b.test");
+            using var md5 = MD5.Create();
+            var originalHash = md5.ComputeHash(targetStream);
+            targetStream.Position = 0;
+
+            using var deltaStream = new MemoryStream();
+            using var outputStream = new MemoryStream();
+            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
+            VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.Xdelta3); //encodes with no checksum and not interleaved
+            Assert.Equal(VCDiffResult.SUCCESS, result);
+
+            srcStream.Position = 0;
+            targetStream.Position = 0;
+            deltaStream.Position = 0;
+
+            using VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
+            Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
+            outputStream.Position = 0;
+            var outputHash = md5.ComputeHash(outputStream);
+            Assert.Equal(originalHash, outputHash);
+        }
+
+
+        [Fact]
+        public void Xdelta3ExternalChecksumHash_Test()
+        {
+            using var srcStream = File.OpenRead("a.test");
+            using var targetStream = File.OpenRead("b.test");
+            using var deltaStream = File.OpenRead("sample.xdelta");
+            using var md5 = MD5.Create();
+            var originalHash = md5.ComputeHash(targetStream);
+            targetStream.Position = 0;
+
+            using var outputStream = new MemoryStream();
+
+            outputStream.Position = 0;
+            srcStream.Position = 0;
+            targetStream.Position = 0;
+            deltaStream.Position = 0;
+
+            using VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
+            Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
+            var outputHash = md5.ComputeHash(outputStream);
+            outputStream.Position = 0;
+            Assert.Equal(originalHash, outputHash);
+        }
+
+        [Fact]
+        public void Xdelta3ExternalNoSmallStrChecksumHash_Test()
+        {
+            using var srcStream = File.OpenRead("a.test");
+            using var targetStream = File.OpenRead("b.test");
+            using var deltaStream = File.OpenRead("sample_nosmallstr.xdelta");
+            using var md5 = MD5.Create();
+            var originalHash = md5.ComputeHash(targetStream);
+            targetStream.Position = 0;
+
+            using var outputStream = new MemoryStream();
+
+            outputStream.Position = 0;
+            srcStream.Position = 0;
+            targetStream.Position = 0;
+            deltaStream.Position = 0;
+
+            using VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
+            Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
+            var outputHash = md5.ComputeHash(outputStream);
+            outputStream.Position = 0;
+            Assert.Equal(originalHash, outputHash);
+        }
 
         [Fact]
         public void NoChecksumHash_Test()
@@ -261,7 +349,6 @@ namespace VCDiff.Tests
             outputStream.Position = 0;
             var outputHash = md5.ComputeHash(outputStream);
             Assert.Equal(originalHash, outputHash);
-            File.WriteAllBytes("patch1.nch", deltaStream.ToArray());
         }
 
         [Fact]

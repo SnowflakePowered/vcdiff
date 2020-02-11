@@ -8,25 +8,25 @@ namespace VCDiff.Decoders
     internal class BodyDecoder : IDisposable
     {
         private WindowDecoder window;
-        private ByteStreamWriter sout;
-        private IByteBuffer dict;
-        private IByteBuffer target;
+        private ByteStreamWriter outputStream;
+        private IByteBuffer source;
+        private IByteBuffer delta;
         private AddressCache addressCache;
         private MemoryStream targetData;
         private CustomCodeTableDecoder? customTable;
 
         //the total bytes decoded
-        public long Decoded { get; private set; }
+        public long TotalBytesDecoded { get; private set; }
 
         /// <summary>
         /// The main decoder loop for the data
         /// </summary>
         /// <param name="w">the window decoder</param>
-        /// <param name="dictionary">the dictionary data</param>
-        /// <param name="target">the target data</param>
-        /// <param name="sout">the out stream</param>
+        /// <param name="source">The source dictionary data</param>
+        /// <param name="delta">The delta</param>
+        /// <param name="decodedTarget">the out stream</param>
         /// <param name="customTable">custom table if any. Default is null.</param>
-        public BodyDecoder(WindowDecoder w, IByteBuffer dictionary, IByteBuffer target, ByteStreamWriter sout, CustomCodeTableDecoder? customTable = null)
+        public BodyDecoder(WindowDecoder w, IByteBuffer source, IByteBuffer delta, ByteStreamWriter decodedTarget, CustomCodeTableDecoder? customTable = null)
         {
             if (customTable != null)
             {
@@ -38,10 +38,10 @@ namespace VCDiff.Decoders
                 addressCache = new AddressCache();
             }
             window = w;
-            this.sout = sout;
-            dict = dictionary;
-            this.target = target;
-            targetData = new MemoryStream();
+            this.outputStream = decodedTarget;
+            this.source = source;
+            this.delta = delta;
+            this.targetData = new MemoryStream();
         }
 
         /// <summary>
@@ -60,20 +60,20 @@ namespace VCDiff.Decoders
 
             while (interleaveLength > 0)
             {
-                if (!target.CanRead) continue;
+                if (!delta.CanRead) continue;
                 //read in
                 var didBreakBeforeComplete = false;
 
                 //try to read in all interleaved bytes
                 //if not then it will buffer for next time
-                previous.Write(target.ReadBytes((int)interleaveLength).Span);
+                previous.Write(delta.ReadBytes((int)interleaveLength).Span);
                 using ByteBuffer incoming = new ByteBuffer(previous.ToArray());
                 previous.SetLength(0);
                 long initialLength = incoming.Length;
 
                 InstructionDecoder instrDecoder = new InstructionDecoder(incoming, customTable);
 
-                while (incoming.CanRead && Decoded < window.DecodedDeltaLength)
+                while (incoming.CanRead && TotalBytesDecoded < window.TargetWindowLength)
                 {
                     int decodedSize = 0;
                     byte mode = 0;
@@ -192,7 +192,7 @@ namespace VCDiff.Decoders
 
             VCDiffResult result = VCDiffResult.SUCCESS;
 
-            while (Decoded < window.DecodedDeltaLength && instructionBuffer.CanRead)
+            while (this.TotalBytesDecoded < window.TargetWindowLength && instructionBuffer.CanRead)
             {
                 VCDiffInstructionType instruction = instrDecoder.Next(out int decodedSize, out byte mode);
 
@@ -236,6 +236,15 @@ namespace VCDiff.Decoders
                     result = VCDiffResult.ERROR;
                 }
             }
+            else if (window.ChecksumFormat == ChecksumFormat.Xdelta3)
+            {
+                uint adler = Checksum.ComputeXdelta3Adler32(targetData.GetBuffer().AsMemory(0, (int)targetData.Length));
+
+                if (adler != window.Checksum)
+                {
+                    result = VCDiffResult.ERROR;
+                }
+            }
 
             targetData.SetLength(0);
             return result;
@@ -243,9 +252,8 @@ namespace VCDiff.Decoders
 
         private VCDiffResult DecodeCopy(int size, byte mode, ByteBuffer addresses)
         {
-            long hereAddress = window.SourceLength + Decoded;
+            long hereAddress = window.SourceSegmentLength + this.TotalBytesDecoded;
             long decodedAddress = addressCache.DecodeAddress(hereAddress, mode, addresses);
-
             switch ((VCDiffResult)decodedAddress)
             {
                 case VCDiffResult.ERROR:
@@ -262,47 +270,48 @@ namespace VCDiff.Decoders
                     break;
             }
 
-            if (decodedAddress + size <= window.SourceLength)
+            // Copy all data from source segment
+            if (decodedAddress + size <= window.SourceSegmentLength)
             {
-                dict.Position = decodedAddress;
-                var rbytes = dict.ReadBytes(size).Span;
-                sout.Write(rbytes);
+                source.Position = decodedAddress;
+                var rbytes = source.ReadBytes(size).Span;
+                outputStream.Write(rbytes);
                 targetData.Write(rbytes);
-                this.Decoded += size;
+                this.TotalBytesDecoded += size;
                 return VCDiffResult.SUCCESS;
             }
-            
-            // original function ends here.
 
-            if (decodedAddress < window.SourceLength)
+            // Copy some data from target window...
+            if (decodedAddress < window.SourceSegmentLength)
             {
-                long partialCopySize = window.SourceLength - decodedAddress;
-                dict.Position = decodedAddress;
-                var rbytes = dict.ReadBytes(size).Span;
-                sout.Write(rbytes);
+                // ... plus some data from source segment
+                long partialCopySize = window.SourceSegmentLength - decodedAddress;
+                source.Position = decodedAddress;
+                var rbytes = source.ReadBytes((int)partialCopySize).Span;
+                outputStream.Write(rbytes);
                 targetData.Write(rbytes);
-                this.Decoded += partialCopySize;
+                this.TotalBytesDecoded += partialCopySize;
                 decodedAddress += partialCopySize;
                 size -= (int)partialCopySize;
             }
 
-            decodedAddress -= window.SourceLength;
-            while (size > (this.Decoded - decodedAddress))
+            decodedAddress -= window.SourceSegmentLength;
+            // address is now based at start of target window
+            while (size > (this.TotalBytesDecoded - decodedAddress))
             {
-                long partialCopySize = window.SourceLength - decodedAddress;
-                dict.Position = decodedAddress;
-                var rbytes = target.ReadBytes((int)partialCopySize).Span;
-
-                sout.Write(rbytes);
+                // Recursive copy that extends into the yet-to-be-copied target data
+                long partialCopySize = this.TotalBytesDecoded - decodedAddress;
+                var rbytes = targetData.GetBuffer().AsSpan((int)decodedAddress, (int)partialCopySize);
+                outputStream.Write(rbytes);
                 targetData.Write(rbytes);
+                this.TotalBytesDecoded += partialCopySize;
+                decodedAddress += partialCopySize;
                 size -= (int)partialCopySize;
-                this.Decoded += partialCopySize;
             }
-            target.Position = decodedAddress;
-            var frbytes = target.ReadBytes(size).Span;
-            sout.Write(frbytes);
-            targetData.Write(frbytes);
-
+            var leftoverBytes = targetData.GetBuffer().AsSpan((int)decodedAddress, (int)size);
+            outputStream.Write(leftoverBytes);
+            targetData.Write(leftoverBytes);
+            this.TotalBytesDecoded += size;
             return VCDiffResult.SUCCESS;
         }
 
@@ -322,11 +331,11 @@ namespace VCDiff.Decoders
 
             for (int i = 0; i < size; i++)
             {
-                sout.Write(b);
+                outputStream.Write(b);
                 targetData.WriteByte(b);
             }
 
-            Decoded += size;
+            TotalBytesDecoded += size;
 
             return VCDiffResult.SUCCESS;
         }
@@ -344,9 +353,9 @@ namespace VCDiff.Decoders
             }
 
             var rbytes = addRun.ReadBytes(size).Span;
-            sout.Write(rbytes);
+            outputStream.Write(rbytes);
             targetData.Write(rbytes);
-            Decoded += size;
+            TotalBytesDecoded += size;
             return VCDiffResult.SUCCESS;
         }
 

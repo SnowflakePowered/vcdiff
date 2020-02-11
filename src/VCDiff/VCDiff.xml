@@ -9,9 +9,9 @@
             The main decoder loop for the data
             </summary>
             <param name="w">the window decoder</param>
-            <param name="dictionary">the dictionary data</param>
-            <param name="target">the target data</param>
-            <param name="sout">the out stream</param>
+            <param name="source">The source dictionary data</param>
+            <param name="delta">The delta</param>
+            <param name="decodedTarget">the out stream</param>
             <param name="customTable">custom table if any. Default is null.</param>
         </member>
         <member name="M:VCDiff.Decoders.BodyDecoder.DecodeInterleave">
