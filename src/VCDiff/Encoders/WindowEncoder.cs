@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using VCDiff.Includes;
 using VCDiff.Shared;
@@ -63,11 +64,6 @@ namespace VCDiff.Encoders
             {
                 int lastOp = instructionAndSizes.GetBuffer()[lastOpcodeIndex];
 
-                if (inst == VCDiffInstructionType.ADD && (table.inst1.Span[lastOp] == CodeTable.A))
-                {
-                    //warning adding two in a row
-                    Console.WriteLine("Warning: performing two ADD instructions in a row.");
-                }
                 int compoundOp;
                 if (size <= byte.MaxValue)
                 {
@@ -144,13 +140,6 @@ namespace VCDiff.Encoders
 
         private int CalculateLengthOfTheDeltaEncoding()
         {
-            int extraLength = 0;
-
-            if (HasChecksum)
-            {
-                extraLength += VarIntBE.CalcInt64Length(Checksum);
-            }
-
             if (!IsInterleaved)
             {
                 int lengthOfDelta = VarIntBE.CalcInt32Length((int)targetLength) +
@@ -160,9 +149,8 @@ namespace VCDiff.Encoders
                 VarIntBE.CalcInt32Length((int)addressForCopy.Length) +
                 (int)dataForAddAndRun.Length +
                 (int)instructionAndSizes.Length +
-                (int)addressForCopy.Length;
-
-                lengthOfDelta += extraLength;
+                (int)addressForCopy.Length
+                + (this.HasChecksum ? VarIntBE.CalcInt64Length(this.Checksum) : 0);
 
                 return lengthOfDelta;
             }
@@ -174,9 +162,8 @@ namespace VCDiff.Encoders
                 VarIntBE.CalcInt32Length((int)instructionAndSizes.Length) +
                 VarIntBE.CalcInt32Length(0) +
                 0 +
-                (int)instructionAndSizes.Length;
-
-                lengthOfDelta += extraLength;
+                (int)instructionAndSizes.Length
+                + (this.HasChecksum ? VarIntBE.CalcInt64Length(Checksum) : 0);
 
                 return lengthOfDelta;
             }

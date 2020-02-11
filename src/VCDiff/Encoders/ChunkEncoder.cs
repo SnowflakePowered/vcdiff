@@ -35,7 +35,7 @@ namespace VCDiff.Encoders
             this.MinBlockSize = minBlockSize;
             if (this.MinBlockSize < 2 || this.MinBlockSize < this.dictionary.blockSize)
             {
-
+                throw new ArgumentException($"{MinBlockSize} can not be less than 2 or the blocksize of the dictionary {this.dictionary.blockSize}.");
             }
             this.interleaved = interleaved;
         }
