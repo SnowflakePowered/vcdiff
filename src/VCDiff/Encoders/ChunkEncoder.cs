@@ -37,6 +37,83 @@ namespace VCDiff.Encoders
             this.interleaved = interleaved;
         }
 
+        private void EncodeChunkCore(IByteBuffer newData)
+        {
+            newData.Position = 0;
+            ReadOnlyMemory<byte> checksumBytes = newData.ReadBytes((int)newData.Length);
+
+            uint checksum = this.checksumFormat switch
+            {
+                ChecksumFormat.SDCH => Checksum.ComputeGoogleAdler32(checksumBytes),
+                ChecksumFormat.Xdelta3 => Checksum.ComputeXdelta3Adler32(checksumBytes),
+                ChecksumFormat.None => 0,
+                _ => 0
+            };
+
+            windowEncoder = new WindowEncoder(oldData.Length, checksum, this.checksumFormat, this.interleaved);
+
+            oldData.Position = 0;
+            newData.Position = 0;
+
+            this.newData = newData;
+            long nextEncode = newData.Position;
+            long targetEnd = newData.Length;
+            long startOfLastBlock = targetEnd - this.dictionary.blockSize;
+            long candidatePos = nextEncode;
+
+            //create the first hash
+            ulong hash = hasher.Hash(newData.PeekBytes(this.dictionary.blockSize));
+
+            while (true)
+            {
+                //if less than block size exit and then write as an ADD
+                if (newData.Length - nextEncode < this.dictionary.blockSize)
+                {
+                    break;
+                }
+
+                //try and encode the copy and add instructions that best match
+                long bytesEncoded = EncodeCopyForBestMatch(hash, candidatePos, nextEncode, targetEnd);
+
+                if (bytesEncoded > 0)
+                {
+                    nextEncode += bytesEncoded;
+                    candidatePos = nextEncode;
+
+                    if (candidatePos > startOfLastBlock)
+                    {
+                        break;
+                    }
+
+                    newData.Position = candidatePos;
+                    //cannot use rolling hash since we skipped so many
+                    hash = hasher.Hash(newData.ReadBytes(this.dictionary.blockSize));
+                }
+                else
+                {
+                    if (candidatePos + 1 > startOfLastBlock)
+                    {
+                        break;
+                    }
+
+                    //update hash requires the first byte of the last hash as well as the byte that is first byte pos + blockSize
+                    //in order to properly calculate the rolling hash
+                    newData.Position = candidatePos;
+                    byte peek0 = newData.ReadByte();
+                    newData.Position = candidatePos + this.dictionary.blockSize;
+                    byte peek1 = newData.ReadByte();
+                    hash = hasher.UpdateHash(hash, peek0, peek1);
+                    candidatePos++;
+                }
+            }
+
+            //Add the rest of the data that was not encoded
+            if (nextEncode >= newData.Length) return;
+            int len = (int)(newData.Length - nextEncode);
+            newData.Position = nextEncode;
+            windowEncoder.Add(newData.ReadBytes(len).Span);
+        }
+
         /// <summary>
         /// Encodes the data using the settings from initialization
         /// </summary>

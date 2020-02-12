@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 using VCDiff.Decoders;
 using VCDiff.Encoders;
 using VCDiff.Includes;
@@ -263,6 +264,33 @@ namespace VCDiff.Tests
             using var outputStream = new MemoryStream();
             using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
             VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.Xdelta3); //encodes with no checksum and not interleaved
+            Assert.Equal(VCDiffResult.SUCCESS, result);
+
+            srcStream.Position = 0;
+            targetStream.Position = 0;
+            deltaStream.Position = 0;
+
+            using VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
+            Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
+            outputStream.Position = 0;
+            var outputHash = md5.ComputeHash(outputStream);
+            Assert.Equal(originalHash, outputHash);
+        }
+
+
+        [Fact]
+        public async Task AsyncEncode_Test()
+        {
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}a.test");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
+            using var md5 = MD5.Create();
+            var originalHash = md5.ComputeHash(targetStream);
+            targetStream.Position = 0;
+
+            using var deltaStream = new MemoryStream();
+            using var outputStream = new MemoryStream();
+            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
+            VCDiffResult result = await coder.EncodeAsync(checksumFormat: ChecksumFormat.Xdelta3); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
             srcStream.Position = 0;

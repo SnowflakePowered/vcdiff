@@ -20,7 +20,19 @@
             </summary>
             <returns></returns>
         </member>
+        <member name="M:VCDiff.Decoders.BodyDecoder.DecodeInterleaveAsync(System.Threading.CancellationToken)">
+            <summary>
+            Decode if as expecting interleave
+            </summary>
+            <returns></returns>
+        </member>
         <member name="M:VCDiff.Decoders.BodyDecoder.Decode">
+            <summary>
+            Decode normally
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Decoders.BodyDecoder.DecodeAsync(System.Threading.CancellationToken)">
             <summary>
             Decode normally
             </summary>
@@ -74,11 +86,15 @@
         </member>
         <member name="M:VCDiff.Decoders.VcDecoder.Decode(System.Int64@)">
             <summary>
-            Use this after calling Start
-            Each time the decode is called it is expected
-            that at least 1 Window header is available in the stream
+            Writes the patched file into the output stream.
             </summary>
-            <param name="bytesWritten">bytes decoded for all available windows</param>
+            <param name="bytesWritten">Number of bytes written into the output stream.</param>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Decoders.VcDecoder.DecodeAsync">
+            <summary>
+            Writes the patched file into the output stream asynchronously.
+            </summary>
             <returns></returns>
         </member>
         <member name="M:VCDiff.Decoders.VcDecoder.Dispose">
@@ -232,6 +248,19 @@
         <member name="M:VCDiff.Encoders.VcEncoder.Encode(System.Boolean,VCDiff.Shared.ChecksumFormat)">
             <summary>
             Calculate and write a diff for the file.
+            </summary>
+            <param name="interleaved">Whether to output in SDCH interleaved diff format.</param>
+            <param name="checksumFormat">
+            Whether to include Adler32 checksums for encoded data windows. If interleaved is true, <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/>
+            is not supported.
+            </param>
+            <returns>
+            <see cref="F:VCDiff.Includes.VCDiffResult.SUCCESS"/> if successful, <see cref="F:VCDiff.Includes.VCDiffResult.ERROR"/> if the source or target are zero-length.</returns>
+            <exception cref="T:System.ArgumentException">If interleaved is true, and <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/> is chosen.</exception>
+        </member>
+        <member name="M:VCDiff.Encoders.VcEncoder.EncodeAsync(System.Boolean,VCDiff.Shared.ChecksumFormat)">
+            <summary>
+            Calculate and write a diff for the file asynchronously.
             </summary>
             <param name="interleaved">Whether to output in SDCH interleaved diff format.</param>
             <param name="checksumFormat">

@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
@@ -44,11 +46,7 @@ namespace VCDiff.Decoders
             this.targetData = new MemoryStream();
         }
 
-        /// <summary>
-        /// Decode if as expecting interleave
-        /// </summary>
-        /// <returns></returns>
-        public VCDiffResult DecodeInterleave()
+        private VCDiffResult DecodeInterleaveCore()
         {
             VCDiffResult result = VCDiffResult.SUCCESS;
             //since interleave expected then the last point that was most likely decoded was the lengths section
@@ -174,6 +172,16 @@ namespace VCDiff.Decoders
                 }
             }
 
+            return result;
+        }
+        
+        /// <summary>
+        /// Decode if as expecting interleave
+        /// </summary>
+        /// <returns></returns>
+        public VCDiffResult DecodeInterleave()
+        {
+            var result = DecodeInterleaveCore();
             targetData.Seek(0, SeekOrigin.Begin);
             targetData.CopyTo(outputStream);
             targetData.SetLength(0);
@@ -181,10 +189,19 @@ namespace VCDiff.Decoders
         }
 
         /// <summary>
-        /// Decode normally
+        /// Decode if as expecting interleave
         /// </summary>
         /// <returns></returns>
-        public VCDiffResult Decode()
+        public async Task<VCDiffResult> DecodeInterleaveAsync(CancellationToken token = default)
+        {
+            var result = DecodeInterleaveCore();
+            targetData.Seek(0, SeekOrigin.Begin);
+            await targetData.CopyToAsync(outputStream, token);
+            targetData.SetLength(0);
+            return result;
+        }
+
+        private VCDiffResult DecodeCore()
         {
             using ByteBuffer instructionBuffer = new ByteBuffer(window.InstructionsAndSizesData);
             using ByteBuffer addressBuffer = new ByteBuffer(window.AddressesForCopyData);
@@ -248,8 +265,31 @@ namespace VCDiff.Decoders
                 }
             }
 
+            return result;
+        }
+        
+        /// <summary>
+        /// Decode normally
+        /// </summary>
+        /// <returns></returns>
+        public VCDiffResult Decode()
+        {
+            var result = this.DecodeCore();
             targetData.Seek(0, SeekOrigin.Begin);
             targetData.CopyTo(outputStream);
+            targetData.SetLength(0);
+            return result;
+        }
+
+        /// <summary>
+        /// Decode normally
+        /// </summary>
+        /// <returns></returns>
+        public async Task<VCDiffResult> DecodeAsync(CancellationToken token = default)
+        {
+            var result = this.DecodeCore();
+            targetData.Seek(0, SeekOrigin.Begin);
+            await targetData.CopyToAsync(outputStream, token);
             targetData.SetLength(0);
             return result;
         }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
@@ -10,9 +11,10 @@ namespace VCDiff.Encoders
     /// </summary>
     public class VcEncoder : IDisposable
     {
-        private readonly IByteBuffer oldData;
+        private IByteBuffer oldData;
         private readonly IByteBuffer newData;
         private readonly Stream outputStream;
+        private readonly Stream source;
         private readonly RollingHash hasher;
         private readonly int bufferSize;
 
@@ -41,7 +43,7 @@ namespace VCDiff.Encoders
             if (maxBufferSize <= 0) maxBufferSize = 1;
             this.blockSize = blockSize;
             this.chunkSize = chunkSize < 2 ? this.blockSize * 2 : chunkSize;
-            this.oldData = new ByteBuffer(source);
+            this.source = source;
             this.newData = new ByteStreamReader(target);
             this.outputStream = outputStream;
             this.hasher = new RollingHash(this.blockSize);
@@ -68,6 +70,11 @@ namespace VCDiff.Encoders
         public VCDiffResult Encode(bool interleaved = false, 
             ChecksumFormat checksumFormat = ChecksumFormat.None)
         {
+            if (oldData == null)
+            {
+                this.oldData = new ByteBuffer(source);
+            }
+
             if (interleaved && checksumFormat == ChecksumFormat.Xdelta3)
             {
                 throw new ArgumentException("Interleaved diffs can not have an xdelta3 checksum!");
@@ -111,11 +118,77 @@ namespace VCDiff.Encoders
         }
 
         /// <summary>
+        /// Calculate and write a diff for the file.
+        ///
+        /// This method is only asynchronous for the initial buffering of the source into memory.
+        /// Writing to the output stream will still occur synchronously. 
+        /// It is recommended you use the synchronous <see cref="Encode"/> method for most use cases.
+        /// </summary>
+        /// <param name="interleaved">Whether to output in SDCH interleaved diff format.</param>
+        /// <param name="checksumFormat">
+        /// Whether to include Adler32 checksums for encoded data windows. If interleaved is true, <see cref="ChecksumFormat.Xdelta3"/>
+        /// is not supported.
+        /// </param>
+        /// <returns>
+        /// <see cref="VCDiffResult.SUCCESS"/> if successful, <see cref="VCDiffResult.ERROR"/> if the source or target are zero-length.</returns>
+        /// <exception cref="ArgumentException">If interleaved is true, and <see cref="ChecksumFormat.Xdelta3"/> is chosen.</exception>
+        public async Task<VCDiffResult> EncodeAsync(bool interleaved = false,
+            ChecksumFormat checksumFormat = ChecksumFormat.None)
+        {
+            if (oldData == null)
+            {
+                this.oldData = await ByteBuffer.CreateBufferAsync(source);
+            }
+
+            if (interleaved && checksumFormat == ChecksumFormat.Xdelta3)
+            {
+                throw new ArgumentException("Interleaved diffs can not have an xdelta3 checksum!");
+            }
+
+            if (newData.Length == 0 || oldData.Length == 0)
+            {
+                return VCDiffResult.ERROR;
+            }
+
+            VCDiffResult result = VCDiffResult.SUCCESS;
+
+            oldData.Position = 0;
+            newData.Position = 0;
+
+            // file header
+            // write magic bytes
+            if (!interleaved && checksumFormat != ChecksumFormat.SDCH)
+            {
+                await outputStream.WriteAsync(MagicBytes);
+            }
+            else
+            {
+                await outputStream.WriteAsync(MagicBytesExtended);
+            }
+
+            //read in all the dictionary it is the only thing that needs to be
+            BlockHash dictionary = new BlockHash(oldData, 0, hasher, blockSize);
+            dictionary.AddAllBlocks();
+            oldData.Position = 0;
+
+            ChunkEncoder chunker = new ChunkEncoder(dictionary, oldData, hasher, checksumFormat, interleaved, chunkSize);
+
+            while (newData.CanRead)
+            {
+                using ByteBuffer ntarget = new ByteBuffer(newData.ReadBytes(bufferSize));
+                chunker.EncodeChunk(ntarget, outputStream);
+            }
+
+            return result;
+        }
+
+
+        /// <summary>
         /// Disposes the encoder.
         /// </summary>
         public void Dispose()
         {
-            oldData.Dispose();
+            oldData?.Dispose();
             newData.Dispose();
         }
     }

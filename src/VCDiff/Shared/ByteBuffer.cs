@@ -1,18 +1,25 @@
 ﻿using System;
 using System.Buffers;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace VCDiff.Shared
 {
     internal class ByteBuffer : IByteBuffer
     {
-        private readonly Memory<byte> bytes;
+        private Memory<byte> bytes;
         private MemoryHandle byteHandle;
-        private readonly unsafe void* bytePtr;
-        private readonly int length;
+        private unsafe void* bytePtr;
+        private int length;
         private int offset;
 
-        private readonly MemoryStream? copyStream;
+        private MemoryStream? copyStream;
+
+        private ByteBuffer()
+        {
+
+        }
+
         public ByteBuffer(Stream copyStream)
         {
             this.copyStream = new MemoryStream();
@@ -28,6 +35,26 @@ namespace VCDiff.Shared
 
             length = this.bytes.Length;
         }
+
+        public static async Task<ByteBuffer> CreateBufferAsync(Stream copyStream)
+        {
+            var buffer = new ByteBuffer();
+            buffer.copyStream = new MemoryStream();
+            copyStream.CopyTo(buffer.copyStream);
+            buffer.copyStream.Seek(0, SeekOrigin.Begin);
+            buffer.offset = 0;
+            buffer.bytes = new Memory<byte>(buffer.copyStream.GetBuffer(), 0, (int)copyStream.Length);
+            buffer.byteHandle = buffer.bytes.Pin();
+            unsafe
+            {
+                buffer.bytePtr = buffer.byteHandle.Pointer;
+            }
+
+            buffer.length = buffer.bytes.Length;
+
+            return buffer;
+        }
+
         /// <summary>
         /// Basically a simple wrapper for byte[] arrays
         /// for easier reading and parsing

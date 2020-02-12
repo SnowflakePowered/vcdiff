@@ -173,7 +173,7 @@ namespace VCDiff.Encoders
 
         }
 
-        public void Output(Stream sout)
+        public void Output(Stream outputStream)
         {
             int lengthOfDelta = CalculateLengthOfTheDeltaEncoding();
             int windowSize = lengthOfDelta +
@@ -185,21 +185,21 @@ namespace VCDiff.Encoders
             //Google's Checksum Implementation Support
             if (this.ChecksumFormat != ChecksumFormat.None)
             {
-                sout.WriteByte((byte)VCDiffWindowFlags.VCDSOURCE | (byte)VCDiffWindowFlags.VCDCHECKSUM); //win indicator
+                outputStream.WriteByte((byte)VCDiffWindowFlags.VCDSOURCE | (byte)VCDiffWindowFlags.VCDCHECKSUM); //win indicator
             }
             else
             {
-                sout.WriteByte((byte)VCDiffWindowFlags.VCDSOURCE); //win indicator
+                outputStream.WriteByte((byte)VCDiffWindowFlags.VCDSOURCE); //win indicator
             }
-            VarIntBE.AppendInt32((int)dictionarySize, sout); //dictionary size
-            VarIntBE.AppendInt32(0, sout); //dictionary start position 0 is default aka encompass the whole dictionary
+            VarIntBE.AppendInt32((int)dictionarySize, outputStream); //dictionary size
+            VarIntBE.AppendInt32(0, outputStream); //dictionary start position 0 is default aka encompass the whole dictionary
 
-            VarIntBE.AppendInt32(lengthOfDelta, sout); //length of delta
+            VarIntBE.AppendInt32(lengthOfDelta, outputStream); //length of delta
 
             //begin of delta encoding
-            long sizeBeforeDelta = sout.Position;
-            VarIntBE.AppendInt32((int)targetLength, sout); //final target length after decoding
-            sout.WriteByte(0x00); // uncompressed
+            long sizeBeforeDelta = outputStream.Position;
+            VarIntBE.AppendInt32((int)targetLength, outputStream); //final target length after decoding
+            outputStream.WriteByte(0x00); // uncompressed
 
             // [Here is where a secondary compressor would be used
             //  if the encoder and decoder supported that feature.]
@@ -207,45 +207,48 @@ namespace VCDiff.Encoders
             //non interleaved then it is separeat areas for each type
             if (!IsInterleaved)
             {
-                VarIntBE.AppendInt32((int)dataForAddAndRun.Length, sout); //length of add/run
-                VarIntBE.AppendInt32((int)instructionAndSizes.Length, sout); //length of instructions and sizes
-                VarIntBE.AppendInt32((int)addressForCopy.Length, sout); //length of addresses for copys
+                VarIntBE.AppendInt32((int)dataForAddAndRun.Length, outputStream); //length of add/run
+                VarIntBE.AppendInt32((int)instructionAndSizes.Length, outputStream); //length of instructions and sizes
+                VarIntBE.AppendInt32((int)addressForCopy.Length, outputStream); //length of addresses for copys
 
-                //Google Checksum Support
-                if (this.ChecksumFormat == ChecksumFormat.SDCH)
+                switch (this.ChecksumFormat)
                 {
-                    VarIntBE.AppendInt64(this.Checksum, sout);
-                } 
-                // Xdelta checksum support.
-                else if (this.ChecksumFormat == ChecksumFormat.Xdelta3)
-                {
-                    Span<byte> checksumBytes = stackalloc [] {
-                        (byte)(this.Checksum >> 24), (byte)(this.Checksum >> 16), (byte)(this.Checksum >> 8), (byte)(this.Checksum & 0x000000FF) };
-                    sout.Write(checksumBytes);
+                    //Google Checksum Support
+                    case ChecksumFormat.SDCH:
+                        VarIntBE.AppendInt64(this.Checksum, outputStream);
+                        break;
+                    // Xdelta checksum support.
+                    case ChecksumFormat.Xdelta3:
+                    {
+                        Span<byte> checksumBytes = stackalloc [] {
+                            (byte)(this.Checksum >> 24), (byte)(this.Checksum >> 16), (byte)(this.Checksum >> 8), (byte)(this.Checksum & 0x000000FF) };
+                        outputStream.Write(checksumBytes);
+                        break;
+                    }
                 }
 
-                sout.Write(dataForAddAndRun.GetBuffer().AsSpan(0, (int)dataForAddAndRun.Length)); //data section for adds and runs
-                sout.Write(instructionAndSizes.GetBuffer().AsSpan(0, (int)instructionAndSizes.Length)); //data for instructions and sizes
-                sout.Write(addressForCopy.GetBuffer().AsSpan(0, (int)addressForCopy.Length)); //data for addresses section copys
+                outputStream.Write(dataForAddAndRun.GetBuffer().AsSpan(0, (int)dataForAddAndRun.Length)); //data section for adds and runs
+                outputStream.Write(instructionAndSizes.GetBuffer().AsSpan(0, (int)instructionAndSizes.Length)); //data for instructions and sizes
+                outputStream.Write(addressForCopy.GetBuffer().AsSpan(0, (int)addressForCopy.Length)); //data for addresses section copys
             }
             else
             {
                 //interleaved everything is woven in and out in one block
-                VarIntBE.AppendInt32(0, sout); //length of add/run
-                VarIntBE.AppendInt32((int)instructionAndSizes.Length, sout); //length of instructions and sizes + other data for interleaved
-                VarIntBE.AppendInt32(0, sout); //length of addresses for copys
+                VarIntBE.AppendInt32(0, outputStream); //length of add/run
+                VarIntBE.AppendInt32((int)instructionAndSizes.Length, outputStream); //length of instructions and sizes + other data for interleaved
+                VarIntBE.AppendInt32(0, outputStream); //length of addresses for copys
 
                 //Google Checksum Support
                 if (this.ChecksumFormat == ChecksumFormat.SDCH)
                 {
-                    VarIntBE.AppendInt64(Checksum, sout);
+                    VarIntBE.AppendInt64(Checksum, outputStream);
                 }
 
-                sout.Write(instructionAndSizes.GetBuffer().AsSpan(0, (int)instructionAndSizes.Length)); //data for instructions and sizes, in interleaved it is everything
+                outputStream.Write(instructionAndSizes.GetBuffer().AsSpan(0, (int)instructionAndSizes.Length)); //data for instructions and sizes, in interleaved it is everything
             }
             //end of delta encoding
 
-            long sizeAfterDelta = sout.Position;
+            long sizeAfterDelta = outputStream.Position;
             if (lengthOfDelta != sizeAfterDelta - sizeBeforeDelta)
             {
                 throw new IOException("Delta output length does not match");
