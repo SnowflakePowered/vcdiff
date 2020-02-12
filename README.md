@@ -6,6 +6,8 @@ This is a hard fork of [VCDiff](https://github.com/Metric/VCDiff), originally wr
 
 Large chunks have been rewritten, and heavily optimized to be *extremely fast*, using vector intrinsics, as well as `Memory<byte>` and `Span<byte>` APIs to eke out every bit of performance possible, performing close if not equal to the C++ `open-vcdiff` library. Non-scientific preliminary testing shows up to a 20x speedup compared to the original library when diffing a 2MB file. 
 
+Support for [xdelta3](https://github.com/jmacd/xdelta) checksums have also been included. Testing was done with xdelta 3.1, support for xdelta 3.0 patch files has not been tested. Only patch files without external compression (`-S none`) are supported. 
+
 |Format|Encoding|Decoding|
 |------|--------|--------|
 |RFC3284-compliant VCDIFF|✔️|✔️|
