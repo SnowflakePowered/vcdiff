@@ -15,8 +15,8 @@ namespace VCDiff.Tests
         [Fact]
         public void NoChecksumNoInterleaved_Test()
         {
-            using var srcStream = File.OpenRead("a.test");
-            using var targetStream = File.OpenRead("b.test");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}a.test");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
@@ -35,8 +35,8 @@ namespace VCDiff.Tests
         [Fact]
         public void NoChecksumEmptyHash_Test()
         {
-            using var srcStream = File.OpenRead("empty.test");
-            using var targetStream = File.OpenRead("b.test");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}empty.test");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
             using var md5 = MD5.Create();
             var originalHash = md5.ComputeHash(targetStream);
             targetStream.Position = 0;
@@ -61,8 +61,8 @@ namespace VCDiff.Tests
         [Fact]
         public void NoChecksumGoogle_Test()
         {
-            using var srcStream = File.OpenRead("size-overflow-32");
-            using var targetStream = File.OpenRead("size-overflow-64");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}size-overflow-32");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}size-overflow-64");
             using var md5 = MD5.Create();
             var originalHash = md5.ComputeHash(targetStream);
             targetStream.Position = 0;
@@ -87,8 +87,8 @@ namespace VCDiff.Tests
         [Fact]
         public void NoChecksumGoogleTo_Test()
         {
-            using var srcStream = File.OpenRead("size-overflow-64");
-            using var targetStream = File.OpenRead("size-overflow-32");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}size-overflow-64");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}size-overflow-32");
             using var md5 = MD5.Create();
             var originalHash = md5.ComputeHash(targetStream);
             targetStream.Position = 0;
@@ -113,8 +113,8 @@ namespace VCDiff.Tests
         [Fact]
         public void NoChecksumGoogleSame_Test()
         {
-            using var srcStream = File.OpenRead("size-overflow-64");
-            using var targetStream = File.OpenRead("size-overflow-64");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}size-overflow-64");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}size-overflow-64");
             using var md5 = MD5.Create();
             var originalHash = md5.ComputeHash(targetStream);
             targetStream.Position = 0;
@@ -139,8 +139,8 @@ namespace VCDiff.Tests
         [Fact]
         public void NoChecksumEmptyToHash_Test()
         {
-            using var srcStream = File.OpenRead("b.test");
-            using var targetStream = File.OpenRead("empty.test");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}empty.test");
             using var md5 = MD5.Create();
             var originalHash = md5.ComputeHash(targetStream);
             targetStream.Position = 0;
@@ -165,8 +165,8 @@ namespace VCDiff.Tests
         [Fact]
         public void ChecksumEmptyHash_Test()
         {
-            using var srcStream = File.OpenRead("empty.test");
-            using var targetStream = File.OpenRead("b.test");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}empty.test");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
             using var md5 = MD5.Create();
             var originalHash = md5.ComputeHash(targetStream);
             targetStream.Position = 0;
@@ -193,8 +193,8 @@ namespace VCDiff.Tests
         [Fact]
         public void Checksum_Test()
         {
-            using var srcStream = File.OpenRead("a.test");
-            using var targetStream = File.OpenRead("b.test");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}a.test");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
@@ -212,8 +212,8 @@ namespace VCDiff.Tests
         [Fact]
         public void ChecksumHash_Test()
         {
-            using var srcStream = File.OpenRead("a.test");
-            using var targetStream = File.OpenRead("b.test");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}a.test");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
             using var md5 = MD5.Create();
             var originalHash = md5.ComputeHash(targetStream);
             targetStream.Position = 0;
@@ -238,8 +238,8 @@ namespace VCDiff.Tests
         [Fact]
         public void InterleaveFailXdelta3_Test()
         {
-            using var srcStream = File.OpenRead("a.test");
-            using var targetStream = File.OpenRead("b.test");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}a.test");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
             using var md5 = MD5.Create();
             var originalHash = md5.ComputeHash(targetStream);
             targetStream.Position = 0;
@@ -253,8 +253,8 @@ namespace VCDiff.Tests
         [Fact]
         public void Xdelta3ChecksumHash_Test()
         {
-            using var srcStream = File.OpenRead("a.test");
-            using var targetStream = File.OpenRead("b.test");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}a.test");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
             using var md5 = MD5.Create();
             var originalHash = md5.ComputeHash(targetStream);
             targetStream.Position = 0;
@@ -279,8 +279,8 @@ namespace VCDiff.Tests
         [Fact]
         public void NoChecksumHash_Test()
         {
-            using var srcStream = File.OpenRead("a.test");
-            using var targetStream = File.OpenRead("b.test");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}a.test");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
             using var md5 = MD5.Create();
             var originalHash = md5.ComputeHash(targetStream);
             targetStream.Position = 0;
@@ -305,8 +305,8 @@ namespace VCDiff.Tests
         [Fact]
         public void ChecksumHashSmall_block_Test()
         {
-            using var srcStream = File.OpenRead("a.test");
-            using var targetStream = File.OpenRead("b.test");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}a.test");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
             using var md5 = MD5.Create();
             var originalHash = md5.ComputeHash(targetStream);
             targetStream.Position = 0;
@@ -331,8 +331,8 @@ namespace VCDiff.Tests
         [Fact]
         public void ChecksumHashLarge_block_Test()
         {
-            using var srcStream = File.OpenRead("a.test");
-            using var targetStream = File.OpenRead("b.test");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}a.test");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
             using var md5 = MD5.Create();
             var originalHash = md5.ComputeHash(targetStream);
             targetStream.Position = 0;
@@ -358,8 +358,8 @@ namespace VCDiff.Tests
         [Fact]
         public void Interleaved_Test()
         {
-            using var srcStream = File.OpenRead("a.test");
-            using var targetStream = File.OpenRead("b.test");
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}a.test");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
             using var md5 = MD5.Create();

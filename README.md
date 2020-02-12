@@ -11,7 +11,8 @@ Large chunks have been rewritten, and heavily optimized to be *extremely fast*, 
 |RFC3284-compliant VCDIFF|✔️|✔️|
 |SDHC with Adler32 Checksum|✔️|✔️|
 |SDHC Interleaved (with and without Adler32 Checksum)|✔️|✔️|
-|xdelta3 Adler32 Checksummed (without compression)|✔️|✔️|
+|xdelta3 with Adler32 Checksum (without compression)|✔️|✔️|
+|xdelta3 with Adler32 Checksum and `VCD_APPHEADER` (without compression)|❌|✔️|
 |xdelta3 with external compression|❌|❌|
 
 The Adler32 checksum implementation 

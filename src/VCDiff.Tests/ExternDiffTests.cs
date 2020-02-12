@@ -19,11 +19,13 @@ namespace VCDiff.Tests
         [InlineData("interleaved.openvcdiff")]
         [InlineData("sample.xdelta")]
         [InlineData("sample_nosmallstr.xdelta")]
+        [InlineData("sample_appheader.xdelta")]
+
         public void ExternTest_Impl(string patchfile)
         {
-            using var srcStream = File.OpenRead("a.test");
-            using var targetStream = File.OpenRead("b.test");
-            using var deltaStream = File.OpenRead(patchfile);
+            using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}a.test");
+            using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
+            using var deltaStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}{patchfile}");
             using var md5 = MD5.Create();
             targetStream.Position = 0;
             var originalHash = md5.ComputeHash(targetStream);
