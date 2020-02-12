@@ -6,7 +6,7 @@ namespace VCDiff.Shared
     {
         public static uint ComputeGoogleAdler32(ReadOnlyMemory<byte> buffer)
         {
-            return Adler32.Hash(1, buffer.Span);
+            return Adler32.Hash(0, buffer.Span);
         }
 
         public static uint ComputeXdelta3Adler32(ReadOnlyMemory<byte> buffer)
