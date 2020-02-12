@@ -16,7 +16,7 @@
         /// <summary>
         /// End of stream encountered.
         /// </summary>
-        EOD = -2
+        EOD = -2,
     }
 
     // The possible values for the Hdr_Indicator field, as described
