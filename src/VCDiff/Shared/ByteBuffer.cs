@@ -101,7 +101,6 @@ namespace VCDiff.Shared
 
         public byte PeekByte()
         {
-            if (offset >= length) throw new Exception("Trying to read past End of Buffer");
             unsafe
             {
                 return *((byte*)this.bytePtr + offset);
@@ -110,13 +109,12 @@ namespace VCDiff.Shared
 
         public Memory<byte> PeekBytes(int len)
         {
-            int sliceLen = offset + len > bytes.Length ? bytes.Length - offset : len;
+            int sliceLen = offset + len > this.length ? this.length - offset : len;
             return bytes.Slice(offset, sliceLen);
         }
 
         public byte ReadByte()
         {
-            if (offset >= length) throw new Exception("Trying to read past End of Buffer");
             unsafe
             {
                 return *((byte*)this.bytePtr + offset++);

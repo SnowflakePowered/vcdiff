@@ -65,32 +65,27 @@ namespace VCDiff.Encoders
         }
 
         /// <summary>
-        /// only hash the first two bytes if any
-        /// </summary>
-        /// <param name="bytes"></param>
-        /// <returns></returns>
-        private static ulong HashFirstTwoBytes(ReadOnlySpan<byte> bytes)
-        {
-            if (bytes.Length == 0) return 1;
-            if (bytes.Length == 1) return bytes[0] * kMult;
-
-            return (bytes[0] * kMult) + bytes[1];
-        }
-
-        /// <summary>
         /// Generate a new hash from the bytes
         /// </summary>
         /// <param name="bytes">The bytes to generate the hash for</param>
         /// <returns></returns>
         public ulong Hash(ReadOnlyMemory<byte> bytes)
         {
-            var span = bytes.Span;
-            ulong h = HashFirstTwoBytes(span);
-            for (int i = 2; i < bytes.Length; i++)
+            unsafe
             {
-                h = HashStep(h, span[i]);
+                fixed (byte* span = bytes.Span)
+                {
+                    if (bytes.Length == 0) return 1;
+                    if (bytes.Length == 1) return span[0] * kMult;
+                    ulong h = (span[0] * kMult) + span[1];
+                    for (int i = 2; i < bytes.Length; i++)
+                    {
+                        h = HashStep(h, span[i]);
+                    }
+
+                    return h;
+                }
             }
-            return h;
         }
 
         /// <summary>
