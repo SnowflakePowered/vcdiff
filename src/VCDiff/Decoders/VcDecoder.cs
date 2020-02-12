@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
@@ -117,6 +118,16 @@ namespace VCDiff.Decoders
                     return result;
                 }
             }
+
+            if ((hdr & (int)VCDiffCodeFlags.VCDAPPHEADER) != 0)
+            {
+                if (!delta.CanRead) return VCDiffResult.EOD;
+                
+                int headerLength = VarIntBE.ParseInt32(delta);
+                // skip the app header
+                delta.ReadBytes(headerLength);
+            }
+
 
             this.IsSDCHFormat = version == 'S';
 

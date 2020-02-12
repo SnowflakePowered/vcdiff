@@ -6,6 +6,8 @@ namespace VCDiff.Decoders
 {
     internal class WindowDecoder
     {
+        private const uint HardMaxWindowSize = 1u << 24;
+
         private IByteBuffer buffer;
         private int returnCode;
         private long deltaEncodingLength;
@@ -299,7 +301,13 @@ namespace VCDiff.Decoders
                 targetWindowLength = 0;
                 return false;
             }
+
             targetWindowLength = outTargetLength;
+            if (targetWindowLength > HardMaxWindowSize)
+            {
+                targetWindowLength = 0;
+                this.returnCode = (int)VCDiffResult.ERROR;
+            }
             return true;
         }
 

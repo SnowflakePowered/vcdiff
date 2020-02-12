@@ -48,7 +48,8 @@
     internal enum VCDiffCodeFlags
     {
         VCDDECOMPRESS = 0x01,
-        VCDCODETABLE = 0x02
+        VCDCODETABLE = 0x02,
+        VCDAPPHEADER = 0x04,
     }
 
     // The possible values for the Win_Indicator field, as described
