@@ -15,9 +15,10 @@ Large chunks have been rewritten, and heavily optimized to be *extremely fast*, 
 |xdelta3 with Adler32 Checksum and `VCD_APPHEADER` (without compression)|❌|✔️|
 |xdelta3 with external compression|❌|❌|
 
-The Adler32 checksum implementation 
+The Adler32 checksum implementation will use SIMD on systems that support SSSE3 extensions when used in a .NET Core 3.1 application. .NET Standard 2.1 is the minimum supported TFM, because of the reliance on System.Buffers.
 
-The original readme, with some small changes, follows:
+<details><summary>The original readme, with some changes to the API usage examples</summary>
+<p>
 
 This is a full implementation of open-vcdiff in C# based on [Google's open-vcdiff](https://github.com/google/open-vcdiff). This is written entirely in C# - no external C++ libraries required. This includes proper SDHC support with interleaving and checksums. The only thing it does not support is encoding with a custom CodeTable currently. Will be added later if requested, or feel free to add it in and send a pull request.
 
@@ -136,5 +137,8 @@ while (bytesWritten < someSizeThatYouAreExpecting) {
 }
 ```
 
-# Apache 2.0 License
-This is licensed under the same license as open-vcdiff by Google. See [Apache 2.0 license](http://www.apache.org/licenses/LICENSE-2.0).
+</p>
+</details>
+
+# License
+vcdiff is a derivative work of [open-vcdiff](https://github.com/google/open-vcdiff) and [xdelta3](https://github.com/jmacd/xdelta), and thus is also licensed under the Apache Public License 2.0.
