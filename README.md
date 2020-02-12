@@ -4,7 +4,17 @@
 
 This is a hard fork of [VCDiff](https://github.com/Metric/VCDiff), originally written by [Metric](https://github.com/Metric), written primarily for use in Snowflake.
 
-Large chunks have been rewritten, and heavily optimized to be *extremely fast*, using `Vector<byte>` intrinsics, as well as `Memory<byte>` and `Span<byte>` APIs to eke out every bit of performance possible, performing close if not equal to the C++ `open-vcdiff` library. Non-scientific preliminary testing shows up to a 20x speedup compared to the original library when diffing a 2MB file. 
+Large chunks have been rewritten, and heavily optimized to be *extremely fast*, using vector intrinsics, as well as `Memory<byte>` and `Span<byte>` APIs to eke out every bit of performance possible, performing close if not equal to the C++ `open-vcdiff` library. Non-scientific preliminary testing shows up to a 20x speedup compared to the original library when diffing a 2MB file. 
+
+|Format|Encoding|Decoding|
+|------|--------|--------|
+|RFC3284-compliant VCDIFF|✔️|✔️|
+|SDHC with Adler32 Checksum|✔️|✔️|
+|SDHC Interleaved (with and without Adler32 Checksum)|✔️|✔️|
+|xdelta3 Adler32 Checksummed (without compression)|✔️|✔️|
+|xdelta3 with external compression|❌|❌|
+
+The Adler32 checksum implementation 
 
 The original readme, with some small changes, follows:
 

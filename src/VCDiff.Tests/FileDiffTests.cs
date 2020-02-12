@@ -276,55 +276,6 @@ namespace VCDiff.Tests
             Assert.Equal(originalHash, outputHash);
         }
 
-
-        [Fact]
-        public void Xdelta3ExternalChecksumHash_Test()
-        {
-            using var srcStream = File.OpenRead("a.test");
-            using var targetStream = File.OpenRead("b.test");
-            using var deltaStream = File.OpenRead("sample.xdelta");
-            using var md5 = MD5.Create();
-            targetStream.Position = 0;
-            var originalHash = md5.ComputeHash(targetStream);
-
-            using var outputStream = new MemoryStream();
-
-            outputStream.Position = 0;
-            srcStream.Position = 0;
-            targetStream.Position = 0;
-            deltaStream.Position = 0;
-
-            using VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
-            Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
-            outputStream.Position = 0;
-            var outputHash = md5.ComputeHash(outputStream);
-            Assert.Equal(originalHash, outputHash);
-        }
-
-        [Fact]
-        public void Xdelta3ExternalNoSmallStrChecksumHash_Test()
-        {
-            using var srcStream = File.OpenRead("a.test");
-            using var targetStream = File.OpenRead("b.test");
-            using var deltaStream = File.OpenRead("sample_nosmallstr.xdelta");
-            using var md5 = MD5.Create();
-            targetStream.Position = 0;
-            var originalHash = md5.ComputeHash(targetStream);
-
-            using var outputStream = new MemoryStream();
-
-            outputStream.Position = 0;
-            srcStream.Position = 0;
-            targetStream.Position = 0;
-            deltaStream.Position = 0;
-
-            using VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream);
-            Assert.Equal(VCDiffResult.SUCCESS, decoder.Decode(out long bytesWritten));
-            outputStream.Position = 0;
-            var outputHash = md5.ComputeHash(outputStream);
-            Assert.Equal(originalHash, outputHash);
-        }
-
         [Fact]
         public void NoChecksumHash_Test()
         {
