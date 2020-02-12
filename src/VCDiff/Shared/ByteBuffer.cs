@@ -40,7 +40,7 @@ namespace VCDiff.Shared
         {
             var buffer = new ByteBuffer();
             buffer.copyStream = new MemoryStream();
-            copyStream.CopyTo(buffer.copyStream);
+            await copyStream.CopyToAsync(buffer.copyStream);
             buffer.copyStream.Seek(0, SeekOrigin.Begin);
             buffer.offset = 0;
             buffer.bytes = new Memory<byte>(buffer.copyStream.GetBuffer(), 0, (int)copyStream.Length);

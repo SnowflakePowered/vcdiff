@@ -305,15 +305,6 @@
             Zlib implementation of the Adler32 Hash
             </summary>
         </member>
-        <member name="M:VCDiff.Shared.Adler32.HashSsse3(System.UInt32,System.ReadOnlySpan{System.Byte})">
-            <summary>
-            SSSE3 Version of Adler32
-            https://chromium.googlesource.com/chromium/src/third_party/zlib/+/master/adler32_simd.c
-            </summary>
-            <param name="adler"></param>
-            <param name="buff"></param>
-            <returns></returns>
-        </member>
         <member name="M:VCDiff.Shared.ByteBuffer.#ctor(System.Byte[])">
             <summary>
             Basically a simple wrapper for byte[] arrays
