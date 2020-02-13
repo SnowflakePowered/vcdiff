@@ -168,30 +168,7 @@
             </summary>
             <param name="size">block size</param>
         </member>
-        <member name="M:VCDiff.Encoders.RollingHash.ModBase(System.UInt64)">
-            <summary>
-            Does the MODULO operation
-            </summary>
-            <param name="op"></param>
-            <returns></returns>
-        </member>
-        <member name="M:VCDiff.Encoders.RollingHash.FindModBaseInverse(System.UInt64)">
-            <summary>
-            Finds the inverse of the operation
-            </summary>
-            <param name="op"></param>
-            <returns></returns>
-        </member>
-        <member name="M:VCDiff.Encoders.RollingHash.HashStep(System.UInt64,System.Byte)">
-            <summary>
-            Performs the next hash encoding step
-            for creating the hash
-            </summary>
-            <param name="partialHash"></param>
-            <param name="next"></param>
-            <returns></returns>
-        </member>
-        <member name="M:VCDiff.Encoders.RollingHash.Hash(System.ReadOnlyMemory{System.Byte})">
+        <member name="M:VCDiff.Encoders.RollingHash.Hash(System.Memory{System.Byte})">
             <summary>
             Generate a new hash from the bytes
             </summary>
@@ -208,14 +185,6 @@
             <param name="oldHash">the original hash</param>
             <param name="firstByte">the original byte of the data for the first hash</param>
             <param name="newByte">the first byte of the new data to hash</param>
-            <returns></returns>
-        </member>
-        <member name="M:VCDiff.Encoders.RollingHash.RemoveFirstByte(System.UInt64,System.Byte)">
-            <summary>
-            Removes the first byte from the hash
-            </summary>
-            <param name="hash">hash</param>
-            <param name="first">first byte</param>
             <returns></returns>
         </member>
         <member name="T:VCDiff.Encoders.VcEncoder">

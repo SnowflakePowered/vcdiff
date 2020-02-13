@@ -7,7 +7,6 @@ namespace VCDiff.Encoders
         private const ulong kMult = 257;
         private const ulong kBase = (1 << 23);
 
-        private int size;
         private ulong[] removeTable;
         private ulong multiplier;
 
@@ -17,51 +16,19 @@ namespace VCDiff.Encoders
         /// <param name="size">block size</param>
         public RollingHash(int size)
         {
-            this.size = size;
             removeTable = new ulong[256];
             multiplier = 1;
             for (int i = 0; i < size - 1; ++i)
             {
-                multiplier = ModBase(multiplier * kMult);
+                multiplier = (multiplier * kMult) & (kBase - 1);
             }
             ulong byteTimes = 0;
             for (int i = 0; i < 256; ++i)
             {
-                removeTable[i] = FindModBaseInverse(byteTimes);
-                byteTimes = ModBase(byteTimes + multiplier);
+                // Get the inverse of the modBase
+                removeTable[i] = (0 - byteTimes) & (kBase - 1);
+                byteTimes = (byteTimes + multiplier) & (kBase - 1);
             }
-        }
-
-        /// <summary>
-        /// Does the MODULO operation
-        /// </summary>
-        /// <param name="op"></param>
-        /// <returns></returns>
-        private static ulong ModBase(ulong op)
-        {
-            return op & (kBase - 1);
-        }
-
-        /// <summary>
-        /// Finds the inverse of the operation
-        /// </summary>
-        /// <param name="op"></param>
-        /// <returns></returns>
-        private static ulong FindModBaseInverse(ulong op)
-        {
-            return ModBase(0 - op);
-        }
-
-        /// <summary>
-        /// Performs the next hash encoding step
-        /// for creating the hash
-        /// </summary>
-        /// <param name="partialHash"></param>
-        /// <param name="next"></param>
-        /// <returns></returns>
-        private static ulong HashStep(ulong partialHash, byte next)
-        {
-            return ModBase((partialHash * kMult) + next);
         }
 
         /// <summary>
@@ -69,23 +36,19 @@ namespace VCDiff.Encoders
         /// </summary>
         /// <param name="bytes">The bytes to generate the hash for</param>
         /// <returns></returns>
-        public ulong Hash(ReadOnlyMemory<byte> bytes)
+        public ulong Hash(Memory<byte> bytes)
         {
-            unsafe
+            long len = bytes.Length;
+            Span<byte> span = bytes.Span;
+            if (len == 0) return 1;
+            if (len == 1) return span[0] * kMult;
+            ulong h = (span[0] * kMult) + span[1];
+            for (int i = 2; i < bytes.Length; i++)
             {
-                fixed (byte* span = bytes.Span)
-                {
-                    if (bytes.Length == 0) return 1;
-                    if (bytes.Length == 1) return span[0] * kMult;
-                    ulong h = (span[0] * kMult) + span[1];
-                    for (int i = 2; i < bytes.Length; i++)
-                    {
-                        h = HashStep(h, span[i]);
-                    }
-
-                    return h;
-                }
+                h = (h * kMult + span[i]) & (kBase - 1);
             }
+
+            return h;
         }
 
         /// <summary>
@@ -100,19 +63,11 @@ namespace VCDiff.Encoders
         /// <returns></returns>
         public ulong UpdateHash(ulong oldHash, byte firstByte, byte newByte)
         {
-            ulong partial = RemoveFirstByte(oldHash, firstByte);
-            return HashStep(partial, newByte);
-        }
+            // Remove the first byte from the hash
+            ulong partial = (oldHash + removeTable[firstByte]) & (kBase - 1);
 
-        /// <summary>
-        /// Removes the first byte from the hash
-        /// </summary>
-        /// <param name="hash">hash</param>
-        /// <param name="first">first byte</param>
-        /// <returns></returns>
-        private ulong RemoveFirstByte(ulong hash, byte first)
-        {
-            return ModBase(hash + removeTable[first]);
+            // Do the hash step
+            return (partial * kMult + newByte) & (kBase - 1);
         }
     }
 }
