@@ -22,12 +22,21 @@ namespace VCDiff.Encoders
         private unsafe int* kMultFactorsPtr;
         private ulong multiplier;
 
+#if NETCOREAPP3_1
+        private readonly Vector256<int> v_kbase;
+        private readonly Vector256<int> v_shuf;
+#endif
         /// <summary>
         /// Rolling Hash Constructor
         /// </summary>
         /// <param name="size">block size</param>
         public RollingHash(int size)
         {
+
+#if NETCOREAPP3_1
+            v_kbase = Vector256.Create(kBase - 1);
+            v_shuf = Vector256.Create(7, 6, 5, 4, 3, 2, 1, 0);
+#endif
             this.WindowSize = size;
             removeTable = new ulong[256];
             kMultFactors = new int[size];
@@ -84,22 +93,19 @@ namespace VCDiff.Encoders
             if (len == 1) return span[0] * (uint)kMult;
             ulong h = 0;
             Vector256<int> v_ps = Vector256<int>.Zero;
-            Vector256<int> v_kbase = Vector256.Create(kBase - 1);
-            Vector256<int> v_shuf = Vector256.Create(7, 6, 5, 4, 3, 2, 1, 0);
+            
             fixed (byte* _buf = span)
             {
-                int* buf = (int*) _buf;
+                byte* buf = (byte*) _buf;
                 for (int i = 0, j = len - i - 1; len - i >= 8; i += 8, j = len - i - 1)
                 {
-
                     var x = kMultFactorsPtr[j - 7];
                     Vector256<int> c_v = Avx2.LoadDquVector256(&kMultFactorsPtr[j - 7]);
                     c_v = Avx2.PermuteVar8x32(c_v, v_shuf);
-                    
-                    Vector256<int> s_v = Vector256.Create(span[i + 0], span[i + 1], span[i + 2],
-                        span[i + 3], span[i + 4],
-                        span[i + 5], span[i + 6], span[i + 7]);
 
+                    Vector128<byte> q_v = Sse2.LoadVector128(buf + i);
+                    Vector256<int> s_v = Avx2.ConvertToVector256Int32(q_v);
+                    
                     v_ps = Avx2.Add(v_ps, Avx2.And(Avx2.MultiplyLow(c_v, s_v), v_kbase));
                 }
             }
