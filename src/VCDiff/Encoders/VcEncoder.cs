@@ -38,7 +38,8 @@ namespace VCDiff.Encoders
         /// <param name="chunkSize">
         /// The minimum size of a string match that is worth putting into a COPY. This must be bigger than twice the block size.</param>
         /// <exception cref="ArgumentException">If an invalid blockSize or chunkSize is used..</exception>
-        public VcEncoder(Stream source, Stream target, Stream outputStream, int maxBufferSize = 1, int blockSize = 16, int chunkSize = 0)
+        public VcEncoder(Stream source, Stream target, Stream outputStream,
+            int maxBufferSize = 1, int blockSize = 16, int chunkSize = 0, RollingHash rollingHash = null)
         {
             if (maxBufferSize <= 0) maxBufferSize = 1;
             this.blockSize = blockSize;
@@ -46,7 +47,11 @@ namespace VCDiff.Encoders
             this.source = source;
             this.newData = new ByteStreamReader(target);
             this.outputStream = outputStream;
-            this.hasher = new RollingHash(this.blockSize);
+            this.hasher = rollingHash ?? new RollingHash(this.blockSize);
+            if (this.hasher.WindowSize != this.blockSize)
+            {
+                throw new ArgumentException("Supplied RollingHash instance has a different window size than blocksize!");
+            }
             this.bufferSize = maxBufferSize * 1024 * 1024;
 
             if (this.blockSize % 2 != 0 || this.chunkSize < 2 || this.chunkSize < 2 * this.blockSize)
