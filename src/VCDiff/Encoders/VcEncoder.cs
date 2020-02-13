@@ -11,7 +11,7 @@ namespace VCDiff.Encoders
     /// </summary>
     public class VcEncoder : IDisposable
     {
-        private IByteBuffer oldData;
+        private ByteBuffer oldData;
         private readonly IByteBuffer newData;
         private readonly Stream outputStream;
         private readonly Stream source;

@@ -55,6 +55,12 @@ namespace VCDiff.Shared
             return buffer;
         }
 
+        public unsafe byte* DangerousGetBytePointerAndIncreaseOffsetAfter(int read)
+        {
+            byte* ptr = bytePtr + offset;
+            offset += read;
+            return ptr;
+        }
         /// <summary>
         /// Basically a simple wrapper for byte[] arrays
         /// for easier reading and parsing

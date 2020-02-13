@@ -18,7 +18,7 @@ namespace VCDiff.Encoders
         private long[] lastBlockTable;
         private long tableSize;
         private RollingHash hasher;
-        private readonly IByteBuffer source;
+        private readonly ByteBuffer source;
 
         /// <summary>
         /// Create a hash lookup table for the data
@@ -27,7 +27,7 @@ namespace VCDiff.Encoders
         /// <param name="offset">the offset usually 0</param>
         /// <param name="hasher">the hashing method</param>
         /// <param name="blockSize">The block size to use</param>
-        public BlockHash(IByteBuffer sin, int offset, RollingHash hasher, int blockSize = 16)
+        public BlockHash(ByteBuffer sin, int offset, RollingHash hasher, int blockSize = 16)
         {
             this.blockSize = blockSize;
             this.maxMatchesToCheck = (this.blockSize >= 32) ? 32 : (32 * (32 / this.blockSize));
@@ -130,7 +130,11 @@ namespace VCDiff.Encoders
             source.Position = offset;
             while (offset < end)
             {
-                AddBlock(hasher.Hash(source.ReadBytes(blockSize)));
+                unsafe
+                {
+                    AddBlock(hasher.Hash(source.DangerousGetBytePointerAndIncreaseOffsetAfter(blockSize), blockSize));
+                }
+
                 offset += blockSize;
             }
         }

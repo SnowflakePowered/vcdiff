@@ -86,15 +86,11 @@ namespace VCDiff.Encoders
         }
 
 #if NETCOREAPP3_1
-        private unsafe ulong HashAvx2(Span<byte> span)
+        private unsafe ulong HashAvx2(byte* buf, int len)
         {
-            int len = span.Length;
             ulong h = 0;
             Vector256<int> v_ps = Vector256<int>.Zero;
 
-            fixed (byte* _buf = span)
-            {
-                byte* buf = _buf;
                 int i = 0;
                 for (int j = len - i - 1; len - i >= 8; i += 8, j = len - i - 1)
                 {
@@ -107,7 +103,6 @@ namespace VCDiff.Encoders
                     v_ps = Avx2.Add(v_ps, Avx2.And(Avx2.MultiplyLow(c_v, s_v), v_kbase));
                 }
 
-
                 Vector128<int> v128_s1 = Sse2.Add(Avx2.ExtractVector128(v_ps, 0), Avx2.ExtractVector128(v_ps, 1));
                 v128_s1 = Sse2.Add(v128_s1, Sse2.Shuffle(v128_s1, S23O1));
                 v128_s1 = Sse2.Add(v128_s1, Sse2.Shuffle(v128_s1, S1O32));
@@ -119,8 +114,7 @@ namespace VCDiff.Encoders
                     ulong c = (uint)kMultFactors[index];
                     h += c * buf[i];
                 }
-            }
-
+            
             return h & (kBase - 1);
         }
 #endif
@@ -141,15 +135,14 @@ namespace VCDiff.Encoders
         /// </summary>
         /// <param name="bytes">The bytes to generate the hash for</param>
         /// <returns></returns>
-        public ulong Hash(Memory<byte> bytes)
+        internal unsafe ulong Hash(byte* buf, int len)
         {
-            int len = bytes.Length;
-            Span<byte> span = bytes.Span;
+            
             if (len == 0) return 1;
-            if (len == 1) return span[0] * (uint)kMult;
+            if (len == 1) return buf[0] * (uint)kMult;
 
 #if NETCOREAPP3_1
-            if (Avx2.IsSupported && len >= 8) return HashAvx2(span);
+            if (Avx2.IsSupported && len >= 8) return HashAvx2(buf, len);
 #endif
             ulong h = 0;
 
@@ -161,26 +154,13 @@ namespace VCDiff.Encoders
             //    hi = ((hi * kMult) + span[j]) & (kBase - 1);
             //}
 
-            //// equivalent version
-            //int i = 0;
-            //int vecLength = Vector<ulong>.Count;
-            //for (; len - i > vecLength; i += vecLength)
-            //{
-            //    int index = len - i - 1;
-            //    var v_bytes = new Vector<byte>(span.Slice(i));
-            //    var v_factors = new Vector<ulong>(kMultFactors, index - vecLength);
-            //    var x = Vector.Multiply(v_factors, Vector.AsVectorUInt64(v_bytes));
-            //    h += Vector.Dot(x, Vector<ulong>.One);
-            //}
-
             for (int i = 0; i < len; i++)
             {
                 int index = len - i - 1;
                 ulong c = (uint)kMultFactors[index];
-                h += c * span[i];
+                h += c * buf[i];
             }
 
-            ulong yy = h & (kBase - 1);
             return h & (kBase - 1);
         }
 
