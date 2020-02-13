@@ -118,7 +118,7 @@
             <param name="isSdch">If the delta uses SDCH extensions.</param>
             <returns></returns>
         </member>
-        <member name="M:VCDiff.Encoders.BlockHash.#ctor(VCDiff.Shared.IByteBuffer,System.Int32,VCDiff.Encoders.RollingHash,System.Int32)">
+        <member name="M:VCDiff.Encoders.BlockHash.#ctor(VCDiff.Shared.ByteBuffer,System.Int32,VCDiff.Encoders.RollingHash,System.Int32)">
             <summary>
             Create a hash lookup table for the data
             </summary>
@@ -138,7 +138,7 @@
             <param name="target">the target buffer</param>
             <param name="m">the match object to use</param>
         </member>
-        <member name="M:VCDiff.Encoders.ChunkEncoder.#ctor(VCDiff.Encoders.BlockHash,VCDiff.Shared.IByteBuffer,VCDiff.Encoders.RollingHash,VCDiff.Shared.ChecksumFormat,System.Boolean,System.Int32)">
+        <member name="M:VCDiff.Encoders.ChunkEncoder.#ctor(VCDiff.Encoders.BlockHash,VCDiff.Shared.ByteBuffer,VCDiff.Encoders.RollingHash,VCDiff.Shared.ChecksumFormat,System.Boolean,System.Int32)">
             <summary>
             Performs the actual encoding of a chunk of data into the VCDiff format
             </summary>
@@ -150,7 +150,7 @@
             <param name="minBlockSize">The minimum block size to use. Defaults to 32, and must be a power of 2.
                 This value must also be smaller than the block size of the dictionary.</param>
         </member>
-        <member name="M:VCDiff.Encoders.ChunkEncoder.EncodeChunk(VCDiff.Shared.IByteBuffer,System.IO.Stream)">
+        <member name="M:VCDiff.Encoders.ChunkEncoder.EncodeChunk(VCDiff.Shared.ByteBuffer,System.IO.Stream)">
             <summary>
             Encodes the data using the settings from initialization
             </summary>
@@ -168,7 +168,7 @@
             </summary>
             <param name="size">block size</param>
         </member>
-        <member name="M:VCDiff.Encoders.RollingHash.Hash(System.Memory{System.Byte})">
+        <member name="M:VCDiff.Encoders.RollingHash.Hash(System.Byte*,System.Int32)">
              <summary>
              Generate a new hash from the bytes
             

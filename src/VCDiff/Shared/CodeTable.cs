@@ -212,7 +212,7 @@ namespace VCDiff.Shared
             return true;
         }
 
-        public IByteBuffer GetBytes()
+        public ByteBuffer GetBytes()
         {
             return new ByteBuffer(table);
         }

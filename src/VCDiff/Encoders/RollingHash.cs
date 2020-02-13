@@ -12,6 +12,7 @@ namespace VCDiff.Encoders
     {
         private const byte S23O1 = (((2) << 6) | ((3) << 4) | ((0) << 2) | ((1)));
         private const byte S1O32 = (((1) << 6) | ((0) << 4) | ((3) << 2) | ((2)));
+        private const byte SO123 = (((0) << 6) | ((1) << 4) | ((2) << 2) | ((3)));
 
         private const int kMult = 257;
         private const int kBase = (1 << 23);
@@ -23,6 +24,8 @@ namespace VCDiff.Encoders
         private ulong multiplier;
 
 #if NETCOREAPP3_1
+        private readonly Vector128<int> v_kbase_sse;
+
         private readonly Vector256<int> v_kbase;
         private readonly Vector256<int> v_shuf;
 #endif
@@ -35,6 +38,7 @@ namespace VCDiff.Encoders
 
 #if NETCOREAPP3_1
             v_kbase = Vector256.Create(kBase - 1);
+            v_kbase_sse = Vector128.Create(kBase - 1);
             v_shuf = Vector256.Create(7, 6, 5, 4, 3, 2, 1, 0);
 #endif
             this.WindowSize = size;
@@ -43,7 +47,7 @@ namespace VCDiff.Encoders
             kMultFactorsHandle = kMultFactors.AsMemory().Pin();
             unsafe
             {
-                kMultFactorsPtr = (int *)kMultFactorsHandle.Pointer;
+                kMultFactorsPtr = (int*)kMultFactorsHandle.Pointer;
             }
             multiplier = 1;
 
@@ -91,30 +95,61 @@ namespace VCDiff.Encoders
             ulong h = 0;
             Vector256<int> v_ps = Vector256<int>.Zero;
 
-                int i = 0;
-                for (int j = len - i - 1; len - i >= 8; i += 8, j = len - i - 1)
-                {
-                    Vector256<int> c_v = Avx.LoadDquVector256(&kMultFactorsPtr[j - 7]);
-                    c_v = Avx2.PermuteVar8x32(c_v, v_shuf);
+            int i = 0;
+            for (int j = len - i - 1; len - i >= 8; i += 8, j = len - i - 1)
+            {
+                Vector256<int> c_v = Avx.LoadDquVector256(&kMultFactorsPtr[j - 7]);
+                c_v = Avx2.PermuteVar8x32(c_v, v_shuf);
 
-                    Vector128<byte> q_v = Sse2.LoadVector128(buf + i);
-                    Vector256<int> s_v = Avx2.ConvertToVector256Int32(q_v);
+                Vector128<byte> q_v = Sse2.LoadVector128(buf + i);
+                Vector256<int> s_v = Avx2.ConvertToVector256Int32(q_v);
 
-                    v_ps = Avx2.Add(v_ps, Avx2.And(Avx2.MultiplyLow(c_v, s_v), v_kbase));
-                }
+                v_ps = Avx2.Add(v_ps, Avx2.And(Avx2.MultiplyLow(c_v, s_v), v_kbase));
+            }
 
-                Vector128<int> v128_s1 = Sse2.Add(Avx2.ExtractVector128(v_ps, 0), Avx2.ExtractVector128(v_ps, 1));
-                v128_s1 = Sse2.Add(v128_s1, Sse2.Shuffle(v128_s1, S23O1));
-                v128_s1 = Sse2.Add(v128_s1, Sse2.Shuffle(v128_s1, S1O32));
-                h += Sse2.ConvertToUInt32(v128_s1.AsUInt32());
+            Vector128<int> v128_s1 = Sse2.Add(Avx2.ExtractVector128(v_ps, 0), Avx2.ExtractVector128(v_ps, 1));
+            v128_s1 = Sse2.Add(v128_s1, Sse2.Shuffle(v128_s1, S23O1));
+            v128_s1 = Sse2.Add(v128_s1, Sse2.Shuffle(v128_s1, S1O32));
+            h += Sse2.ConvertToUInt32(v128_s1.AsUInt32());
 
-                for (; i < len; i++)
-                {
-                    int index = len - i - 1;
-                    ulong c = (uint)kMultFactors[index];
-                    h += c * buf[i];
-                }
-            
+            for (; i < len; i++)
+            {
+                int index = len - i - 1;
+                ulong c = (uint)kMultFactors[index];
+                h += c * buf[i];
+            }
+
+            return h & (kBase - 1);
+        }
+
+        private unsafe ulong HashSse(byte* buf, int len)
+        {
+            ulong h = 0;
+            Vector128<int> v_ps = Vector128<int>.Zero;
+
+            int i = 0;
+            for (int j = len - i - 1; len - i >= 4; i += 4, j = len - i - 1)
+            {
+                Vector128<int> c_v = Sse2.LoadVector128(&kMultFactorsPtr[j - 3]);
+                c_v = Sse2.Shuffle(c_v, SO123);
+                Vector128<int> q_v = Sse41.ConvertToVector128Int32(Sse2.LoadVector128(buf + i));
+                //Vector128<int> s_v = Sse2.Con(q_v);
+                //Vector256<int> s_v = Avx2.ConvertToVector256Int32(q_v);
+                
+                v_ps = Sse2.Add(v_ps, Sse2.And(Sse41.MultiplyLow(c_v, q_v), v_kbase_sse));
+            }
+
+            v_ps = Sse2.Add(v_ps, Sse2.Shuffle(v_ps, S23O1));
+            v_ps = Sse2.Add(v_ps, Sse2.Shuffle(v_ps, S1O32));
+            h += Sse2.ConvertToUInt32(v_ps.AsUInt32());
+
+            for (; i < len; i++)
+            {
+                int index = len - i - 1;
+                ulong c = (uint)kMultFactors[index];
+                h += c * buf[i];
+            }
+
             return h & (kBase - 1);
         }
 #endif
@@ -137,13 +172,10 @@ namespace VCDiff.Encoders
         /// <returns></returns>
         internal unsafe ulong Hash(byte* buf, int len)
         {
-            
+
             if (len == 0) return 1;
             if (len == 1) return buf[0] * (uint)kMult;
 
-#if NETCOREAPP3_1
-            if (Avx2.IsSupported && len >= 8) return HashAvx2(buf, len);
-#endif
             ulong h = 0;
 
             //// Old Version 
@@ -160,6 +192,14 @@ namespace VCDiff.Encoders
                 ulong c = (uint)kMultFactors[index];
                 h += c * buf[i];
             }
+
+
+#if NETCOREAPP3_1
+            var avx = HashAvx2(buf, len);
+            var sc = h & (kBase - 1);
+            var sse = HashSse(buf, len);
+            if (Avx2.IsSupported && len >= 8) return HashAvx2(buf, len);
+#endif
 
             return h & (kBase - 1);
         }

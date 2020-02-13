@@ -37,7 +37,7 @@ namespace VCDiff.Decoders
 
             CustomTable = new CodeTable();
             //get the original bytes of the default codetable to use as a dictionary
-            using IByteBuffer dictionary = CustomTable.GetBytes();
+            using ByteBuffer dictionary = CustomTable.GetBytes();
 
             //Decode the code table VCDiff file itself
             //stream the decoded output into a memory stream
