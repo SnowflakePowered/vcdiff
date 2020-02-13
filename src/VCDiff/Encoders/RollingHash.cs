@@ -13,6 +13,7 @@ namespace VCDiff.Encoders
         private const byte S23O1 = (((2) << 6) | ((3) << 4) | ((0) << 2) | ((1)));
         private const byte S1O32 = (((1) << 6) | ((0) << 4) | ((3) << 2) | ((2)));
         private const byte SO123 = (((0) << 6) | ((1) << 4) | ((2) << 2) | ((3)));
+        private const byte SOO2O = (((0) << 6) | ((0) << 4) | ((2) << 2) | ((0)));
 
         private const int kMult = 257;
         private const int kBase = (1 << 23);
@@ -126,17 +127,41 @@ namespace VCDiff.Encoders
         {
             ulong h = 0;
             Vector128<int> v_ps = Vector128<int>.Zero;
+            bool useSse4 = Sse41.IsSupported;
 
             int i = 0;
             for (int j = len - i - 1; len - i >= 4; i += 4, j = len - i - 1)
             {
                 Vector128<int> c_v = Sse2.LoadVector128(&kMultFactorsPtr[j - 3]);
                 c_v = Sse2.Shuffle(c_v, SO123);
-                Vector128<int> q_v = Sse41.ConvertToVector128Int32(Sse2.LoadVector128(buf + i));
-                //Vector128<int> s_v = Sse2.Con(q_v);
-                //Vector256<int> s_v = Avx2.ConvertToVector256Int32(q_v);
-                
-                v_ps = Sse2.Add(v_ps, Sse2.And(Sse41.MultiplyLow(c_v, q_v), v_kbase_sse));
+                Vector128<byte> q_v = Sse2.LoadVector128(buf + i);
+
+                Vector128<int> s_v;
+                if (useSse4)
+                {
+                    s_v = Sse41.ConvertToVector128Int32(q_v);
+                }
+                else
+                {
+                    q_v = Sse2.UnpackLow(q_v, q_v);
+                    s_v = Sse2.ShiftRightLogical(Sse2.UnpackLow(q_v.AsUInt16(), q_v.AsUInt16()).AsInt32(), 24);
+                }
+
+                if (useSse4)
+                {
+                    v_ps = Sse2.Add(v_ps, Sse2.And(Sse41.MultiplyLow(c_v, s_v), v_kbase_sse));
+                }
+                else
+                {
+                    
+                    Vector128<ulong> v_tmp1 = Sse2.Multiply(c_v.AsUInt32(), s_v.AsUInt32());
+                    Vector128<ulong> v_tmp2 =
+                        Sse2.Multiply(Sse2.ShiftRightLogical128BitLane(c_v.AsByte(), 4).AsUInt32(),
+                            Sse2.ShiftRightLogical128BitLane(s_v.AsByte(), 4).AsUInt32());
+                    ;
+                    v_ps = Sse2.Add(v_ps, Sse2.And(Sse2.UnpackLow(Sse2.Shuffle(v_tmp1.AsInt32(), SOO2O),
+                        Sse2.Shuffle(v_tmp2.AsInt32(), SOO2O)), v_kbase_sse));
+                }
             }
 
             v_ps = Sse2.Add(v_ps, Sse2.Shuffle(v_ps, S23O1));
@@ -176,6 +201,12 @@ namespace VCDiff.Encoders
             if (len == 0) return 1;
             if (len == 1) return buf[0] * (uint)kMult;
 
+
+#if NETCOREAPP3_1
+          
+            if (Avx2.IsSupported && len >= 8) return HashAvx2(buf, len);
+            if (Sse41.IsSupported && len >= 4) return HashSse(buf, len);
+#endif
             ulong h = 0;
 
             //// Old Version 
@@ -193,13 +224,6 @@ namespace VCDiff.Encoders
                 h += c * buf[i];
             }
 
-
-#if NETCOREAPP3_1
-            var avx = HashAvx2(buf, len);
-            var sc = h & (kBase - 1);
-            var sse = HashSse(buf, len);
-            if (Avx2.IsSupported && len >= 8) return HashAvx2(buf, len);
-#endif
 
             return h & (kBase - 1);
         }
