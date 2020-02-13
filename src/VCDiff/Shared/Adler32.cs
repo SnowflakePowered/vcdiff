@@ -21,9 +21,27 @@ namespace VCDiff.Shared
         private const byte S23O1 = (((2) << 6) | ((3) << 4) | ((0) << 2) | ((1)));
         private const byte S1O32 = (((1) << 6) | ((0) << 4) | ((3) << 2) | ((2)));
 
-        // todo #define _MM_SHUFFLE(fp3,fp2,fp1,fp0) (((fp3) << 6) | ((fp2) << 4) | ((fp1) << 2) | ((fp0)))
-        // #define S23O1 _MM_SHUFFLE(2,3,0,1)  /* A B C D -> B A D C */
-        // #define S1O32 _MM_SHUFFLE(1,0,3,2)  /* A B C D -> C D A B */
+#if NETCOREAPP3_1
+        private static readonly Vector128<sbyte> tap1;
+        private static readonly Vector128<sbyte> tap2;
+
+        private static readonly Vector256<sbyte> tap;
+
+        static Adler32()
+        {
+            if (Avx2.IsSupported)
+            { 
+                tap = Vector256.Create(32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20,
+                    19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
+            } 
+            else if (Sse2.IsSupported)
+            {
+                tap1 =
+                    Vector128.Create(32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17);
+                tap2 = Vector128.Create(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
+            }
+        }
+#endif
 
         public static uint Combine(uint adler1, uint adler2, uint len)
         {
@@ -79,10 +97,8 @@ namespace VCDiff.Shared
                     if (n > blocks) n = (uint)blocks;
                     blocks -= (int)n;
 
-                    Vector128<sbyte> tap1 = Vector128.Create(32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17);
-                    Vector128<sbyte> tap2 = Vector128.Create(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
-                    Vector128<byte> zero = Vector128.Create((byte)0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-                    Vector128<short> ones = Vector128.Create(1, 1, 1, 1, 1, 1, 1, 1);
+                    Vector128<byte> zero = Vector128<byte>.Zero;
+                    Vector128<short> ones = Vector128.Create((short)1);
 
                     //  Process n blocks of data. At most NMAX data bytes can be processed before s2 must be reduced modulo BASE.
                     Vector128<uint> v_ps = Vector128.Create(0, 0, 0, s1 * n);
@@ -179,10 +195,8 @@ namespace VCDiff.Shared
                     if (n > blocks) n = (uint)blocks;
                     blocks -= (int)n;
 
-                    Vector256<sbyte> tap = Vector256.Create(32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20,
-                        19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
-                    Vector256<byte> zero = Vector256.Create((byte)0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-                    Vector256<short> ones = Vector256.Create(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+                    Vector256<byte> zero = Vector256<byte>.Zero;
+                    Vector256<short> ones = Vector256.Create((short)1);
 
                     //  Process n blocks of data. At most NMAX data bytes can be processed before s2 must be reduced modulo BASE.
                     Vector256<uint> v_ps = Vector256.Create(0, 0, 0, 0, 0, 0, 0, s1 * n);

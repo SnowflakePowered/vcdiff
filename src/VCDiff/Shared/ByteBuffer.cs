@@ -9,7 +9,7 @@ namespace VCDiff.Shared
     {
         private Memory<byte> bytes;
         private MemoryHandle byteHandle;
-        private unsafe void* bytePtr;
+        private unsafe byte* bytePtr;
         private int length;
         private int offset;
 
@@ -30,7 +30,7 @@ namespace VCDiff.Shared
             this.byteHandle = this.bytes.Pin();
             unsafe
             {
-                this.bytePtr = this.byteHandle.Pointer;
+                this.bytePtr = (byte *)this.byteHandle.Pointer;
             }
 
             length = this.bytes.Length;
@@ -47,7 +47,7 @@ namespace VCDiff.Shared
             buffer.byteHandle = buffer.bytes.Pin();
             unsafe
             {
-                buffer.bytePtr = buffer.byteHandle.Pointer;
+                buffer.bytePtr = (byte *)buffer.byteHandle.Pointer;
             }
 
             buffer.length = buffer.bytes.Length;
@@ -67,7 +67,7 @@ namespace VCDiff.Shared
             this.byteHandle = this.bytes.Pin();
             unsafe
             {
-                this.bytePtr = this.byteHandle.Pointer;
+                this.bytePtr = (byte *)this.byteHandle.Pointer;
             }
 
             length = this.bytes.Length;
@@ -80,7 +80,7 @@ namespace VCDiff.Shared
             this.byteHandle = bytes.Pin();
             unsafe
             {
-                this.bytePtr = this.byteHandle.Pointer;
+                this.bytePtr = (byte *)this.byteHandle.Pointer;
             }
             length = this.bytes.Length;
         }
@@ -92,7 +92,7 @@ namespace VCDiff.Shared
             get => offset;
             set
             {
-                if (value > bytes.Length || value < 0) return;
+                if (value > length || value < 0) return;
                 offset = (int)value;
             }
         }
@@ -117,7 +117,7 @@ namespace VCDiff.Shared
         {
             unsafe
             {
-                return *((byte*)this.bytePtr + offset++);
+                return this.bytePtr[offset++];
             }
         }
 

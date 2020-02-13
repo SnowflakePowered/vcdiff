@@ -89,32 +89,37 @@ namespace VCDiff.Encoders
         private unsafe ulong HashAvx2(Span<byte> span)
         {
             int len = span.Length;
-            if (len == 0) return 1;
-            if (len == 1) return span[0] * (uint)kMult;
             ulong h = 0;
             Vector256<int> v_ps = Vector256<int>.Zero;
-            
+
             fixed (byte* _buf = span)
             {
-                byte* buf = (byte*) _buf;
-                for (int i = 0, j = len - i - 1; len - i >= 8; i += 8, j = len - i - 1)
+                byte* buf = _buf;
+                int i = 0;
+                for (int j = len - i - 1; len - i >= 8; i += 8, j = len - i - 1)
                 {
-                    var x = kMultFactorsPtr[j - 7];
-                    Vector256<int> c_v = Avx2.LoadDquVector256(&kMultFactorsPtr[j - 7]);
+                    Vector256<int> c_v = Avx.LoadDquVector256(&kMultFactorsPtr[j - 7]);
                     c_v = Avx2.PermuteVar8x32(c_v, v_shuf);
 
                     Vector128<byte> q_v = Sse2.LoadVector128(buf + i);
                     Vector256<int> s_v = Avx2.ConvertToVector256Int32(q_v);
-                    
+
                     v_ps = Avx2.Add(v_ps, Avx2.And(Avx2.MultiplyLow(c_v, s_v), v_kbase));
                 }
+
+
+                Vector128<int> v128_s1 = Sse2.Add(Avx2.ExtractVector128(v_ps, 0), Avx2.ExtractVector128(v_ps, 1));
+                v128_s1 = Sse2.Add(v128_s1, Sse2.Shuffle(v128_s1, S23O1));
+                v128_s1 = Sse2.Add(v128_s1, Sse2.Shuffle(v128_s1, S1O32));
+                h += Sse2.ConvertToUInt32(v128_s1.AsUInt32());
+
+                for (; i < len; i++)
+                {
+                    int index = len - i - 1;
+                    ulong c = (uint)kMultFactors[index];
+                    h += c * buf[i];
+                }
             }
-
-
-            Vector128<int> v128_s1 = Sse2.Add(Avx2.ExtractVector128(v_ps, 0), Avx2.ExtractVector128(v_ps, 1));
-            v128_s1 = Sse2.Add(v128_s1, Sse2.Shuffle(v128_s1, S23O1));
-            v128_s1 = Sse2.Add(v128_s1, Sse2.Shuffle(v128_s1, S1O32));
-            h += Sse2.ConvertToUInt32(v128_s1.AsUInt32());
 
             return h & (kBase - 1);
         }
