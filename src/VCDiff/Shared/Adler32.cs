@@ -112,9 +112,20 @@ namespace VCDiff.Shared
                     v_s2 = Sse2.Add(v_s2, Sse2.ShiftLeftLogical(v_ps, 5));
 
                     //  Sum epi32 ints v_s1(s2) and accumulate in s1(s2).
+
+                    // Shuffling 2301 then 1032 achieves the same thing as described here.
+                    // https://stackoverflow.com/questions/6996764/fastest-way-to-do-horizontal-float-vector-sum-on-x86
+                    // Vector128<uint> hi64 = Sse2.Shuffle(v_s1, S1O32);
+                    // Vector128<uint> sum64 = Sse2.Add(hi64, v_s1);
+                    // Vector128<uint> hi32 = Sse2.ShuffleLow(sum64.AsUInt16(), S1O32).AsUInt32();
+                    // Vector128<uint> sum32 = Sse2.Add(sum64, hi32);
+
                     v_s1 = Sse2.Add(v_s1, Sse2.Shuffle(v_s1, S23O1));
                     v_s1 = Sse2.Add(v_s1, Sse2.Shuffle(v_s1, S1O32));
+
                     s1 += Sse2.ConvertToUInt32(v_s1);
+
+
                     v_s2 = Sse2.Add(v_s2, Sse2.Shuffle(v_s2, S23O1));
                     v_s2 = Sse2.Add(v_s2, Sse2.Shuffle(v_s2, S1O32));
                     s2 = Sse2.ConvertToUInt32(v_s2);
@@ -135,7 +146,97 @@ namespace VCDiff.Shared
                     }
                     while (len-- > 0)
                     {
-                        s1 += buff[dof++];
+                        s1 += buffAddr[dof++];
+                        s2 += s1;
+                    }
+
+                    if (s1 >= BASE)
+                        s1 -= BASE;
+                    s2 %= BASE;
+                }
+                /*
+                * Return the recombined sums.
+                */
+                return s1 | (s2 << 16);
+            }
+        }
+
+        private static unsafe uint HashAvx2(uint adler, ReadOnlySpan<byte> buff)
+        {
+            fixed (byte* buffAddr = buff)
+            {
+                uint s1 = adler & 0xffff;
+                uint s2 = adler >> 16;
+
+                int dof = 0;
+                int len = buff.Length;
+                int blocks = len / BLOCK_SIZE;
+                len -= blocks * BLOCK_SIZE;
+
+                while (blocks > 0)
+                {
+                    uint n = NMAX / BLOCK_SIZE;
+                    if (n > blocks) n = (uint)blocks;
+                    blocks -= (int)n;
+
+                    Vector256<sbyte> tap = Vector256.Create(32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20,
+                        19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
+                    Vector256<byte> zero = Vector256.Create((byte)0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                    Vector256<short> ones = Vector256.Create(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+
+                    //  Process n blocks of data. At most NMAX data bytes can be processed before s2 must be reduced modulo BASE.
+                    Vector256<uint> v_ps = Vector256.Create(0, 0, 0, 0, 0, 0, 0, s1 * n);
+                    Vector256<uint> v_s2 = Vector256.Create(0, 0, 0, 0, 0, 0, 0, s2);
+                    Vector256<uint> v_s1 = Vector256.Create(0u, 0, 0, 0, 0, 0, 0, 0);
+
+                    do
+                    {
+                        // Load 32 input bytes.
+                        var bytes = Avx2.LoadVector256((buffAddr + dof));
+
+                        // Add previous block byte sum to v_ps. 
+                        v_ps = Avx2.Add(v_ps, v_s1);
+
+                        // Horizontally add the bytes for s1, multiply-adds the bytes by[32, 31, 30, ... ] for s2.
+                        v_s1 = Avx2.Add(v_s1, Avx2.SumAbsoluteDifferences(bytes, zero).AsUInt32());
+                        Vector256<short> mad = Avx2.MultiplyAddAdjacent(bytes, tap);
+                        v_s2 = Avx2.Add(v_s2, Avx2.MultiplyAddAdjacent(mad, ones).AsUInt32());
+
+                        dof += BLOCK_SIZE;
+                    } while (--n > 0);
+
+                    v_s2 = Avx2.Add(v_s2, Avx2.ShiftLeftLogical(v_ps, 5));
+
+                    //  Sum epi32 ints v_s1(s2) and accumulate in s1(s2).
+
+                    Vector128<uint> v128_s1 = Sse2.Add(Avx2.ExtractVector128(v_s1, 0), Avx2.ExtractVector128(v_s1, 1));
+                    v128_s1 = Sse2.Add(v128_s1, Sse2.Shuffle(v128_s1, S23O1));
+                    v128_s1 = Sse2.Add(v128_s1, Sse2.Shuffle(v128_s1, S1O32));
+                    s1 += Sse2.ConvertToUInt32(v128_s1);
+
+                    //// sum v_s2
+                    Vector128<uint> v128_s2 = Sse2.Add(Avx2.ExtractVector128(v_s2, 0), Avx2.ExtractVector128(v_s2, 1));
+                    v128_s2 = Sse2.Add(v128_s2, Sse2.Shuffle(v128_s2, S23O1));
+                    v128_s2 = Sse2.Add(v128_s2, Sse2.Shuffle(v128_s2, S1O32));
+                    s2 = Sse2.ConvertToUInt32(v128_s2);
+
+                    // Reduce
+                    s1 %= BASE;
+                    s2 %= BASE;
+                }
+
+                // Handle leftover data
+                if (len > 0)
+                {
+                    while (len >= 16)
+                    {
+                        len -= 16;
+                        Do(ref s1, ref s2, buff, dof, 16);
+                        dof += 16;
+                    }
+                    while (len-- > 0)
+                    {
+                        s1 += buffAddr[dof++];
                         s2 += s1;
                     }
 
@@ -153,76 +254,96 @@ namespace VCDiff.Shared
 #endif
         public static uint Hash(uint adler, ReadOnlySpan<byte> buff)
         {
-#if NETCOREAPP3_1
-            if (Ssse3.IsSupported) return Adler32.HashSsse3(adler, buff);
-#endif
-            if (buff.Length == 0) return 1;
-            uint sum2 = adler >> 16 & 0xffff;
-            adler &= 0xffff;
-
-            if (buff.Length == 1)
+            uint len = (uint)buff.Length;
+            if (len == 0) return 1;
+            if (len == 1)
             {
+                uint sum2 = adler >> 16 & 0xffff;
+                adler &= 0xffff;
+
                 adler += buff[0];
                 if (adler >= BASE)
                 {
                     adler -= BASE;
                 }
+
                 sum2 += adler;
                 if (sum2 >= BASE)
                 {
                     sum2 -= BASE;
                 }
+
                 return adler | (sum2 << 16);
             }
 
-            if (buff.Length < 16)
+            if (len < 16)
             {
-                for (int i = 0; i < buff.Length; i++)
+                uint sum2 = adler >> 16 & 0xffff;
+                adler &= 0xffff;
+
+                for (int i = 0; i < len; i++)
                 {
                     adler += buff[i];
                     sum2 += adler;
                 }
+
                 if (adler >= BASE)
                 {
                     adler -= BASE;
                 }
+
                 sum2 %= BASE;
                 return adler | (sum2 << 16);
             }
 
-            uint len = (uint)buff.Length;
-            int dof = 0;
-            while (len >= NMAX)
+#if NETCOREAPP3_1
+            if (Avx2.IsSupported) return Adler32.HashAvx2(adler, buff);
+            if (Ssse3.IsSupported) return Adler32.HashSsse3(adler, buff);
+#endif
+            unsafe
             {
-                len -= NMAX;
-                uint n = NMAX / 16;
-                do
+                fixed (byte* bufPtr = buff)
                 {
-                    Do(ref adler, ref sum2, buff, dof, 16);
-                    dof += 16;
-                } while (--n > 0);
-                adler %= BASE;
-                sum2 %= BASE;
-            }
+                    uint sum2 = adler >> 16 & 0xffff;
+                    adler &= 0xffff;
 
-            if (len > 0)
-            {
-                while (len >= 16)
-                {
-                    len -= 16;
-                    Do(ref adler, ref sum2, buff, dof, 16);
-                    dof += 16;
-                }
-                while (len-- > 0)
-                {
-                    adler += buff[dof++];
-                    sum2 += adler;
-                }
-                adler %= BASE;
-                sum2 %= BASE;
-            }
+                    int dof = 0;
+                    while (len >= NMAX)
+                    {
+                        len -= NMAX;
+                        uint n = NMAX / 16;
+                        do
+                        {
+                            Do(ref adler, ref sum2, buff, dof, 16);
+                            dof += 16;
+                        } while (--n > 0);
 
-            return adler | (sum2 << 16);
+                        adler %= BASE;
+                        sum2 %= BASE;
+                    }
+
+                    if (len > 0)
+                    {
+                        while (len >= 16)
+                        {
+                            len -= 16;
+                            Do(ref adler, ref sum2, buff, dof, 16);
+                            dof += 16;
+                        }
+
+                        while (len-- > 0)
+                        {
+                            adler += bufPtr[dof++];
+                            sum2 += adler;
+                        }
+
+                        adler %= BASE;
+                        sum2 %= BASE;
+                    }
+
+                    return adler | (sum2 << 16);
+                }
+            }
         }
     }
 }

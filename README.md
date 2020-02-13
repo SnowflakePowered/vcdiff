@@ -4,7 +4,7 @@
 
 This is a hard fork of [VCDiff](https://github.com/Metric/VCDiff), originally written by [Metric](https://github.com/Metric), written primarily for use in Snowflake.
 
-Large chunks have been rewritten, and heavily optimized to be *extremely fast*, using vector intrinsics, as well as `Memory<byte>` and `Span<byte>` APIs to eke out every bit of performance possible, performing close if not equal to the C++ `open-vcdiff` library. Non-scientific preliminary testing shows up to a 20x speedup compared to the original library when diffing a 2MB file. 
+Large chunks have been rewritten, and heavily optimized to be *extremely fast*, using vector intrinsics, as well as `Memory<byte>` and `Span<byte>` APIs to eke out every bit of performance possible. Non-scientific preliminary testing shows up to a 20x speedup compared to the original library when diffing a 2MB file. 
 
 Support for [xdelta3](https://github.com/jmacd/xdelta) checksums have also been included. Testing was done with xdelta 3.1, support for xdelta 3.0 patch files has not been tested. Only patch files without external compression (`-S none`) are supported. 
 
@@ -17,7 +17,7 @@ Support for [xdelta3](https://github.com/jmacd/xdelta) checksums have also been 
 |xdelta3 with Adler32 Checksum and `VCD_APPHEADER` (without compression)|❌|✔️|
 |xdelta3 with external compression|❌|❌|
 
-The Adler32 checksum implementation will use SIMD on systems that support SSSE3 extensions when used in a .NET Core 3.1 application. .NET Standard 2.1 is the minimum supported TFM, because of the reliance on System.Buffers.
+The Adler32 checksum implementation will use SIMD on systems that support SSSE3 or AVX2 extensions when used in a .NET Core 3.1 application. .NET Standard 2.1 is the minimum supported TFM, because of the reliance on System.Buffers.
 
 <details><summary>The original readme, with some changes to the API usage examples</summary>
 <p>
