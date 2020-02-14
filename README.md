@@ -4,7 +4,7 @@
 
 This is a hard fork of [VCDiff](https://github.com/Metric/VCDiff), originally written by [Metric](https://github.com/Metric), written primarily for use in Snowflake.
 
-Large chunks have been rewritten, and heavily optimized to be *extremely fast*, using vector intrinsics, as well as `Memory<byte>` and `Span<byte>` APIs as well as a sprinkling of unsafe pointer access to eke out every bit of performance possible. Non-scientific preliminary testing shows up to a 20x speedup compared to the original library when diffing a 2MB file. 
+Large chunks have been rewritten, and heavily optimized to be *extremely fast*, using vector intrinsics, as well as `Memory<byte>` and `Span<byte>` APIs as well as a sprinkling of unsafe pointer access to eke out every bit of performance possible. Non-scientific preliminary testing shows up to a 30x to 50x speedup compared to the original library when diffing a 2MB file. 
 
 Support for [xdelta3](https://github.com/jmacd/xdelta) checksums have also been included. Testing was done with xdelta 3.1, support for xdelta 3.0 patch files has not been tested. Only patch files without external compression (`-S none`) are supported. 
 
@@ -17,7 +17,7 @@ Support for [xdelta3](https://github.com/jmacd/xdelta) checksums have also been 
 |xdelta3 with Adler32 Checksum and `VCD_APPHEADER` (without compression)|❌|✔️|
 |xdelta3 with external compression|❌|❌|
 
-Wherever possible, SSE3 or AVX2 extensions are used on supported systems.
+Wherever possible, SSE3 or AVX2 extensions are used on supported systems. Speeds are comparable, albeit slightly slower than the native xdelta3, depending on the chosen blocksize. A lot of work has gone into optimizing out the overhead of garbage collection and memory access through `Memory<T>`, as well as parallelizing computational work with SIMD extensions.
 
 <details><summary>The original readme, with some changes to the API usage examples</summary>
 <p>

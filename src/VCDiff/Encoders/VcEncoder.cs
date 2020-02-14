@@ -35,7 +35,8 @@ namespace VCDiff.Encoders
         /// Increasing blockSize by a factor of two will halve the amount of memory needed for the next block table, and will halve the setup time
         /// for a new BlockHash.  However, it also doubles the minimum match length that is guaranteed to be found.
         ///
-        /// Blocksizes that are n mod 32 = 0 are AVX2 accelerated. Blocksizes that are n mod 16 = 0 are SSE2 accelerated, if supported.
+        /// Blocksizes that are n mod 32 = 0 are AVX2 accelerated. Blocksizes that are n mod 16 = 0 are SSE2 accelerated, if supported. 16 is a good default
+        /// for most scenarios, but you should use a block size of 32 or 64 for very similar data, or to optimize for speed.
         /// </param>
         /// <param name="chunkSize">
         /// The minimum size of a string match that is worth putting into a COPY. This must be bigger than twice the block size.</param>
