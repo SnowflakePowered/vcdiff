@@ -41,7 +41,7 @@ namespace VCDiff.Encoders
         /// </summary>
         /// <param name="newData">the target data</param>
         /// <param name="outputStream">the out stream</param>
-        public void EncodeChunk(ByteBuffer newData, Stream outputStream)
+        public unsafe void EncodeChunk(ByteBuffer newData, Stream outputStream)
         {
             newData.Position = 0;
             ReadOnlyMemory<byte> checksumBytes = newData.ReadBytes((int)newData.Length);
@@ -66,12 +66,11 @@ namespace VCDiff.Encoders
 
             ulong hash;
             //create the first hash
-            unsafe
-            {
-                hash = hasher.Hash(newData.DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(0),
-                    this.dictionary.blockSize);
-            }
+            hash = hasher.Hash(newData.DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(0),
+                this.dictionary.blockSize);
 
+
+            byte* newDataPtr = newData.DangerousGetBytePointer();
             while (true)
             {
                 //if less than block size exit and then write as an ADD
@@ -80,8 +79,9 @@ namespace VCDiff.Encoders
                     break;
                 }
 
+
                 //try and encode the copy and add instructions that best match
-                long bytesEncoded = EncodeCopyForBestMatch(hash, candidatePos, nextEncode, targetEnd, newData);
+                var bytesEncoded = EncodeCopyForBestMatch(hash, candidatePos, nextEncode, targetEnd, newDataPtr, newData);
 
                 if (bytesEncoded > 0)
                 {
@@ -132,11 +132,11 @@ namespace VCDiff.Encoders
 
         //currently does not support looking in target
         //only the dictionary
-        private long EncodeCopyForBestMatch(ulong hash, long candidateStart, long unencodedStart, long unencodedSize, ByteBuffer newData)
+        private unsafe long EncodeCopyForBestMatch(ulong hash, long candidateStart, long unencodedStart, long unencodedSize, byte* newDataPtr, ByteBuffer newData)
         {
             BlockHash.Match bestMatch = new BlockHash.Match();
 
-            dictionary.FindBestMatch(hash, candidateStart, unencodedStart, unencodedSize, newData,
+            dictionary.FindBestMatch(hash, candidateStart, unencodedStart, unencodedSize, newDataPtr, newData,
                 ref bestMatch);
 
             if (bestMatch.Size < MinBlockSize)

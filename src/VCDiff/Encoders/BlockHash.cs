@@ -23,6 +23,7 @@ namespace VCDiff.Encoders
         private long tableSize;
         private RollingHash hasher;
         private readonly ByteBuffer source;
+        private unsafe byte* sourcePtr;
         private const int EQUALS = unchecked((int)(0b1111_1111_1111_1111_1111_1111_1111_1111));
 
         /// <summary>
@@ -39,6 +40,11 @@ namespace VCDiff.Encoders
             this.hasher = hasher;
             this.source = sin;
             this.offset = offset;
+            unsafe
+            {
+                this.sourcePtr = source.DangerousGetBytePointer();
+            }
+
             tableSize = CalcTableSize();
 
             if (tableSize == 0)
@@ -162,12 +168,9 @@ namespace VCDiff.Encoders
         /// <param name="targetSize">the data left to encode</param>
         /// <param name="target">the target buffer</param>
         /// <param name="m">the match object to use</param>
-        public unsafe void FindBestMatch(ulong hash, long candidateStart, long targetStart, long targetSize, ByteBuffer target, ref Match m)
+        public unsafe void FindBestMatch(ulong hash, long candidateStart, long targetStart, long targetSize, byte* targetPtr, ByteBuffer target, ref Match m)
         {
             int matchCounter = 0;
-            byte* sourcePtr = source.DangerousGetBytePointer();
-            byte* targetPtr = target.DangerousGetBytePointer();
-            long tLen = target.Length;
 
             for (long blockNumber = FirstMatchingBlock(hash, candidateStart, sourcePtr, targetPtr, target);
                 blockNumber >= 0 && !TooManyMatches(ref matchCounter);

@@ -127,7 +127,7 @@
             <param name="hasher">the hashing method</param>
             <param name="blockSize">The block size to use</param>
         </member>
-        <member name="M:VCDiff.Encoders.BlockHash.FindBestMatch(System.UInt64,System.Int64,System.Int64,System.Int64,VCDiff.Shared.ByteBuffer,VCDiff.Encoders.BlockHash.Match@)">
+        <member name="M:VCDiff.Encoders.BlockHash.FindBestMatch(System.UInt64,System.Int64,System.Int64,System.Int64,System.Byte*,VCDiff.Shared.ByteBuffer,VCDiff.Encoders.BlockHash.Match@)">
             <summary>
             Finds the best matching block for the candidate
             </summary>
@@ -314,15 +314,6 @@
             Zlib implementation of the Adler32 Hash
             </summary>
         </member>
-        <member name="M:VCDiff.Shared.Adler32.HashSsse3(System.UInt32,System.ReadOnlySpan{System.Byte})">
-            <summary>
-            SSSE3 Version of Adler32
-            https://chromium.googlesource.com/chromium/src/third_party/zlib/+/master/adler32_simd.c
-            </summary>
-            <param name="adler"></param>
-            <param name="buff"></param>
-            <returns></returns>
-        </member>
         <member name="M:VCDiff.Shared.ByteBuffer.DangerousGetBytePointer">
             <summary>
             Dangerously gets the byte pointer.
@@ -362,6 +353,20 @@
             <summary>
             Emit an Xdelta3 checksum.
             </summary>
+        </member>
+        <member name="F:VCDiff.Shared.CodeTable.kNoOpcode">
+            <summary>
+            Default CodeTable as described in the RFC doc
+            </summary>
+        </member>
+        <member name="F:VCDiff.Shared.VarIntBE.int32Max">
+            <summary>
+            Special VarIntBE class for encoding a Variable BE Integer
+            </summary>
+        </member>
+    </members>
+</doc>
+>
         </member>
         <member name="F:VCDiff.Shared.CodeTable.kNoOpcode">
             <summary>
