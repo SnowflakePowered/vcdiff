@@ -52,27 +52,21 @@ namespace VCDiff.Encoders
                 throw new Exception("BlockHash Table Size is Invalid == 0");
             }
 
-            this.BlocksCount = source.Length / blockSize;
+            this.blocksCount = source.Length / blockSize;
 
             hashTableMask = (ulong)tableSize - 1;
             hashTable = new long[tableSize];
-            nextBlockTable = new long[BlocksCount];
-            lastBlockTable = new long[BlocksCount];
+            nextBlockTable = new long[blocksCount];
+            lastBlockTable = new long[blocksCount];
             lastBlockAdded = -1;
             SetTablesToInvalid();
         }
 
         private void SetTablesToInvalid()
         {
-            for (int i = 0; i < nextBlockTable.Length; i++)
-            {
-                lastBlockTable[i] = -1;
-                nextBlockTable[i] = -1;
-            }
-            for (int i = 0; i < hashTable.Length; i++)
-            {
-                hashTable[i] = -1;
-            }
+            Array.Fill(lastBlockTable, -1);
+            Array.Fill(nextBlockTable, -1);
+            Array.Fill(hashTable, -1);
         }
 
         private long CalcTableSize()
@@ -152,7 +146,7 @@ namespace VCDiff.Encoders
             }
         }
 
-        public long BlocksCount { get; }
+        public long blocksCount;
 
         public long TableSize => tableSize;
 
@@ -209,7 +203,7 @@ namespace VCDiff.Encoders
         public void AddBlock(ulong hash)
         {
             long blockNumber = lastBlockAdded + 1;
-            long totalBlocks = BlocksCount;
+            long totalBlocks = blocksCount;
             if (blockNumber >= totalBlocks)
             {
                 return;
@@ -300,7 +294,7 @@ namespace VCDiff.Encoders
 
         private unsafe long NextMatchingBlock(long blockNumber, long toffset, byte* sourcePtr, byte* targetPtr, ByteBuffer target)
         {
-            if (blockNumber >= BlocksCount)
+            if (blockNumber >= blocksCount)
             {
                 return -1;
             }

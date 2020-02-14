@@ -379,7 +379,7 @@ namespace VCDiff.Decoders
 
             byte b = addRun.ReadByte();
 
-            for (int i = 0; i < size; i++)
+            for (int i = 0; i < size; ++i)
             {
                 //outputStream.Write(b);
                 targetData.WriteByte(b);
