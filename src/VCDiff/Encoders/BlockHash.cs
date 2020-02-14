@@ -235,35 +235,61 @@ namespace VCDiff.Encoders
             AddAllBlocksThroughIndex(source.Length);
         }
 
-        public bool BlockContentsMatch(long block1, long toffset, IByteBuffer target)
+        public unsafe bool BlockContentsMatch(long block1, long toffset, ByteBuffer target)
         {
+#if NETCOREAPP3_1
+
+            if (Avx2.IsSupported && blockSize % 32 == 0)
+            {
+                byte* sPtr = source.DangerousGetBytePointer() + block1 * blockSize;
+                byte* tPtr = target.DangerousGetBytePointer() + toffset;
+
+                if (block1 * blockSize > source.Length || toffset > target.Length) return false;
+
+                for (int i = 0; i < blockSize; i += 16)
+                {
+                    Vector256<byte> lv = Avx2.LoadDquVector256(&sPtr[i]);
+                    Vector256<byte> rv = Avx2.LoadDquVector256(&tPtr[i]);
+                    if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) != EQUALS) return false;
+                }
+                return true;
+            }
+
+            if (Sse2.IsSupported && blockSize % 16 == 0)
+            {
+                byte* sPtr = source.DangerousGetBytePointer() + block1 * blockSize;
+                byte* tPtr = target.DangerousGetBytePointer() + toffset;
+
+
+                if (block1 * blockSize > source.Length || toffset > target.Length) return false;
+
+                for (int i = 0; i < blockSize; i += 16)
+                {
+                    Vector128<byte> lv = Sse2.LoadVector128(&sPtr[i]);
+                    Vector128<byte> rv = Sse2.LoadVector128(&tPtr[i]);
+                    if ((uint) Sse2.MoveMask(Sse2.CompareEqual(lv, rv)) != ushort.MaxValue) return false;
+                }
+                return true;
+            }
+#endif
             //this sets up the positioning of the buffers
             //as well as testing the first byte
-            this.source.Position = block1 * blockSize;
-            if (!this.source.CanRead) return false;
-            byte lb = this.source.ReadByte();
+            source.Position = block1 * blockSize;
             target.Position = toffset;
-            if (!target.CanRead) return false;
-            byte rb = target.ReadByte();
 
-            return lb == rb && BlockCompareWords(target);
+            if (!source.CanRead || !target.CanRead) return false;
+            var s1 = source.PeekBytes(blockSize).Span;
+            var s2 = target.PeekBytes(blockSize).Span;
+
+            return s1.SequenceCompareTo(s2) == 0;
         }
 
-        //this doesn't appear to be used anywhere even though it is included in googles code
-        public bool BlockCompareWords(IByteBuffer target)
-        {
-            var block1 = this.source.PeekBytes(blockSize).Span;
-            var block2 = target.PeekBytes(blockSize).Span;
-
-            return block1.SequenceCompareTo(block2) == 0;
-        }
-
-        public long FirstMatchingBlock(ulong hash, long toffset, IByteBuffer target)
+        public long FirstMatchingBlock(ulong hash, long toffset, ByteBuffer target)
         {
             return SkipNonMatchingBlocks(hashTable[GetTableIndex(hash)], toffset, target);
         }
 
-        public long NextMatchingBlock(long blockNumber, long toffset, IByteBuffer target)
+        public long NextMatchingBlock(long blockNumber, long toffset, ByteBuffer target)
         {
             if (blockNumber >= BlocksCount)
             {
@@ -273,7 +299,7 @@ namespace VCDiff.Encoders
             return SkipNonMatchingBlocks(nextBlockTable[blockNumber], toffset, target);
         }
 
-        public long SkipNonMatchingBlocks(long blockNumber, long toffset, IByteBuffer target)
+        public long SkipNonMatchingBlocks(long blockNumber, long toffset, ByteBuffer target)
         {
             int probes = 0;
             while ((blockNumber >= 0) && !BlockContentsMatch(blockNumber, toffset, target))
@@ -339,7 +365,7 @@ namespace VCDiff.Encoders
                 sindex -= 16;
                 var lv = Sse2.LoadVector128(&sPtr[sindex]);
                 var rv = Sse2.LoadVector128(&tPtr[tindex]);
-                if (Sse2.MoveMask(Sse2.CompareEqual(lv, rv)) == EQUALS) continue;
+                if ((uint)Sse2.MoveMask(Sse2.CompareEqual(lv, rv)) == ushort.MaxValue) continue;
                 tindex += 16;
                 sindex += 16;
                 break;

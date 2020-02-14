@@ -61,7 +61,7 @@ namespace VCDiff.Shared
         /// <returns></returns>
         public unsafe byte* DangerousGetBytePointer()
         {
-            return this.bytePtr;
+            return bytePtr;
         }
 
         /// <summary>
