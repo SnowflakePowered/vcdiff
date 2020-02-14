@@ -293,8 +293,8 @@ namespace VCDiff.Decoders
         /// </summary>
         public void Dispose()
         {
-            delta.Dispose();
-            source.Dispose();
+            (delta as ByteBuffer)?.Dispose();
+            (source as ByteBuffer)?.Dispose();
         }
     }
 }

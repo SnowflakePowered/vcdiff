@@ -78,10 +78,5 @@ namespace VCDiff.Shared
         {
             buffer.Seek(1, SeekOrigin.Current);
         }
-
-        public void Dispose()
-        {
-            buffer.Dispose();
-        }
     }
 }

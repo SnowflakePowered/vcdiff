@@ -8,6 +8,10 @@ using System.Runtime.Intrinsics.X86;
 #endif
 namespace VCDiff.Encoders
 {
+    /// <summary>
+    /// A rolling hasher for <see cref="VcEncoder"/>.
+    /// <see cref="RollingHash"/> may be reused 
+    /// </summary>
     public class RollingHash : IDisposable
     {
         private const byte S23O1 = (((2) << 6) | ((3) << 4) | ((0) << 2) | ((1)));
@@ -31,9 +35,11 @@ namespace VCDiff.Encoders
         private readonly Vector256<int> v_shuf;
 #endif
         /// <summary>
-        /// Rolling Hash Constructor
+        /// Manually creates a rolling hash instance for use with a <see cref="VcEncoder"/>.
+        /// This object must be disposed because it allocates pinned memory that will never be garbage collected
+        /// if it is not disposed.
         /// </summary>
-        /// <param name="size">block size</param>
+        /// <param name="size">The window size to use for this hashing instance.</param>
         public RollingHash(int size)
         {
 
@@ -72,23 +78,10 @@ namespace VCDiff.Encoders
             }
         }
 
+        /// <summary>
+        /// The window size for this rolling hash.
+        /// </summary>
         public int WindowSize { get; }
-
-        ulong FastIntegerPower(ulong x, int exp)
-        {
-            ulong result = 1;
-            for (; ; )
-            {
-                if ((exp & 1) != 0)
-                    result *= x;
-                exp >>= 1;
-                if (exp == 0)
-                    break;
-                x *= x;
-            }
-
-            return result;
-        }
 
 #if NETCOREAPP3_1
         private unsafe ulong HashAvx2(byte* buf, int len)
@@ -180,21 +173,19 @@ namespace VCDiff.Encoders
 #endif
         /// <summary>
         /// Generate a new hash from the bytes
-        ///
+        /// 
         /// The formula for calculating h is
         /// h(0) = 1
         /// h(n) = SUM {i=0}^{n-1} c^{n - i - 1} S[i]
-        ///
+        /// 
         /// where n is the length of S, and c is kMult.
-        ///
+        /// 
         /// In code,
         /// h(n) = Sum(i: 0, n: len - 1, i => kMult ** (len - i - 1) span[i])
-        ///
+        /// 
         /// The final result is then MODded using binary and with kBase.
-        ///
+        /// 
         /// </summary>
-        /// <param name="bytes">The bytes to generate the hash for</param>
-        /// <returns></returns>
         internal unsafe ulong Hash(byte* buf, int len)
         {
 
@@ -247,6 +238,12 @@ namespace VCDiff.Encoders
             return (partial * kMult + newByte) & (kBase - 1);
         }
 
+        /// <summary>
+        /// Dispose the rolling hash instance.
+        ///
+        /// You must always dispose a manually created hashing instance, or memory leaks will occur.
+        /// For performance purposes, 
+        /// </summary>
         public void Dispose()
         {
             kMultFactorsHandle.Dispose();

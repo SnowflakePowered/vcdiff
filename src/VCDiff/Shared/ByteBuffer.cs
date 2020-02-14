@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace VCDiff.Shared
 {
-    internal class ByteBuffer : IByteBuffer
+    internal class ByteBuffer : IByteBuffer, IDisposable
     {
         private Memory<byte> bytes;
         private MemoryHandle byteHandle;
@@ -38,8 +38,7 @@ namespace VCDiff.Shared
 
         public static async Task<ByteBuffer> CreateBufferAsync(Stream copyStream)
         {
-            var buffer = new ByteBuffer();
-            buffer.copyStream = new MemoryStream();
+            var buffer = new ByteBuffer {copyStream = new MemoryStream()};
             await copyStream.CopyToAsync(buffer.copyStream);
             buffer.copyStream.Seek(0, SeekOrigin.Begin);
             buffer.offset = 0;

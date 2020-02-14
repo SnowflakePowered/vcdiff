@@ -10,7 +10,6 @@ namespace VCDiff.Encoders
 
         private BlockHash dictionary;
         private ByteBuffer oldData;
-        private ByteBuffer newData;
         private WindowEncoder? windowEncoder;
         private RollingHash hasher;
         private bool interleaved;
@@ -60,7 +59,6 @@ namespace VCDiff.Encoders
             oldData.Position = 0;
             newData.Position = 0;
 
-            this.newData = newData;
             long nextEncode = newData.Position;
             long targetEnd = newData.Length;
             long startOfLastBlock = targetEnd - this.dictionary.blockSize;
@@ -83,7 +81,7 @@ namespace VCDiff.Encoders
                 }
 
                 //try and encode the copy and add instructions that best match
-                long bytesEncoded = EncodeCopyForBestMatch(hash, candidatePos, nextEncode, targetEnd);
+                long bytesEncoded = EncodeCopyForBestMatch(hash, candidatePos, nextEncode, targetEnd, newData);
 
                 if (bytesEncoded > 0)
                 {
@@ -134,7 +132,7 @@ namespace VCDiff.Encoders
 
         //currently does not support looking in target
         //only the dictionary
-        private long EncodeCopyForBestMatch(ulong hash, long candidateStart, long unencodedStart, long unencodedSize)
+        private long EncodeCopyForBestMatch(ulong hash, long candidateStart, long unencodedStart, long unencodedSize, ByteBuffer newData)
         {
             BlockHash.Match bestMatch = new BlockHash.Match();
 
@@ -159,7 +157,6 @@ namespace VCDiff.Encoders
         public void Dispose()
         {
             oldData?.Dispose();
-            newData?.Dispose();
             windowEncoder?.Dispose();
         }
     }
