@@ -52,6 +52,8 @@ namespace VCDiff.Encoders
                 throw new Exception("BlockHash Table Size is Invalid == 0");
             }
 
+            this.BlocksCount = source.Length / blockSize;
+
             hashTableMask = (ulong)tableSize - 1;
             hashTable = new long[tableSize];
             nextBlockTable = new long[BlocksCount];
@@ -150,7 +152,7 @@ namespace VCDiff.Encoders
             }
         }
 
-        public long BlocksCount => source.Length / blockSize;
+        public long BlocksCount { get; }
 
         public long TableSize => tableSize;
 
