@@ -127,7 +127,7 @@
             <param name="hasher">the hashing method</param>
             <param name="blockSize">The block size to use</param>
         </member>
-        <member name="M:VCDiff.Encoders.BlockHash.FindBestMatch(System.UInt64,System.Int64,System.Int64,System.Int64,VCDiff.Shared.IByteBuffer,VCDiff.Encoders.BlockHash.Match@)">
+        <member name="M:VCDiff.Encoders.BlockHash.FindBestMatch(System.UInt64,System.Int64,System.Int64,System.Int64,VCDiff.Shared.ByteBuffer,VCDiff.Encoders.BlockHash.Match@)">
             <summary>
             Finds the best matching block for the candidate
             </summary>
@@ -293,6 +293,19 @@
             </summary>
             <param name="adler"></param>
             <param name="buff"></param>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.DangerousGetBytePointer">
+            <summary>
+            Dangerously gets the byte pointer.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(System.Int32)">
+            <summary>
+            Dangerously retrieves the byte pointer at the current position and then increases the offset after.
+            </summary>
+            <param name="read"></param>
             <returns></returns>
         </member>
         <member name="M:VCDiff.Shared.ByteBuffer.#ctor(System.Byte[])">

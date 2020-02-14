@@ -2,6 +2,10 @@
 using System.Numerics;
 using VCDiff.Shared;
 
+#if NETCOREAPP3_1
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
+#endif
 namespace VCDiff.Encoders
 {
     internal class BlockHash
@@ -19,6 +23,7 @@ namespace VCDiff.Encoders
         private long tableSize;
         private RollingHash hasher;
         private readonly ByteBuffer source;
+        private const int EQUALS = unchecked((int)(0b1111_1111_1111_1111_1111_1111_1111_1111));
 
         /// <summary>
         /// Create a hash lookup table for the data
@@ -132,28 +137,16 @@ namespace VCDiff.Encoders
             {
                 unsafe
                 {
-                    AddBlock(hasher.Hash(source.DangerousGetBytePointerAndIncreaseOffsetAfter(blockSize), blockSize));
+                    AddBlock(hasher.Hash(source.DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(blockSize), blockSize));
                 }
 
                 offset += blockSize;
             }
         }
 
-        public long BlocksCount
-        {
-            get
-            {
-                return source.Length / blockSize;
-            }
-        }
+        public long BlocksCount => source.Length / blockSize;
 
-        public long TableSize
-        {
-            get
-            {
-                return tableSize;
-            }
-        }
+        public long TableSize => tableSize;
 
         private long GetTableIndex(ulong hash)
         {
@@ -169,7 +162,7 @@ namespace VCDiff.Encoders
         /// <param name="targetSize">the data left to encode</param>
         /// <param name="target">the target buffer</param>
         /// <param name="m">the match object to use</param>
-        public void FindBestMatch(ulong hash, long candidateStart, long targetStart, long targetSize, IByteBuffer target, ref Match m)
+        public void FindBestMatch(ulong hash, long candidateStart, long targetStart, long targetSize, ByteBuffer target, ref Match m)
         {
             int matchCounter = 0;
 
@@ -294,39 +287,25 @@ namespace VCDiff.Encoders
             return blockNumber;
         }
 
-        public long MatchingBytesToLeft(long start, long tstart, IByteBuffer target, long maxBytes)
+#if NETCOREAPP3_1
+        public unsafe long MatchingBytesToLeftAvx2(long start, long tstart, ByteBuffer target, long maxBytes)
         {
-            long bytesFound = 0;
             long sindex = start;
             long tindex = tstart;
+            long bytesFound = 0;
+            byte* tPtr = target.DangerousGetBytePointer();
+            byte* sPtr = source.DangerousGetBytePointer();
 
-            int vectorSize = Vector<byte>.Count;
-
-            if (sindex - vectorSize > 0 && tindex - vectorSize > 0)
+            for (; (sindex >= 32 && tindex >= 32) && bytesFound <= maxBytes - 32; bytesFound += 32)
             {
-                for (; bytesFound <= maxBytes - vectorSize; bytesFound += vectorSize)
-                {
-                    sindex -= vectorSize;
-                    tindex -= vectorSize;
-                    source.Position = sindex;
-                    target.Position = tindex;
-                    var lb = source.ReadBytes(vectorSize).Span;
-                    var rb = target.ReadBytes(vectorSize).Span;
-                    if (lb.Length < vectorSize || rb.Length < vectorSize)
-                    {
-                        source.Position -= vectorSize;
-                        target.Position -= vectorSize;
-                        break;
-                    }
-                    var lv = new Vector<byte>(lb);
-                    var rv = new Vector<byte>(rb);
-                    if (Vector.EqualsAll(lv, rv)) continue;
-                    source.Position -= vectorSize;
-                    target.Position -= vectorSize;
-                    sindex += vectorSize;
-                    tindex += vectorSize;
-                    break;
-                }
+                tindex -= 32;
+                sindex -= 32;
+                var lv = Avx2.LoadDquVector256(&sPtr[sindex]);
+                var rv = Avx2.LoadDquVector256(&tPtr[tindex]);
+                if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) == EQUALS) continue;
+                tindex += 32;
+                sindex += 32;
+                break;
             }
 
             while (bytesFound < maxBytes)
@@ -334,59 +313,177 @@ namespace VCDiff.Encoders
                 --sindex;
                 --tindex;
                 if (sindex < 0 || tindex < 0) break;
-                //has to be done this way or a race condition will happen
-                //if the sourcce and target are the same buffer
-                source.Position = sindex;
-                byte lb = source.ReadByte();
-                target.Position = tindex;
-                byte rb = target.ReadByte();
+                // has to be done this way or a race condition will happen
+                // if the source and target are the same buffer
+                byte lb = sPtr[sindex];
+                byte rb = tPtr[tindex];
                 if (lb != rb) break;
+               
                 ++bytesFound;
             }
+
             return bytesFound;
         }
 
-        public long MatchingBytesToRight(long end, long tstart, IByteBuffer target, long maxBytes)
+        public unsafe long MatchingBytesToLeftSse2(long start, long tstart, ByteBuffer target, long maxBytes)
+        {
+            long sindex = start;
+            long tindex = tstart;
+            long bytesFound = 0;
+            byte* tPtr = target.DangerousGetBytePointer();
+            byte* sPtr = source.DangerousGetBytePointer();
+
+            for (; (sindex >= 16 && tindex >= 16) && bytesFound <= maxBytes - 16; bytesFound += 16)
+            {
+                tindex -= 16;
+                sindex -= 16;
+                var lv = Sse2.LoadVector128(&sPtr[sindex]);
+                var rv = Sse2.LoadVector128(&tPtr[tindex]);
+                if (Sse2.MoveMask(Sse2.CompareEqual(lv, rv)) == EQUALS) continue;
+                tindex += 16;
+                sindex += 16;
+                break;
+            }
+
+            while (bytesFound < maxBytes)
+            {
+                --sindex;
+                --tindex;
+                if (sindex < 0 || tindex < 0) break;
+                // has to be done this way or a race condition will happen
+                // if the source and target are the same buffer
+                byte lb = sPtr[sindex];
+                byte rb = tPtr[tindex];
+                if (lb != rb) break;
+
+                ++bytesFound;
+            }
+
+            return bytesFound;
+        }
+#endif
+        public unsafe long MatchingBytesToLeft(long start, long tstart, ByteBuffer target, long maxBytes)
+        {
+#if NETCOREAPP3_1
+            if (Avx2.IsSupported) return MatchingBytesToLeftAvx2(start, tstart, target, maxBytes);
+            if (Sse2.IsSupported) return MatchingBytesToLeftSse2(start, tstart, target, maxBytes);
+#endif
+            long bytesFound = 0;
+            long sindex = start;
+            long tindex = tstart;
+            byte* tPtr = target.DangerousGetBytePointer();
+            byte* sPtr = source.DangerousGetBytePointer();
+
+            while (bytesFound < maxBytes)
+            {
+                --sindex;
+                --tindex;
+                if (sindex < 0 || tindex < 0) break;
+                byte lb = sPtr[sindex];
+                byte rb = tPtr[tindex];
+                if (lb != rb) break;
+
+                ++bytesFound;
+            }
+
+            return bytesFound;
+        }
+
+#if NETCOREAPP3_1
+        public unsafe long MatchingBytesToRightAvx2(long end, long tstart, ByteBuffer target, long maxBytes)
         {
             long sindex = end;
             long tindex = tstart;
             long bytesFound = 0;
             long srcLength = source.Length;
             long trgLength = target.Length;
-            source.Position = end;
-            target.Position = tstart;
-            int vectorSize = Vector<byte>.Count;
+            byte* tPtr = target.DangerousGetBytePointer();
+            byte* sPtr = source.DangerousGetBytePointer();
 
-            for (; bytesFound <= maxBytes - vectorSize; bytesFound += vectorSize, tindex += vectorSize, sindex += vectorSize)
+            for (; (srcLength - sindex) >= 32 && (trgLength - tindex) >= 32 && bytesFound <= maxBytes - 32; bytesFound += 32, tindex += 32, sindex += 32)
             {
-                var lb = source.ReadBytes(vectorSize).Span;
-                var rb = target.ReadBytes(vectorSize).Span;
-                if (lb.Length < vectorSize || rb.Length < vectorSize)
-                {
-                    source.Position -= vectorSize;
-                    target.Position -= vectorSize;
-                    break;
-                }
-                var lv = new Vector<byte>(lb);
-                var rv = new Vector<byte>(rb);
-                if (Vector.EqualsAll(lv, rv)) continue;
-                source.Position -= vectorSize;
-                target.Position -= vectorSize;
+                var lv = Avx2.LoadDquVector256(&sPtr[sindex]);
+                var rv = Avx2.LoadDquVector256(&tPtr[tindex]);
+                if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) == EQUALS) continue;
                 break;
             }
 
             while (bytesFound < maxBytes)
             {
                 if (sindex >= srcLength || tindex >= trgLength) break;
-                if (!source.CanRead) break;
-                byte lb = source.ReadByte();
-                if (!target.CanRead) break;
-                byte rb = target.ReadByte();
+                byte lb = sPtr[sindex];
+                byte rb = tPtr[tindex];
                 if (lb != rb) break;
                 ++tindex;
                 ++sindex;
                 ++bytesFound;
             }
+            return bytesFound;
+        }
+
+        public unsafe long MatchingBytesToRightSse2(long end, long tstart, ByteBuffer target, long maxBytes)
+        {
+            long sindex = end;
+            long tindex = tstart;
+            long bytesFound = 0;
+            long srcLength = source.Length;
+            long trgLength = target.Length;
+            byte* tPtr = target.DangerousGetBytePointer();
+            byte* sPtr = source.DangerousGetBytePointer();
+
+            for (; (srcLength - sindex) >= 16 && (trgLength - tindex) >= 16 && bytesFound <= maxBytes - 16; bytesFound += 16, tindex += 16, sindex += 32)
+            {
+                var lv = Sse2.LoadVector128(&sPtr[sindex]);
+                var rv = Sse2.LoadVector128(&tPtr[tindex]);
+                if (Sse2.MoveMask(Sse2.CompareEqual(lv, rv)) == EQUALS) continue;
+                break;
+            }
+
+            while (bytesFound < maxBytes)
+            {
+                if (sindex >= srcLength || tindex >= trgLength) break;
+                byte lb = sPtr[sindex];
+                byte rb = tPtr[tindex];
+                if (lb != rb) break;
+                ++tindex;
+                ++sindex;
+                ++bytesFound;
+            }
+            return bytesFound;
+        }
+#endif
+        public unsafe long MatchingBytesToRight(long end, long tstart, ByteBuffer target, long maxBytes)
+        {
+
+#if NETCOREAPP3_1
+            // ByteBuffer is already pinned, so its safe to just use raw pointer access
+            // but Vector<T> can only create vectors from a Span and not an address. 
+            // We can probably unroll the while loop in the scalar implementation
+            // But this won't save us too much time.
+            // Runtime.Intrinsics however has access to SSE and AVX functions that allow us to load a vector straight
+            // from an address.
+            if (Avx2.IsSupported) return MatchingBytesToRightAvx2(end, tstart, target, maxBytes);
+            if (Sse2.IsSupported) return MatchingBytesToRightSse2(end, tstart, target, maxBytes);
+#endif
+            long sindex = end;
+            long tindex = tstart;
+            long bytesFound = 0;
+            long srcLength = source.Length;
+            long trgLength = target.Length;
+            byte* tPtr = target.DangerousGetBytePointer();
+            byte* sPtr = source.DangerousGetBytePointer();
+
+            while (bytesFound < maxBytes)
+            {
+                if (sindex >= srcLength || tindex >= trgLength) break;
+                byte lb = sPtr[sindex];
+                byte rb = tPtr[tindex];
+                if (lb != rb) break;
+                ++tindex;
+                ++sindex;
+                ++bytesFound;
+            }
+
             return bytesFound;
         }
 

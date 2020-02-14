@@ -70,7 +70,7 @@ namespace VCDiff.Encoders
             //create the first hash
             unsafe
             {
-                hash = hasher.Hash(newData.DangerousGetBytePointerAndIncreaseOffsetAfter(0),
+                hash = hasher.Hash(newData.DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(0),
                     this.dictionary.blockSize);
             }
 
@@ -99,7 +99,7 @@ namespace VCDiff.Encoders
                     //cannot use rolling hash since we skipped so many
                     unsafe
                     {
-                        hash = hasher.Hash(newData.DangerousGetBytePointerAndIncreaseOffsetAfter(this.dictionary.blockSize), this.dictionary.blockSize);
+                        hash = hasher.Hash(newData.DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(this.dictionary.blockSize), this.dictionary.blockSize);
                     }
                 }
                 else

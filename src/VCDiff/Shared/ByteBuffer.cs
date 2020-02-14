@@ -55,7 +55,21 @@ namespace VCDiff.Shared
             return buffer;
         }
 
-        public unsafe byte* DangerousGetBytePointerAndIncreaseOffsetAfter(int read)
+        /// <summary>
+        /// Dangerously gets the byte pointer.
+        /// </summary>
+        /// <returns></returns>
+        public unsafe byte* DangerousGetBytePointer()
+        {
+            return this.bytePtr;
+        }
+
+        /// <summary>
+        /// Dangerously retrieves the byte pointer at the current position and then increases the offset after.
+        /// </summary>
+        /// <param name="read"></param>
+        /// <returns></returns>
+        public unsafe byte* DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(int read)
         {
             byte* ptr = bytePtr + offset;
             offset += read;
