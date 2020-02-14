@@ -162,13 +162,16 @@ namespace VCDiff.Encoders
         /// <param name="targetSize">the data left to encode</param>
         /// <param name="target">the target buffer</param>
         /// <param name="m">the match object to use</param>
-        public void FindBestMatch(ulong hash, long candidateStart, long targetStart, long targetSize, ByteBuffer target, ref Match m)
+        public unsafe void FindBestMatch(ulong hash, long candidateStart, long targetStart, long targetSize, ByteBuffer target, ref Match m)
         {
             int matchCounter = 0;
+            byte* sourcePtr = source.DangerousGetBytePointer();
+            byte* targetPtr = target.DangerousGetBytePointer();
+            long tLen = target.Length;
 
-            for (long blockNumber = FirstMatchingBlock(hash, candidateStart, target);
+            for (long blockNumber = FirstMatchingBlock(hash, candidateStart, sourcePtr, targetPtr, target);
                 blockNumber >= 0 && !TooManyMatches(ref matchCounter);
-                blockNumber = NextMatchingBlock(blockNumber, candidateStart, target))
+                blockNumber = NextMatchingBlock(blockNumber, candidateStart, sourcePtr, targetPtr, target))
             {
                 long sourceMatchOffset = blockNumber * blockSize;
                 long sourceStart = blockNumber * blockSize;
@@ -179,7 +182,8 @@ namespace VCDiff.Encoders
                 long matchSize = blockSize;
 
                 long limitBytesToLeft = Math.Min(sourceMatchOffset, targetMatchOffset);
-                long leftMatching = MatchingBytesToLeft(sourceMatchOffset, targetStart + targetMatchOffset, target, limitBytesToLeft);
+                long leftMatching = MatchingBytesToLeft(sourceMatchOffset, targetStart + targetMatchOffset, sourcePtr, 
+                    targetPtr, limitBytesToLeft);
                 sourceMatchOffset -= leftMatching;
                 targetMatchOffset -= leftMatching;
                 matchSize += leftMatching;
@@ -188,10 +192,11 @@ namespace VCDiff.Encoders
                 long targetBytesToRight = targetSize - targetMatchEnd;
                 long rightLimit = Math.Min(sourceBytesToRight, targetBytesToRight);
 
-                long rightMatching = MatchingBytesToRight(sourceMatchEnd, targetStart + targetMatchEnd, target, rightLimit);
+                long rightMatching = MatchingBytesToRight(sourceMatchEnd, targetStart + targetMatchEnd, sourcePtr, targetPtr, 
+                    target, rightLimit);
                 matchSize += rightMatching;
-                sourceMatchEnd += rightMatching;
-                targetMatchEnd += rightMatching;
+                //sourceMatchEnd += rightMatching;
+                //targetMatchEnd += rightMatching;
                 m.ReplaceIfBetterMatch(matchSize, sourceMatchOffset + offset, targetMatchOffset);
             }
         }
@@ -235,16 +240,16 @@ namespace VCDiff.Encoders
             AddAllBlocksThroughIndex(source.Length);
         }
 
-        public unsafe bool BlockContentsMatch(long block1, long toffset, ByteBuffer target)
+        private unsafe bool BlockContentsMatch(long block1, long tOffset, byte *sourcePtr, byte *targetPtr, ByteBuffer target)
         {
 #if NETCOREAPP3_1
-
+            long tLen = target.Length;
             if (Avx2.IsSupported && blockSize % 32 == 0)
             {
-                byte* sPtr = source.DangerousGetBytePointer() + block1 * blockSize;
-                byte* tPtr = target.DangerousGetBytePointer() + toffset;
+                byte* sPtr = sourcePtr + block1 * blockSize;
+                byte* tPtr = targetPtr + tOffset;
 
-                if (block1 * blockSize > source.Length || toffset > target.Length) return false;
+                if (block1 * blockSize > source.Length || tOffset > tLen) return false;
 
                 for (int i = 0; i < blockSize; i += 16)
                 {
@@ -257,11 +262,10 @@ namespace VCDiff.Encoders
 
             if (Sse2.IsSupported && blockSize % 16 == 0)
             {
-                byte* sPtr = source.DangerousGetBytePointer() + block1 * blockSize;
-                byte* tPtr = target.DangerousGetBytePointer() + toffset;
+                byte* sPtr = sourcePtr + block1 * blockSize;
+                byte* tPtr = targetPtr + tOffset;
 
-
-                if (block1 * blockSize > source.Length || toffset > target.Length) return false;
+                if (block1 * blockSize > source.Length || tOffset > tLen) return false;
 
                 for (int i = 0; i < blockSize; i += 16)
                 {
@@ -275,7 +279,7 @@ namespace VCDiff.Encoders
             //this sets up the positioning of the buffers
             //as well as testing the first byte
             source.Position = block1 * blockSize;
-            target.Position = toffset;
+            target.Position = tOffset;
 
             if (!source.CanRead || !target.CanRead) return false;
             var s1 = source.PeekBytes(blockSize).Span;
@@ -284,25 +288,25 @@ namespace VCDiff.Encoders
             return s1.SequenceCompareTo(s2) == 0;
         }
 
-        public long FirstMatchingBlock(ulong hash, long toffset, ByteBuffer target)
+        private unsafe long FirstMatchingBlock(ulong hash, long toffset, byte* sourcePtr, byte* targetPtr, ByteBuffer target)
         {
-            return SkipNonMatchingBlocks(hashTable[GetTableIndex(hash)], toffset, target);
+            return SkipNonMatchingBlocks(hashTable[GetTableIndex(hash)], toffset, sourcePtr, targetPtr, target);
         }
 
-        public long NextMatchingBlock(long blockNumber, long toffset, ByteBuffer target)
+        private unsafe long NextMatchingBlock(long blockNumber, long toffset, byte* sourcePtr, byte* targetPtr, ByteBuffer target)
         {
             if (blockNumber >= BlocksCount)
             {
                 return -1;
             }
 
-            return SkipNonMatchingBlocks(nextBlockTable[blockNumber], toffset, target);
+            return SkipNonMatchingBlocks(nextBlockTable[blockNumber], toffset, sourcePtr, targetPtr, target);
         }
 
-        public long SkipNonMatchingBlocks(long blockNumber, long toffset, ByteBuffer target)
+        private unsafe long SkipNonMatchingBlocks(long blockNumber, long toffset, byte* sourcePtr, byte* targetPtr, ByteBuffer target)
         {
             int probes = 0;
-            while ((blockNumber >= 0) && !BlockContentsMatch(blockNumber, toffset, target))
+            while ((blockNumber >= 0) && !BlockContentsMatch(blockNumber, toffset, sourcePtr, targetPtr, target))
             {
                 if (++probes > maxProbes)
                 {
@@ -314,13 +318,13 @@ namespace VCDiff.Encoders
         }
 
 #if NETCOREAPP3_1
-        public unsafe long MatchingBytesToLeftAvx2(long start, long tstart, ByteBuffer target, long maxBytes)
+        private unsafe long MatchingBytesToLeftAvx2(long start, long tstart, byte* sourcePtr, byte* targetPtr, long maxBytes)
         {
             long sindex = start;
             long tindex = tstart;
             long bytesFound = 0;
-            byte* tPtr = target.DangerousGetBytePointer();
-            byte* sPtr = source.DangerousGetBytePointer();
+            byte* tPtr = targetPtr;
+            byte* sPtr = sourcePtr;
 
             for (; (sindex >= 32 && tindex >= 32) && bytesFound <= maxBytes - 32; bytesFound += 32)
             {
@@ -351,13 +355,13 @@ namespace VCDiff.Encoders
             return bytesFound;
         }
 
-        public unsafe long MatchingBytesToLeftSse2(long start, long tstart, ByteBuffer target, long maxBytes)
+        private unsafe long MatchingBytesToLeftSse2(long start, long tstart, byte* sourcePtr, byte* targetPtr, long maxBytes)
         {
             long sindex = start;
             long tindex = tstart;
             long bytesFound = 0;
-            byte* tPtr = target.DangerousGetBytePointer();
-            byte* sPtr = source.DangerousGetBytePointer();
+            byte* tPtr = targetPtr;
+            byte* sPtr = sourcePtr;
 
             for (; (sindex >= 16 && tindex >= 16) && bytesFound <= maxBytes - 16; bytesFound += 16)
             {
@@ -388,17 +392,17 @@ namespace VCDiff.Encoders
             return bytesFound;
         }
 #endif
-        public unsafe long MatchingBytesToLeft(long start, long tstart, ByteBuffer target, long maxBytes)
+        private unsafe long MatchingBytesToLeft(long start, long tstart, byte* sourcePtr, byte* targetPtr, long maxBytes)
         {
 #if NETCOREAPP3_1
-            if (Avx2.IsSupported) return MatchingBytesToLeftAvx2(start, tstart, target, maxBytes);
-            if (Sse2.IsSupported) return MatchingBytesToLeftSse2(start, tstart, target, maxBytes);
+            if (Avx2.IsSupported) return MatchingBytesToLeftAvx2(start, tstart, sourcePtr, targetPtr, maxBytes);
+            if (Sse2.IsSupported) return MatchingBytesToLeftSse2(start, tstart, sourcePtr, targetPtr, maxBytes);
 #endif
             long bytesFound = 0;
             long sindex = start;
             long tindex = tstart;
-            byte* tPtr = target.DangerousGetBytePointer();
-            byte* sPtr = source.DangerousGetBytePointer();
+            byte* tPtr = targetPtr;
+            byte* sPtr = sourcePtr;
 
             while (bytesFound < maxBytes)
             {
@@ -416,15 +420,15 @@ namespace VCDiff.Encoders
         }
 
 #if NETCOREAPP3_1
-        public unsafe long MatchingBytesToRightAvx2(long end, long tstart, ByteBuffer target, long maxBytes)
+        private unsafe long MatchingBytesToRightAvx2(long end, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
             long sindex = end;
             long tindex = tstart;
             long bytesFound = 0;
             long srcLength = source.Length;
             long trgLength = target.Length;
-            byte* tPtr = target.DangerousGetBytePointer();
-            byte* sPtr = source.DangerousGetBytePointer();
+            byte* tPtr = targetPtr;
+            byte* sPtr = sourcePtr;
 
             for (; (srcLength - sindex) >= 32 && (trgLength - tindex) >= 32 && bytesFound <= maxBytes - 32; bytesFound += 32, tindex += 32, sindex += 32)
             {
@@ -447,15 +451,15 @@ namespace VCDiff.Encoders
             return bytesFound;
         }
 
-        public unsafe long MatchingBytesToRightSse2(long end, long tstart, ByteBuffer target, long maxBytes)
+        private unsafe long MatchingBytesToRightSse2(long end, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
             long sindex = end;
             long tindex = tstart;
             long bytesFound = 0;
             long srcLength = source.Length;
             long trgLength = target.Length;
-            byte* tPtr = target.DangerousGetBytePointer();
-            byte* sPtr = source.DangerousGetBytePointer();
+            byte* tPtr = targetPtr;
+            byte* sPtr = sourcePtr;
 
             for (; (srcLength - sindex) >= 16 && (trgLength - tindex) >= 16 && bytesFound <= maxBytes - 16; bytesFound += 16, tindex += 16, sindex += 32)
             {
@@ -478,7 +482,7 @@ namespace VCDiff.Encoders
             return bytesFound;
         }
 #endif
-        public unsafe long MatchingBytesToRight(long end, long tstart, ByteBuffer target, long maxBytes)
+        private unsafe long MatchingBytesToRight(long end, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
 
 #if NETCOREAPP3_1
@@ -488,16 +492,16 @@ namespace VCDiff.Encoders
             // But this won't save us too much time.
             // Runtime.Intrinsics however has access to SSE and AVX functions that allow us to load a vector straight
             // from an address.
-            if (Avx2.IsSupported) return MatchingBytesToRightAvx2(end, tstart, target, maxBytes);
-            if (Sse2.IsSupported) return MatchingBytesToRightSse2(end, tstart, target, maxBytes);
+            if (Avx2.IsSupported) return MatchingBytesToRightAvx2(end, tstart, sourcePtr, targetPtr, target, maxBytes);
+            if (Sse2.IsSupported) return MatchingBytesToRightSse2(end, tstart, sourcePtr, targetPtr, target, maxBytes);
 #endif
             long sindex = end;
             long tindex = tstart;
             long bytesFound = 0;
             long srcLength = source.Length;
             long trgLength = target.Length;
-            byte* tPtr = target.DangerousGetBytePointer();
-            byte* sPtr = source.DangerousGetBytePointer();
+            byte* tPtr = targetPtr;
+            byte* sPtr = sourcePtr;
 
             while (bytesFound < maxBytes)
             {

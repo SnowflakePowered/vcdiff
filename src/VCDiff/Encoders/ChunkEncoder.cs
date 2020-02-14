@@ -136,7 +136,8 @@ namespace VCDiff.Encoders
         {
             BlockHash.Match bestMatch = new BlockHash.Match();
 
-            dictionary.FindBestMatch(hash, candidateStart, unencodedStart, unencodedSize, newData, ref bestMatch);
+            dictionary.FindBestMatch(hash, candidateStart, unencodedStart, unencodedSize, newData,
+                ref bestMatch);
 
             if (bestMatch.Size < MinBlockSize)
             {
