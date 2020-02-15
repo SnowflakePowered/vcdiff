@@ -24,7 +24,7 @@ namespace VCDiff.Encoders
         private RollingHash hasher;
         private readonly ByteBuffer source;
         private unsafe byte* sourcePtr;
-        private const int EQUALS = unchecked((int)(0b1111_1111_1111_1111_1111_1111_1111_1111));
+        private const int EQMASK = unchecked((int)(0b1111_1111_1111_1111_1111_1111_1111_1111));
 
         /// <summary>
         /// Create a hash lookup table for the data
@@ -254,7 +254,7 @@ namespace VCDiff.Encoders
                 {
                     Vector256<byte> lv = Avx2.LoadDquVector256(&sPtr[i]);
                     Vector256<byte> rv = Avx2.LoadDquVector256(&tPtr[i]);
-                    if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) != EQUALS) return false;
+                    if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) != EQMASK) return false;
                 }
                 return true;
             }
@@ -331,7 +331,7 @@ namespace VCDiff.Encoders
                 sindex -= 32;
                 var lv = Avx2.LoadDquVector256(&sPtr[sindex]);
                 var rv = Avx2.LoadDquVector256(&tPtr[tindex]);
-                if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) == EQUALS) continue;
+                if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) == EQMASK) continue;
                 tindex += 32;
                 sindex += 32;
                 break;
@@ -433,7 +433,7 @@ namespace VCDiff.Encoders
             {
                 var lv = Avx2.LoadDquVector256(&sPtr[sindex]);
                 var rv = Avx2.LoadDquVector256(&tPtr[tindex]);
-                if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) == EQUALS) continue;
+                if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) == EQMASK) continue;
                 break;
             }
 
@@ -464,7 +464,7 @@ namespace VCDiff.Encoders
             {
                 var lv = Sse2.LoadVector128(&sPtr[sindex]);
                 var rv = Sse2.LoadVector128(&tPtr[tindex]);
-                if (Sse2.MoveMask(Sse2.CompareEqual(lv, rv)) == EQUALS) continue;
+                if (Sse2.MoveMask(Sse2.CompareEqual(lv, rv)) == ushort.MaxValue) continue;
                 break;
             }
 
