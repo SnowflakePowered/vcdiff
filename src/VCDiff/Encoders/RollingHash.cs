@@ -14,11 +14,6 @@ namespace VCDiff.Encoders
     /// </summary>
     public class RollingHash : IDisposable
     {
-        private const byte S23O1 = (((2) << 6) | ((3) << 4) | ((0) << 2) | ((1)));
-        private const byte S1O32 = (((1) << 6) | ((0) << 4) | ((3) << 2) | ((2)));
-        private const byte SO123 = (((0) << 6) | ((1) << 4) | ((2) << 2) | ((3)));
-        private const byte SOO2O = (((0) << 6) | ((0) << 4) | ((2) << 2) | ((0)));
-
         private const int kMult = 257;
         private const int kBase = (1 << 23);
 
@@ -29,9 +24,11 @@ namespace VCDiff.Encoders
         private ulong multiplier;
 
 #if NETCOREAPP3_1
-        private readonly Vector128<int> v_kbase_sse;
+        private const byte S23O1 = (((2) << 6) | ((3) << 4) | ((0) << 2) | ((1)));
+        private const byte S1O32 = (((1) << 6) | ((0) << 4) | ((3) << 2) | ((2)));
+        private const byte SO123 = (((0) << 6) | ((1) << 4) | ((2) << 2) | ((3)));
+        private const byte SOO2O = (((0) << 6) | ((0) << 4) | ((2) << 2) | ((0)));
 
-        private readonly Vector256<int> v_kbase;
         private readonly Vector256<int> v_shuf;
 #endif
         /// <summary>
@@ -44,8 +41,6 @@ namespace VCDiff.Encoders
         {
 
 #if NETCOREAPP3_1
-            v_kbase = Vector256.Create(kBase - 1);
-            v_kbase_sse = Vector128.Create(kBase - 1);
             v_shuf = Vector256.Create(7, 6, 5, 4, 3, 2, 1, 0);
 #endif
             this.WindowSize = size;
@@ -60,21 +55,18 @@ namespace VCDiff.Encoders
 
             for (int i = 0; i < size - 1; ++i)
             {
+                kMultFactors[i] = (int)multiplier;
                 multiplier = (multiplier * kMult) & (kBase - 1);
             }
+
+            kMultFactors[size - 1] = (int)multiplier;
+
             ulong byteTimes = 0;
             for (int i = 0; i < 256; ++i)
             {
                 // Get the inverse of the modBase
                 removeTable[i] = (0 - byteTimes) & (kBase - 1);
                 byteTimes = (byteTimes + multiplier) & (kBase - 1);
-            }
-
-            uint c = 1;
-            for (int i = 0; i < size; i++)
-            {
-                kMultFactors[i] = (int)c;
-                c = (c * kMult) & (kBase - 1);
             }
         }
 
@@ -92,13 +84,13 @@ namespace VCDiff.Encoders
             int i = 0;
             for (int j = len - i - 1; len - i >= 8; i += 8, j = len - i - 1)
             {
-                Vector256<int> c_v = Avx.LoadDquVector256(&kMultFactorsPtr[j - 7]);
+                Vector256<int> c_v = Avx.LoadVector256(&kMultFactorsPtr[j - 7]);
                 c_v = Avx2.PermuteVar8x32(c_v, v_shuf);
 
                 Vector128<byte> q_v = Sse2.LoadVector128(buf + i);
                 Vector256<int> s_v = Avx2.ConvertToVector256Int32(q_v);
 
-                v_ps = Avx2.Add(v_ps, Avx2.And(Avx2.MultiplyLow(c_v, s_v), v_kbase));
+                v_ps = Avx2.Add(v_ps, Avx2.MultiplyLow(c_v, s_v));
             }
 
             Vector128<int> v128_s1 = Sse2.Add(Avx2.ExtractVector128(v_ps, 0), Avx2.ExtractVector128(v_ps, 1));
@@ -142,7 +134,7 @@ namespace VCDiff.Encoders
 
                 if (useSse4)
                 {
-                    v_ps = Sse2.Add(v_ps, Sse2.And(Sse41.MultiplyLow(c_v, s_v), v_kbase_sse));
+                    v_ps = Sse2.Add(v_ps, Sse41.MultiplyLow(c_v, s_v));
                 }
                 else
                 {
@@ -152,8 +144,8 @@ namespace VCDiff.Encoders
                         Sse2.Multiply(Sse2.ShiftRightLogical128BitLane(c_v.AsByte(), 4).AsUInt32(),
                             Sse2.ShiftRightLogical128BitLane(s_v.AsByte(), 4).AsUInt32());
                     ;
-                    v_ps = Sse2.Add(v_ps, Sse2.And(Sse2.UnpackLow(Sse2.Shuffle(v_tmp1.AsInt32(), SOO2O),
-                        Sse2.Shuffle(v_tmp2.AsInt32(), SOO2O)), v_kbase_sse));
+                    v_ps = Sse2.Add(v_ps, Sse2.UnpackLow(Sse2.Shuffle(v_tmp1.AsInt32(), SOO2O),
+                        Sse2.Shuffle(v_tmp2.AsInt32(), SOO2O)));
                 }
             }
 
@@ -194,7 +186,7 @@ namespace VCDiff.Encoders
 
 
 #if NETCOREAPP3_1
-          
+
             if (Avx2.IsSupported && len >= 8) return HashAvx2(buf, len);
             if (Sse41.IsSupported && len >= 4) return HashSse(buf, len);
 #endif
