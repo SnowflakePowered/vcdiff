@@ -6,7 +6,7 @@ namespace VCDiff.Encoders
 {
     internal class ChunkEncoder : IDisposable
     {
-        public int MinBlockSize { get; }
+        private readonly int minBlockSize;
 
         private BlockHash dictionary;
         private ByteBuffer oldData;
@@ -32,7 +32,7 @@ namespace VCDiff.Encoders
             this.hasher = hash;
             this.oldData = oldData;
             this.dictionary = dictionary;
-            this.MinBlockSize = minBlockSize;
+            this.minBlockSize = minBlockSize;
             this.interleaved = interleaved;
         }
 
@@ -139,7 +139,7 @@ namespace VCDiff.Encoders
             dictionary.FindBestMatch(hash, candidateStart, unencodedStart, unencodedSize, newDataPtr, newData,
                 ref bestMatch);
 
-            if (bestMatch.Size < MinBlockSize)
+            if (bestMatch.Size < minBlockSize)
             {
                 return 0;
             }

@@ -305,7 +305,6 @@ namespace VCDiff.Tests
             deltaStream.Position = 0;
             var outputHash = md5.ComputeHash(outputStream);
             Assert.Equal(originalHash, outputHash);
-            File.WriteAllBytes("patch.xdelta", deltaStream.ToArray());
         }
 
         [Fact]

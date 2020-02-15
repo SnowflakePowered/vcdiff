@@ -103,7 +103,7 @@ namespace VCDiff.Shared
                     //  Process n blocks of data. At most NMAX data bytes can be processed before s2 must be reduced modulo BASE.
                     Vector128<uint> v_ps = Vector128.Create(0, 0, 0, s1 * n);
                     Vector128<uint> v_s2 = Vector128.Create(0, 0, 0, s2);
-                    Vector128<uint> v_s1 = Vector128.Create(0u, 0, 0, 0);
+                    Vector128<uint> v_s1 = Vector128<uint>.Zero;
 
                     do
                     {
@@ -201,12 +201,12 @@ namespace VCDiff.Shared
                     //  Process n blocks of data. At most NMAX data bytes can be processed before s2 must be reduced modulo BASE.
                     Vector256<uint> v_ps = Vector256.Create(0, 0, 0, 0, 0, 0, 0, s1 * n);
                     Vector256<uint> v_s2 = Vector256.Create(0, 0, 0, 0, 0, 0, 0, s2);
-                    Vector256<uint> v_s1 = Vector256.Create(0u, 0, 0, 0, 0, 0, 0, 0);
+                    Vector256<uint> v_s1 = Vector256<uint>.Zero;
 
                     do
                     {
                         // Load 32 input bytes.
-                        var bytes = Avx2.LoadVector256((buffAddr + dof));
+                        var bytes = Avx.LoadVector256((buffAddr + dof));
 
                         // Add previous block byte sum to v_ps. 
                         v_ps = Avx2.Add(v_ps, v_s1);
