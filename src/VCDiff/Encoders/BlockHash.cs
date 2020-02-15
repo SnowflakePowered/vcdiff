@@ -182,7 +182,7 @@ namespace VCDiff.Encoders
 
                 long limitBytesToLeft = Math.Min(sourceMatchOffset, targetMatchOffset);
                 long leftMatching = MatchingBytesToLeft(sourceMatchOffset, targetStart + targetMatchOffset, sourcePtr, 
-                    targetPtr, limitBytesToLeft);
+                    targetPtr, target, limitBytesToLeft);
                 sourceMatchOffset -= leftMatching;
                 targetMatchOffset -= leftMatching;
                 matchSize += leftMatching;
@@ -241,50 +241,67 @@ namespace VCDiff.Encoders
 
         private unsafe bool BlockContentsMatch(long block1, long tOffset, byte *sourcePtr, byte *targetPtr, ByteBuffer target)
         {
-#if NETCOREAPP3_1
+            int lengthToExamine = blockSize;
+            int sOffset = (int)(block1 * blockSize);
+            long sLen = source.Length;
             long tLen = target.Length;
-            if (Avx2.IsSupported && blockSize % 32 == 0)
+            byte* sPtr = sourcePtr;
+            byte* tPtr = targetPtr;
+#if NETCOREAPP3_1
+            if (Avx2.IsSupported && lengthToExamine >= 32)
             {
-                byte* sPtr = sourcePtr + block1 * blockSize;
-                byte* tPtr = targetPtr + tOffset;
-
-                if (block1 * blockSize > source.Length || tOffset > tLen) return false;
-
-                for (int i = 0; i < blockSize; i += 16)
+                if (sOffset > sLen || tOffset > tLen) return false;
+                for (; sOffset >= 32 && tOffset >= 32 &&
+                       lengthToExamine >= 32; sOffset += 32, tOffset += 32, lengthToExamine -= 32)
                 {
-                    Vector256<byte> lv = Avx2.LoadDquVector256(&sPtr[i]);
-                    Vector256<byte> rv = Avx2.LoadDquVector256(&tPtr[i]);
+                    Vector256<byte> lv = Avx.LoadVector256(&sPtr[sOffset]);
+                    Vector256<byte> rv = Avx.LoadVector256(&tPtr[tOffset]);
                     if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) != EQMASK) return false;
                 }
-                return true;
             }
 
-            if (Sse2.IsSupported && blockSize % 16 == 0)
+            if (Sse2.IsSupported && lengthToExamine >= 16)
             {
-                byte* sPtr = sourcePtr + block1 * blockSize;
-                byte* tPtr = targetPtr + tOffset;
+                if (sOffset > sLen || tOffset > tLen) return false;
 
-                if (block1 * blockSize > source.Length || tOffset > tLen) return false;
-
-                for (int i = 0; i < blockSize; i += 16)
+                for (; sOffset >= 16 && tOffset >= 16 &&
+                       lengthToExamine >= 16; sOffset += 16, tOffset += 16, lengthToExamine -= 16)
                 {
-                    Vector128<byte> lv = Sse2.LoadVector128(&sPtr[i]);
-                    Vector128<byte> rv = Sse2.LoadVector128(&tPtr[i]);
+                    Vector128<byte> lv = Sse2.LoadVector128(&sPtr[sOffset]);
+                    Vector128<byte> rv = Sse2.LoadVector128(&tPtr[tOffset]);
                     if ((uint) Sse2.MoveMask(Sse2.CompareEqual(lv, rv)) != ushort.MaxValue) return false;
                 }
-                return true;
             }
 #endif
-            //this sets up the positioning of the buffers
-            //as well as testing the first byte
-            source.Position = block1 * blockSize;
-            target.Position = tOffset;
+            int vectorSize = Vector<byte>.Count;
+          
+            if (lengthToExamine >= vectorSize)
+            {
+                byte[]? sBuf = source.DangerousGetMemoryStreamBuffer();
+                byte[]? tBuf = target.DangerousGetMemoryStreamBuffer();
 
-            if (!source.CanRead || !target.CanRead) return false;
-            var s1 = source.PeekBytes(blockSize).Span;
-            var s2 = target.PeekBytes(blockSize).Span;
+                if (sBuf != null && tBuf != null)
+                {
+                    if (sOffset > sLen || tOffset > tLen) return false;
+                    for (; sOffset >= vectorSize && tOffset >= vectorSize &&
+                            lengthToExamine >= vectorSize; sOffset += vectorSize, tOffset += vectorSize, lengthToExamine -= vectorSize)
+                    {
+                        Vector<byte> lv = new Vector<byte>(sBuf, (int)(sOffset));
+                        Vector<byte> rv = new Vector<byte>(tBuf, (int)(tOffset));
+                        if (!Vector.EqualsAll(lv, rv)) return false;
+                    }
+                }
+            }
 
-            return s1.SequenceCompareTo(s2) == 0;
+            while (lengthToExamine > 0 && !(sOffset > sLen || tOffset > tLen))
+            {
+                if (sPtr[sOffset] != tPtr[tOffset]) return false;
+                --lengthToExamine;
+                ++sOffset;
+                ++tOffset;
+            }
+
+            return true;
         }
 
         private unsafe long FirstMatchingBlock(ulong hash, long toffset, byte* sourcePtr, byte* targetPtr, ByteBuffer target)
@@ -329,8 +346,8 @@ namespace VCDiff.Encoders
             {
                 tindex -= 32;
                 sindex -= 32;
-                var lv = Avx2.LoadDquVector256(&sPtr[sindex]);
-                var rv = Avx2.LoadDquVector256(&tPtr[tindex]);
+                var lv = Avx2.LoadVector256(&sPtr[sindex]);
+                var rv = Avx2.LoadVector256(&tPtr[tindex]);
                 if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) == EQMASK) continue;
                 tindex += 32;
                 sindex += 32;
@@ -391,7 +408,7 @@ namespace VCDiff.Encoders
             return bytesFound;
         }
 #endif
-        private unsafe long MatchingBytesToLeft(long start, long tstart, byte* sourcePtr, byte* targetPtr, long maxBytes)
+        private unsafe long MatchingBytesToLeft(long start, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
 #if NETCOREAPP3_1
             if (Avx2.IsSupported) return MatchingBytesToLeftAvx2(start, tstart, sourcePtr, targetPtr, maxBytes);
@@ -402,6 +419,27 @@ namespace VCDiff.Encoders
             long tindex = tstart;
             byte* tPtr = targetPtr;
             byte* sPtr = sourcePtr;
+
+            int vectorSize = Vector<byte>.Count;
+            byte[]? tBuf = target.DangerousGetMemoryStreamBuffer();
+            byte[]? sBuf = source.DangerousGetMemoryStreamBuffer();
+
+            if (tBuf != null && sBuf != null)
+            {
+                for (; (sindex >= vectorSize && tindex >= vectorSize) 
+                       && bytesFound <= maxBytes - vectorSize; bytesFound += vectorSize)
+                {
+
+                    tindex -= vectorSize;
+                    sindex -= vectorSize;
+                    var lv = new Vector<byte>(sBuf, (int)sindex);
+                    var rv = new Vector<byte>(tBuf, (int)tindex);
+                    if (Vector.EqualsAll(lv, rv)) continue;
+                    tindex += vectorSize;
+                    sindex += vectorSize;
+                    break;
+                }
+            }
 
             while (bytesFound < maxBytes)
             {
@@ -431,8 +469,8 @@ namespace VCDiff.Encoders
 
             for (; (srcLength - sindex) >= 32 && (trgLength - tindex) >= 32 && bytesFound <= maxBytes - 32; bytesFound += 32, tindex += 32, sindex += 32)
             {
-                var lv = Avx2.LoadDquVector256(&sPtr[sindex]);
-                var rv = Avx2.LoadDquVector256(&tPtr[tindex]);
+                var lv = Avx2.LoadVector256(&sPtr[sindex]);
+                var rv = Avx2.LoadVector256(&tPtr[tindex]);
                 if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) == EQMASK) continue;
                 break;
             }
@@ -460,7 +498,7 @@ namespace VCDiff.Encoders
             byte* tPtr = targetPtr;
             byte* sPtr = sourcePtr;
 
-            for (; (srcLength - sindex) >= 16 && (trgLength - tindex) >= 16 && bytesFound <= maxBytes - 16; bytesFound += 16, tindex += 16, sindex += 32)
+            for (; (srcLength - sindex) >= 16 && (trgLength - tindex) >= 16 && bytesFound <= maxBytes - 16; bytesFound += 16, tindex += 16, sindex += 16)
             {
                 var lv = Sse2.LoadVector128(&sPtr[sindex]);
                 var rv = Sse2.LoadVector128(&tPtr[tindex]);
@@ -501,6 +539,23 @@ namespace VCDiff.Encoders
             long trgLength = target.Length;
             byte* tPtr = targetPtr;
             byte* sPtr = sourcePtr;
+            int vectorSize = Vector<byte>.Count;
+            byte[]? tBuf = target.DangerousGetMemoryStreamBuffer();
+            byte[]? sBuf = source.DangerousGetMemoryStreamBuffer();
+
+            if (tBuf != null && sBuf != null)
+            {
+                for (;
+                    (srcLength - sindex) >= vectorSize && (trgLength - tindex) >= vectorSize
+                                                       && bytesFound <= maxBytes - vectorSize;
+                    bytesFound += vectorSize, tindex += vectorSize, sindex += vectorSize)
+                {
+                    var lv = new Vector<byte>(sBuf, (int) sindex);
+                    var rv = new Vector<byte>(tBuf, (int) tindex);
+                    if (Vector.EqualsAll(lv, rv)) continue;
+                    break;
+                }
+            }
 
             while (bytesFound < maxBytes)
             {

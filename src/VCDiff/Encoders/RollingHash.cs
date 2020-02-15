@@ -79,6 +79,7 @@ namespace VCDiff.Encoders
         private unsafe ulong HashAvx2(byte* buf, int len)
         {
             ulong h = 0;
+            
             Vector256<int> v_ps = Vector256<int>.Zero;
 
             int i = 0;

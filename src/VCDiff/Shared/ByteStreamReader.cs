@@ -66,6 +66,14 @@ namespace VCDiff.Shared
             return actualRead > 0 ? buf[..actualRead] : Memory<byte>.Empty;
         }
 
+        public byte[] ReadBytesAsBuf(int len)
+        {
+            byte[] buf = new byte[len];
+            int actualRead = buffer.Read(buf, 0, len);
+            lastLenRead = actualRead;
+            return actualRead > 0 ? buf[..actualRead] : new byte[] { };
+        }
+
         public byte PeekByte()
         {
             byte b = ReadByte();

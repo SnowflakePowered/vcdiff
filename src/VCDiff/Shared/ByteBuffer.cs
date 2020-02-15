@@ -12,7 +12,7 @@ namespace VCDiff.Shared
         private unsafe byte* bytePtr;
         private int length;
         private int offset;
-
+        private byte[]? buf;
         private MemoryStream? copyStream;
 
         private ByteBuffer()
@@ -26,8 +26,10 @@ namespace VCDiff.Shared
             copyStream.CopyTo(this.copyStream);
             this.copyStream.Seek(0, SeekOrigin.Begin);
             offset = 0;
-            this.bytes = new Memory<byte>(this.copyStream.GetBuffer(),0, (int)copyStream.Length);
+            this.buf = this.copyStream.GetBuffer();
+            this.bytes = new Memory<byte>(buf, 0, (int)copyStream.Length);
             this.byteHandle = this.bytes.Pin();
+
             unsafe
             {
                 this.bytePtr = (byte *)this.byteHandle.Pointer;
@@ -42,7 +44,8 @@ namespace VCDiff.Shared
             await copyStream.CopyToAsync(buffer.copyStream);
             buffer.copyStream.Seek(0, SeekOrigin.Begin);
             buffer.offset = 0;
-            buffer.bytes = new Memory<byte>(buffer.copyStream.GetBuffer(), 0, (int)copyStream.Length);
+            buffer.buf = buffer.copyStream.GetBuffer();
+            buffer.bytes = new Memory<byte>(buffer.buf, 0, (int)copyStream.Length);
             buffer.byteHandle = buffer.bytes.Pin();
             unsafe
             {
@@ -53,6 +56,8 @@ namespace VCDiff.Shared
 
             return buffer;
         }
+
+        public byte[]? DangerousGetMemoryStreamBuffer() => buf;
 
         /// <summary>
         /// Dangerously gets the byte pointer.
@@ -82,6 +87,7 @@ namespace VCDiff.Shared
         public ByteBuffer(byte[] bytes)
         {
             offset = 0;
+            this.buf = bytes;
             this.bytes = bytes != null ? new Memory<byte>(bytes) : Memory<byte>.Empty;
             this.byteHandle = this.bytes.Pin();
             unsafe

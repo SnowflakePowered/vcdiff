@@ -133,7 +133,7 @@ namespace VCDiff.Encoders
 
             while (targetData.CanRead)
             {
-                using ByteBuffer ntarget = new ByteBuffer(targetData.ReadBytes(bufferSize));
+                using ByteBuffer ntarget = new ByteBuffer(targetData.ReadBytesAsBuf(bufferSize));
                 chunker.EncodeChunk(ntarget, outputStream);
             }
 
@@ -198,7 +198,7 @@ namespace VCDiff.Encoders
 
             while (targetData.CanRead)
             {
-                using ByteBuffer ntarget = new ByteBuffer(targetData.ReadBytes(bufferSize));
+                using ByteBuffer ntarget = new ByteBuffer(targetData.ReadBytesAsBuf(bufferSize));
                 chunker.EncodeChunk(ntarget, outputStream);
             }
 
