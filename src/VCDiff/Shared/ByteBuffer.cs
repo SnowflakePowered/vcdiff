@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace VCDiff.Shared
@@ -32,7 +33,7 @@ namespace VCDiff.Shared
 
             unsafe
             {
-                this.bytePtr = (byte *)this.byteHandle.Pointer;
+                this.bytePtr = (byte*)this.byteHandle.Pointer;
             }
 
             length = this.bytes.Length;
@@ -40,7 +41,7 @@ namespace VCDiff.Shared
 
         public static async Task<ByteBuffer> CreateBufferAsync(Stream copyStream)
         {
-            var buffer = new ByteBuffer {copyStream = new MemoryStream()};
+            var buffer = new ByteBuffer { copyStream = new MemoryStream() };
             await copyStream.CopyToAsync(buffer.copyStream);
             buffer.copyStream.Seek(0, SeekOrigin.Begin);
             buffer.offset = 0;
@@ -49,7 +50,7 @@ namespace VCDiff.Shared
             buffer.byteHandle = buffer.bytes.Pin();
             unsafe
             {
-                buffer.bytePtr = (byte *)buffer.byteHandle.Pointer;
+                buffer.bytePtr = (byte*)buffer.byteHandle.Pointer;
             }
 
             buffer.length = buffer.bytes.Length;
@@ -92,7 +93,7 @@ namespace VCDiff.Shared
             this.byteHandle = this.bytes.Pin();
             unsafe
             {
-                this.bytePtr = (byte *)this.byteHandle.Pointer;
+                this.bytePtr = (byte*)this.byteHandle.Pointer;
             }
 
             length = this.bytes.Length;
@@ -105,16 +106,22 @@ namespace VCDiff.Shared
             this.byteHandle = bytes.Pin();
             unsafe
             {
-                this.bytePtr = (byte *)this.byteHandle.Pointer;
+                this.bytePtr = (byte*)this.byteHandle.Pointer;
             }
             length = this.bytes.Length;
         }
 
-        public bool CanRead => offset < length;
+        public bool CanRead
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return offset < length; }
+        }
 
         public long Position
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => offset;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
                 if (value > length || value < 0) return;
@@ -122,8 +129,12 @@ namespace VCDiff.Shared
             }
         }
 
-        public long Length => length;
+        public long Length {         
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return length; } 
+        }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte PeekByte()
         {
             unsafe
@@ -132,12 +143,14 @@ namespace VCDiff.Shared
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Memory<byte> PeekBytes(int len)
         {
             int sliceLen = offset + len > this.length ? this.length - offset : len;
             return bytes.Slice(offset, sliceLen);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte ReadByte()
         {
             unsafe
@@ -146,6 +159,7 @@ namespace VCDiff.Shared
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Memory<byte> ReadBytes(int len)
         {
             var slice = PeekBytes(len);

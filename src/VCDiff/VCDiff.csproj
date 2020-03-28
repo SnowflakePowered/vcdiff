@@ -3,10 +3,10 @@
 
   <PropertyGroup>
     <RootNamespace>VCDiff</RootNamespace>
-    <TargetFrameworks>netstandard2.1;netcoreapp3.1</TargetFrameworks>
+    <TargetFrameworks>netstandard2.1;netcoreapp3.1;</TargetFrameworks>
     <DocumentationFile>$(OutputPath)$(AssemblyName).xml</DocumentationFile>
     <Nullable>enable</Nullable>
-    <Version>3.2.5</Version>
+    <Version>3.2.6</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup>

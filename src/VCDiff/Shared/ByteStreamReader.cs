@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace VCDiff.Shared
 {
@@ -19,7 +20,9 @@ namespace VCDiff.Shared
 
         public long Position
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => buffer.Position;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
 
@@ -28,11 +31,22 @@ namespace VCDiff.Shared
             }
         }
 
-        public long Length => buffer.CanRead ? buffer.Length : 0;
+        public long Length
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return buffer.CanRead? buffer.Length: 0; } 
+        }
 
-        public bool CanRead => buffer.CanRead && buffer.Position < buffer.Length;
+        public bool CanRead
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                return buffer.CanRead && buffer.Position < buffer.Length;
+            }
+        }
 
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Memory<byte> PeekBytes(int len)
         {
             long oldPos = buffer.Position;
@@ -50,6 +64,7 @@ namespace VCDiff.Shared
             return Memory<byte>.Empty;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte ReadByte()
         {
             lastLenRead = buffer.ReadByte();
@@ -58,6 +73,7 @@ namespace VCDiff.Shared
             return 0;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Memory<byte> ReadBytes(int len)
         {
             Memory<byte> buf = new byte[len];
