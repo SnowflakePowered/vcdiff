@@ -139,20 +139,20 @@ namespace VCDiff.Encoders
             dictionary.FindBestMatch(hash, candidateStart, unencodedStart, unencodedSize, newDataPtr, newData,
                 ref bestMatch);
 
-            if (bestMatch.Size < minBlockSize)
+            if (bestMatch.size < minBlockSize)
             {
                 return 0;
             }
 
-            if (bestMatch.TargetOffset > 0)
+            if (bestMatch.tOffset > 0)
             {
                 newData.Position = unencodedStart;
-                windowEncoder?.Add(newData.ReadBytes((int)bestMatch.TargetOffset).Span);
+                windowEncoder?.Add(newData.ReadBytes((int)bestMatch.tOffset).Span);
             }
 
-            windowEncoder?.Copy((int)bestMatch.SourceOffset, (int)bestMatch.Size);
+            windowEncoder?.Copy((int)bestMatch.sOffset, (int)bestMatch.size);
 
-            return bestMatch.Size + bestMatch.TargetOffset;
+            return bestMatch.size + bestMatch.tOffset;
         }
 
         public void Dispose()

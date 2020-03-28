@@ -130,11 +130,15 @@ namespace VCDiff.Encoders
             oldData.Position = 0;
 
             ChunkEncoder chunker = new ChunkEncoder(dictionary, oldData, hasher, checksumFormat, interleaved, chunkSize);
+            Memory<byte> buf = new Memory<byte>(new byte[bufferSize]);
+            Span<byte> bufSpan = buf.Span;
 
             while (targetData.CanRead)
             {
-                using ByteBuffer ntarget = new ByteBuffer(targetData.ReadBytesAsBuf(bufferSize));
+                int bytesRead = targetData.ReadBytesIntoBuf(bufSpan);
+                using ByteBuffer ntarget = new ByteBuffer(buf[..bytesRead]);
                 chunker.EncodeChunk(ntarget, outputStream);
+                bufSpan.Clear();
             }
 
             return result;
@@ -194,11 +198,12 @@ namespace VCDiff.Encoders
             dictionary.AddAllBlocks();
             oldData.Position = 0;
 
+            Memory<byte> buf = new Memory<byte>(new byte[bufferSize]);
             ChunkEncoder chunker = new ChunkEncoder(dictionary, oldData, hasher, checksumFormat, interleaved, chunkSize);
-
             while (targetData.CanRead)
             {
-                using ByteBuffer ntarget = new ByteBuffer(targetData.ReadBytesAsBuf(bufferSize));
+                int read = targetData.ReadBytesIntoBuf(buf.Span);
+                using ByteBuffer ntarget = new ByteBuffer(buf[..read]);
                 chunker.EncodeChunk(ntarget, outputStream);
             }
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using VCDiff.Shared;
 
 #if NETCOREAPP3_1
@@ -239,6 +240,7 @@ namespace VCDiff.Encoders
             AddAllBlocksThroughIndex(source.Length);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe bool BlockContentsMatch(long block1, long tOffset, byte *sourcePtr, byte *targetPtr, ByteBuffer target)
         {
             int lengthToExamine = blockSize;
@@ -304,11 +306,13 @@ namespace VCDiff.Encoders
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long FirstMatchingBlock(ulong hash, long toffset, byte* sourcePtr, byte* targetPtr, ByteBuffer target)
         {
             return SkipNonMatchingBlocks(hashTable[GetTableIndex(hash)], toffset, sourcePtr, targetPtr, target);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long NextMatchingBlock(long blockNumber, long toffset, byte* sourcePtr, byte* targetPtr, ByteBuffer target)
         {
             if (blockNumber >= blocksCount)
@@ -319,6 +323,7 @@ namespace VCDiff.Encoders
             return SkipNonMatchingBlocks(nextBlockTable[blockNumber], toffset, sourcePtr, targetPtr, target);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long SkipNonMatchingBlocks(long blockNumber, long toffset, byte* sourcePtr, byte* targetPtr, ByteBuffer target)
         {
             int probes = 0;
@@ -334,6 +339,7 @@ namespace VCDiff.Encoders
         }
 
 #if NETCOREAPP3_1
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToLeftAvx2(long start, long tstart, byte* sourcePtr, byte* targetPtr, long maxBytes)
         {
             long sindex = start;
@@ -371,6 +377,7 @@ namespace VCDiff.Encoders
             return bytesFound;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToLeftSse2(long start, long tstart, byte* sourcePtr, byte* targetPtr, long maxBytes)
         {
             long sindex = start;
@@ -408,6 +415,7 @@ namespace VCDiff.Encoders
             return bytesFound;
         }
 #endif
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToLeft(long start, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
 #if NETCOREAPP3_1
@@ -457,6 +465,7 @@ namespace VCDiff.Encoders
         }
 
 #if NETCOREAPP3_1
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToRightAvx2(long end, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
             long sindex = end;
@@ -488,6 +497,7 @@ namespace VCDiff.Encoders
             return bytesFound;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToRightSse2(long end, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
             long sindex = end;
@@ -519,6 +529,7 @@ namespace VCDiff.Encoders
             return bytesFound;
         }
 #endif
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToRight(long end, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
 
@@ -579,9 +590,9 @@ namespace VCDiff.Encoders
 
         public ref struct Match
         {
-            private long size;
-            private long sOffset;
-            private long tOffset;
+            public long size;
+            public long sOffset;
+            public long tOffset;
 
             public void ReplaceIfBetterMatch(long csize, long sourcOffset, long targetOffset)
             {
@@ -590,12 +601,6 @@ namespace VCDiff.Encoders
                 sOffset = sourcOffset;
                 tOffset = targetOffset;
             }
-
-            public long Size => size;
-
-            public long SourceOffset => sOffset;
-
-            public long TargetOffset => tOffset;
         }
     }
 }

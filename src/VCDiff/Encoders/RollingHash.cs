@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 #if NETCOREAPP3_1
 using System.Runtime.Intrinsics;
@@ -76,6 +77,7 @@ namespace VCDiff.Encoders
         public int WindowSize { get; }
 
 #if NETCOREAPP3_1
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe ulong HashAvx2(byte* buf, int len)
         {
             ulong h = 0;
@@ -109,6 +111,7 @@ namespace VCDiff.Encoders
             return h & (kBase - 1);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining|MethodImplOptions.AggressiveOptimization)]
         private unsafe ulong HashSse(byte* buf, int len)
         {
             ulong h = 0;
@@ -179,6 +182,7 @@ namespace VCDiff.Encoders
         /// The final result is then MODded using binary and with kBase.
         /// 
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal unsafe ulong Hash(byte* buf, int len)
         {
 

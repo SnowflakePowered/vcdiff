@@ -82,12 +82,13 @@ namespace VCDiff.Shared
             return actualRead > 0 ? buf[..actualRead] : Memory<byte>.Empty;
         }
 
-        public byte[] ReadBytesAsBuf(int len)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int ReadBytesIntoBuf(Span<byte> buf)
         {
-            byte[] buf = new byte[len];
-            int actualRead = buffer.Read(buf, 0, len);
+            //byte[] buf = new byte[len];
+            int actualRead = buffer.Read(buf);
             lastLenRead = actualRead;
-            return actualRead > 0 ? buf[..actualRead] : new byte[] { };
+            return actualRead;
         }
 
         public byte PeekByte()

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
+
 #if NETCOREAPP3_1
 using System.Numerics;
 using System.Runtime.Intrinsics;
@@ -62,6 +64,7 @@ namespace VCDiff.Shared
             return sum1 | (sum2 << 16);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void Do(ref uint adler, ref uint sum2, ReadOnlySpan<byte> buffer, int i, int times)
         {
             while (times-- > 0)
@@ -79,6 +82,7 @@ namespace VCDiff.Shared
         /// <param name="adler"></param>
         /// <param name="buff"></param>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         private static unsafe uint HashSsse3(uint adler, ReadOnlySpan<byte> buff)
         {
             fixed (byte* buffAddr = buff)
@@ -177,6 +181,7 @@ namespace VCDiff.Shared
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         private static unsafe uint HashAvx2(uint adler, ReadOnlySpan<byte> buff)
         {
             fixed (byte* buffAddr = buff)
@@ -266,6 +271,7 @@ namespace VCDiff.Shared
         }
 
 #endif
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint Hash(uint adler, ReadOnlySpan<byte> buff)
         {
             uint len = (uint)buff.Length;
