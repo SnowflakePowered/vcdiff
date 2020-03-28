@@ -198,7 +198,7 @@ namespace VCDiff.Tests
             using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
-            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream);
+            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: 32);
             VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.SDCH); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
