@@ -62,7 +62,7 @@ namespace VCDiff.Decoders
         /// <param name="dictionarySize">the dictionary size</param>
         /// <param name="buffer">the buffer containing the incoming data</param>
         /// <param name="maxWindowSize">The maximum target window size in bytes</param>
-        public WindowDecoder(long dictionarySize, IByteBuffer buffer, int maxWindowSize = DefaultMaxTargetFileSize)
+        public WindowDecoder(long dictionarySize, IByteBuffer buffer, int maxWindowSize = WindowDecoder.DefaultMaxTargetFileSize)
         {
             this.dictionarySize = dictionarySize;
             this.buffer = buffer;
