@@ -12,7 +12,7 @@ namespace VCDiff.Decoders
          */
         public const int DefaultMaxTargetFileSize = 67108864;  // 64 MB
 
-        private int  maxWindowSize = DefaultMaxTargetFileSize;
+        private int maxWindowSize;
 
         private IByteBuffer buffer;
         private int returnCode;
@@ -69,9 +69,13 @@ namespace VCDiff.Decoders
             chunk = new ParseableChunk(buffer.Position, buffer.Length);
 
             if (maxWindowSize < 0)
+            {
                 throw new ArgumentException("maxWindowSize must be a positive value", "maxWindowSize");
+            }
             else
+            {
                 this.maxWindowSize = maxWindowSize;
+            }
 
             returnCode = (int)VCDiffResult.SUCCESS;
         }
