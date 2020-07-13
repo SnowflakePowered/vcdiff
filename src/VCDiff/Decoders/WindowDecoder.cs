@@ -6,7 +6,13 @@ namespace VCDiff.Decoders
 {
     internal class WindowDecoder
     {
-        private const uint HardMaxWindowSize = 1u << 24;
+
+        /**
+         * The default maximum target file size (and target window size) 
+         */
+        public const int DefaultMaxTargetFileSize = 67108864;  // 64 MB
+
+        private int maxWindowSize;
 
         private IByteBuffer buffer;
         private int returnCode;
@@ -55,11 +61,22 @@ namespace VCDiff.Decoders
         /// </summary>
         /// <param name="dictionarySize">the dictionary size</param>
         /// <param name="buffer">the buffer containing the incoming data</param>
-        public WindowDecoder(long dictionarySize, IByteBuffer buffer)
+        /// <param name="maxWindowSize">The maximum target window size in bytes</param>
+        public WindowDecoder(long dictionarySize, IByteBuffer buffer, int maxWindowSize = WindowDecoder.DefaultMaxTargetFileSize)
         {
             this.dictionarySize = dictionarySize;
             this.buffer = buffer;
             chunk = new ParseableChunk(buffer.Position, buffer.Length);
+
+            if (maxWindowSize < 0)
+            {
+                throw new ArgumentException("maxWindowSize must be a positive value", "maxWindowSize");
+            }
+            else
+            {
+                this.maxWindowSize = maxWindowSize;
+            }
+
             returnCode = (int)VCDiffResult.SUCCESS;
         }
 
@@ -303,10 +320,11 @@ namespace VCDiff.Decoders
             }
 
             targetWindowLength = outTargetLength;
-            if (targetWindowLength > HardMaxWindowSize)
+            if (targetWindowLength > maxWindowSize)
             {
                 targetWindowLength = 0;
                 this.returnCode = (int)VCDiffResult.ERROR;
+                throw new InvalidOperationException(String.Format("Length of target window ({0}) exceeds limit of {1} bytes", outTargetLength, maxWindowSize));
             }
             return true;
         }

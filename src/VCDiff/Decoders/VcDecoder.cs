@@ -15,6 +15,7 @@ namespace VCDiff.Decoders
         private readonly Stream outputStream;
         private readonly IByteBuffer delta;
         private readonly IByteBuffer source;
+        private readonly int maxTargetFileSize;
         private CustomCodeTableDecoder? customTable;
         private static readonly byte[] MagicBytes = { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
 
@@ -34,19 +35,22 @@ namespace VCDiff.Decoders
         /// <param name="source">The dictionary stream, or the base file.</param>
         /// <param name="delta">The stream containing the VCDIFF delta.</param>
         /// <param name="outputStream">The stream to write the output in.</param>
-        public VcDecoder(Stream source, Stream delta, Stream outputStream)
+        /// <param name="maxTargetFileSize">The maximum target file size (and target window size) in bytes</param>
+        public VcDecoder(Stream source, Stream delta, Stream outputStream, int maxTargetFileSize = WindowDecoder.DefaultMaxTargetFileSize)
         {
             this.delta = new ByteStreamReader(delta);
             this.source = new ByteStreamReader(source);
             this.outputStream = outputStream;
+            this.maxTargetFileSize = maxTargetFileSize;
             this.IsInitialized = false;
         }
 
-        internal VcDecoder(IByteBuffer dict, IByteBuffer delta, Stream outputStream)
+        internal VcDecoder(IByteBuffer dict, IByteBuffer delta, Stream outputStream, int maxTargetFileSize = WindowDecoder.DefaultMaxTargetFileSize)
         {
             this.delta = delta;
             this.source = dict;
             this.outputStream = outputStream;
+            this.maxTargetFileSize = maxTargetFileSize;
             this.IsInitialized = false;
         }
 
@@ -162,7 +166,7 @@ namespace VCDiff.Decoders
             while (delta.CanRead)
             {
                 //delta is streamed in order aka not random access
-                WindowDecoder w = new WindowDecoder(source.Length, delta);
+                WindowDecoder w = new WindowDecoder(source.Length, delta, maxTargetFileSize);
 
                 if (w.Decode(this.IsSDCHFormat))
                 {
@@ -239,7 +243,7 @@ namespace VCDiff.Decoders
             while (delta.CanRead)
             {
                 //delta is streamed in order aka not random access
-                WindowDecoder w = new WindowDecoder(source.Length, delta);
+                WindowDecoder w = new WindowDecoder(source.Length, delta, maxTargetFileSize);
 
                 if (w.Decode(this.IsSDCHFormat))
                 {

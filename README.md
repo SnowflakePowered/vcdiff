@@ -41,7 +41,7 @@ using VCDiff.Shared;
 void DoEncode() {
     using(FileStream output = new FileStream("...some output path", FileMode.Create, FileAccess.Write))
     using(FileStream dict = new FileStream("..dictionary / old file path", FileMode.Open, FileAccess.Read))
-    using(FileStream target = new FileStream("..target data / new data path", FileMode.Open, FileMode.Read)) {
+    using(FileStream target = new FileStream("..target data / new data path", FileMode.Open, FileAccess.Read)) {
         VcEncoder coder = new VcEncoder(dict, target, output);
         VCDiffResult result = coder.Encode(); //encodes with no checksum and not interleaved
         if(result != VCDiffResult.SUCCESS) {
@@ -97,7 +97,7 @@ using VCDiff.Shared;
 void DoDecode() {
     using (FileStream output = new FileStream("...some output path", FileMode.Create, FileAccess.Write))
     using (FileStream dict = new FileStream("..dictionary / old file path", FileMode.Open, FileAccess.Read))
-    using (FileStream target = new FileStream("..delta encoded part", FileMode.Open, FileMode.Read)) {
+    using (FileStream target = new FileStream("..delta encoded part", FileMode.Open, FileAccess.Read)) {
         VCDecoder decoder = new VCDecoder(dict, target, output);
 
         // The header of the delta file must be available before the first call to decoder.Decode().

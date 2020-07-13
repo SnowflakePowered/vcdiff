@@ -68,13 +68,14 @@
             If the decoder has been initialized.
             </summary>
         </member>
-        <member name="M:VCDiff.Decoders.VcDecoder.#ctor(System.IO.Stream,System.IO.Stream,System.IO.Stream)">
+        <member name="M:VCDiff.Decoders.VcDecoder.#ctor(System.IO.Stream,System.IO.Stream,System.IO.Stream,System.Int32)">
             <summary>
             Creates a new VCDIFF decoder.
             </summary>
             <param name="source">The dictionary stream, or the base file.</param>
             <param name="delta">The stream containing the VCDIFF delta.</param>
             <param name="outputStream">The stream to write the output in.</param>
+            <param name="maxTargetFileSize">The maximum target file size (and target window size) in bytes</param>
         </member>
         <member name="M:VCDiff.Decoders.VcDecoder.Initialize">
             <summary>
@@ -104,12 +105,16 @@
             Disposes the decoder
             </summary>
         </member>
-        <member name="M:VCDiff.Decoders.WindowDecoder.#ctor(System.Int64,VCDiff.Shared.IByteBuffer)">
+        <member name="F:VCDiff.Decoders.WindowDecoder.DefaultMaxTargetFileSize">
+            The default maximum target file size (and target window size) 
+        </member>
+        <member name="M:VCDiff.Decoders.WindowDecoder.#ctor(System.Int64,VCDiff.Shared.IByteBuffer,System.Int32)">
             <summary>
             Parses the window from the data
             </summary>
             <param name="dictionarySize">the dictionary size</param>
             <param name="buffer">the buffer containing the incoming data</param>
+            <param name="maxWindowSize">The maximum target window size in bytes</param>
         </member>
         <member name="M:VCDiff.Decoders.WindowDecoder.Decode(System.Boolean)">
             <summary>
