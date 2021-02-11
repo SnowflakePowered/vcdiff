@@ -1,6 +1,9 @@
 # vcdiff
 
+
 [![Nuget](https://img.shields.io/nuget/v/VCdiff)](https://www.nuget.org/packages/VCDiff)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/SnowflakePowered/vcdiff/.NET)](https://github.com/SnowflakePowered/vcdiff/actions?query=workflow%3A.NET)
+[![Codecov](https://img.shields.io/codecov/c/github/SnowflakePowered/vcdiff)](https://codecov.io/gh/SnowflakePowered/vcdiff/branch/master)
 
 This is a hard fork of [VCDiff](https://github.com/Metric/VCDiff), originally written by [Metric](https://github.com/Metric), written primarily for use in Snowflake.
 

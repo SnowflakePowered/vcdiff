@@ -1,0 +1,43 @@
+name: .NET
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        configuration: [ 'Release', 'Debug' ]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        dotnet: ['netcoreapp3.0', 'netcoreapp3.1', 'net5.0']
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core 3.0
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.0.x
+    - name: Setup .NET Core 3.1
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.x
+    - name: Setup .NET 5
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+    - name: Clean dependencies and caches
+      run: dotnet clean src --configuration ${{ matrix.configuration }} && dotnet nuget locals all --clear
+    - name: Restore dependencies
+      run: dotnet restore src
+    - name: Build
+      run: dotnet build --no-restore --configuration ${{ matrix.configuration }} src 
+    - name: Tests
+      run: dotnet test --no-build --configuration ${{ matrix.configuration }} src
+    - name: Upload code coverage
+      uses: codecov/codecov-action@v1.2.1
+      with:
+        token: 5605db1d-f7eb-4a6b-bb3a-556d61df4d5c
+        directory: src/VCDiff.Tests/

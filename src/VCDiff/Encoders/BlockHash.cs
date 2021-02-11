@@ -3,7 +3,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using VCDiff.Shared;
 
-#if NETCOREAPP3_1
+#if NETCOREAPP3_1 || NET5_0
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 #endif
@@ -162,9 +162,10 @@ namespace VCDiff.Encoders
         /// <param name="candidateStart">the start position</param>
         /// <param name="targetStart">the target start position</param>
         /// <param name="targetSize">the data left to encode</param>
+        /// <param name="targetPtr">pointer to the target buffer</param>
         /// <param name="target">the target buffer</param>
         /// <param name="m">the match object to use</param>
-#if NETCOREAPP3_1
+#if NETCOREAPP3_1 || NET5_0
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
 #endif
         public unsafe void FindBestMatch(ulong hash, long candidateStart, long targetStart, long targetSize, byte* targetPtr, ByteBuffer target, ref Match m)
@@ -252,7 +253,7 @@ namespace VCDiff.Encoders
             long tLen = target.Length;
             byte* sPtr = sourcePtr;
             byte* tPtr = targetPtr;
-#if NETCOREAPP3_1
+#if NETCOREAPP3_1 || NET5_0
             if (Avx2.IsSupported && lengthToExamine >= 32)
             {
                 if (sOffset > sLen || tOffset > tLen) return false;
@@ -341,7 +342,7 @@ namespace VCDiff.Encoders
             return blockNumber;
         }
 
-#if NETCOREAPP3_1
+#if NETCOREAPP3_1 || NET5_0
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToLeftAvx2(long start, long tstart, byte* sourcePtr, byte* targetPtr, long maxBytes)
         {
@@ -421,7 +422,7 @@ namespace VCDiff.Encoders
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToLeft(long start, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
-#if NETCOREAPP3_1
+#if NETCOREAPP3_1 || NET5_0
             if (Avx2.IsSupported) return MatchingBytesToLeftAvx2(start, tstart, sourcePtr, targetPtr, maxBytes);
             if (Sse2.IsSupported) return MatchingBytesToLeftSse2(start, tstart, sourcePtr, targetPtr, maxBytes);
 #endif
@@ -467,7 +468,7 @@ namespace VCDiff.Encoders
             return bytesFound;
         }
 
-#if NETCOREAPP3_1
+#if NETCOREAPP3_1 || NET5_0
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToRightAvx2(long end, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
@@ -537,7 +538,7 @@ namespace VCDiff.Encoders
         private unsafe long MatchingBytesToRight(long end, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
 
-#if NETCOREAPP3_1
+#if NETCOREAPP3_1 || NET5_0
             // ByteBuffer is already pinned, so its safe to just use raw pointer access
             // but Vector<T> can only create vectors from a Span and not an address. 
             // We can probably unroll the while loop in the scalar implementation

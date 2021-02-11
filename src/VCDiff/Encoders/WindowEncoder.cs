@@ -57,7 +57,7 @@ namespace VCDiff.Encoders
             }
         }
 
-#if NETCOREAPP3_1
+#if NETCOREAPP3_1 || NET5_0
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
 #endif
         private void EncodeInstruction(VCDiffInstructionType inst, int size, byte mode = 0)
