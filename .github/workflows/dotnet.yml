@@ -12,7 +12,6 @@ jobs:
       matrix:
         configuration: [ 'Release', 'Debug' ]
         os: [ubuntu-latest, windows-latest, macos-latest]
-        dotnet: ['netcoreapp3.0', 'netcoreapp3.1', 'net5.0']
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
