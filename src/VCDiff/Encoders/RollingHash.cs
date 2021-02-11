@@ -111,7 +111,7 @@ namespace VCDiff.Encoders
             return h & (kBase - 1);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining|MethodImplOptions.AggressiveOptimization)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe ulong HashSse(byte* buf, int len)
         {
             ulong h = 0;
@@ -182,7 +182,11 @@ namespace VCDiff.Encoders
         /// The final result is then MODded using binary and with kBase.
         /// 
         /// </summary>
+#if NETCOREAPP3_1
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+#else
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
         internal unsafe ulong Hash(byte* buf, int len)
         {
 

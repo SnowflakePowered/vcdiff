@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
@@ -56,6 +57,9 @@ namespace VCDiff.Encoders
             }
         }
 
+#if NETCOREAPP3_1
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+#endif
         private void EncodeInstruction(VCDiffInstructionType inst, int size, byte mode = 0)
         {
             if (lastOpcodeIndex >= 0)

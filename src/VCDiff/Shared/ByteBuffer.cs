@@ -58,12 +58,14 @@ namespace VCDiff.Shared
             return buffer;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte[]? DangerousGetMemoryStreamBuffer() => buf;
 
         /// <summary>
         /// Dangerously gets the byte pointer.
         /// </summary>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe byte* DangerousGetBytePointer()
         {
             return bytePtr;
@@ -74,6 +76,7 @@ namespace VCDiff.Shared
         /// </summary>
         /// <param name="read"></param>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe byte* DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(int read)
         {
             byte* ptr = bytePtr + offset;
@@ -114,7 +117,7 @@ namespace VCDiff.Shared
         public bool CanRead
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return offset < length; }
+            get => offset < length;
         }
 
         public long Position
@@ -122,16 +125,13 @@ namespace VCDiff.Shared
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => offset;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set
-            {
-                if (value > length || value < 0) return;
-                offset = (int)value;
-            }
+            // We used to check, but this is never true in calls. if (value > length || value < 0) return;
+            set => offset = (int)value;
         }
 
         public long Length {         
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return length; } 
+            get => length;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

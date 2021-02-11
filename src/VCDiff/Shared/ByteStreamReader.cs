@@ -34,16 +34,13 @@ namespace VCDiff.Shared
         public long Length
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return buffer.CanRead? buffer.Length: 0; } 
+            get => buffer.CanRead? buffer.Length: 0;
         }
 
         public bool CanRead
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get
-            {
-                return buffer.CanRead && buffer.Position < buffer.Length;
-            }
+            get => buffer.CanRead && buffer.Position < buffer.Length;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -85,7 +82,6 @@ namespace VCDiff.Shared
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int ReadBytesIntoBuf(Span<byte> buf)
         {
-            //byte[] buf = new byte[len];
             int actualRead = buffer.Read(buf);
             lastLenRead = actualRead;
             return actualRead;

@@ -138,7 +138,6 @@ namespace VCDiff.Encoders
                 int bytesRead = targetData.ReadBytesIntoBuf(bufSpan);
                 using ByteBuffer ntarget = new ByteBuffer(buf[..bytesRead]);
                 chunker.EncodeChunk(ntarget, outputStream);
-                bufSpan.Clear();
             }
 
             return result;

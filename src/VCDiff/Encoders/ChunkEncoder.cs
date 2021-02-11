@@ -95,10 +95,7 @@ namespace VCDiff.Encoders
 
                     newData.Position = candidatePos;
                     //cannot use rolling hash since we skipped so many
-                    unsafe
-                    {
-                        hash = hasher.Hash(newData.DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(this.dictionary.blockSize), this.dictionary.blockSize);
-                    }
+                    hash = hasher.Hash(newData.DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(this.dictionary.blockSize), this.dictionary.blockSize);
                 }
                 else
                 {

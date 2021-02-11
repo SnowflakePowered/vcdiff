@@ -149,8 +149,7 @@ namespace VCDiff.Encoders
 
         public long blocksCount;
 
-        public long TableSize => tableSize;
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private long GetTableIndex(ulong hash)
         {
             return (long)(hash & hashTableMask);
@@ -165,6 +164,9 @@ namespace VCDiff.Encoders
         /// <param name="targetSize">the data left to encode</param>
         /// <param name="target">the target buffer</param>
         /// <param name="m">the match object to use</param>
+#if NETCOREAPP3_1
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+#endif
         public unsafe void FindBestMatch(ulong hash, long candidateStart, long targetStart, long targetSize, byte* targetPtr, ByteBuffer target, ref Match m)
         {
             int matchCounter = 0;
@@ -201,6 +203,7 @@ namespace VCDiff.Encoders
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddBlock(ulong hash)
         {
             long blockNumber = lastBlockAdded + 1;
@@ -529,6 +532,7 @@ namespace VCDiff.Encoders
             return bytesFound;
         }
 #endif
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToRight(long end, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
