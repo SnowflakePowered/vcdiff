@@ -344,11 +344,10 @@ namespace VCDiff.Decoders
             if (overlap)
             {
                 int availableData = (int)(this.TotalBytesDecoded - decodedAddress);
-                var tbytes = targetData.GetBuffer();
                 for (int i = 0; i < size; i += availableData)
                 {
                     int toCopy = (size - i < availableData) ? size - i : availableData;
-                    var tbytesBuf = tbytes.AsSpan((int)decodedAddress + i, toCopy);
+                    var tbytesBuf = targetData.GetBuffer().AsSpan((int)decodedAddress + i, toCopy);
                     //outputStream.Write(tbytesBuf);
                     targetData.Write(tbytesBuf);
                     this.TotalBytesDecoded += toCopy;
