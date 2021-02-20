@@ -140,6 +140,7 @@
             <param name="candidateStart">the start position</param>
             <param name="targetStart">the target start position</param>
             <param name="targetSize">the data left to encode</param>
+            <param name="targetPtr">pointer to the target buffer</param>
             <param name="target">the target buffer</param>
             <param name="m">the match object to use</param>
         </member>
