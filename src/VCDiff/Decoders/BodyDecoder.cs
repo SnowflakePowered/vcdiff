@@ -211,7 +211,7 @@ namespace VCDiff.Decoders
 
             VCDiffResult result = VCDiffResult.SUCCESS;
 
-            while (this.TotalBytesDecoded < window.TargetWindowLength && instructionBuffer.CanRead)
+            while (this.TotalBytesDecoded < window.TargetWindowLength)
             {
                 VCDiffInstructionType instruction = instrDecoder.Next(out int decodedSize, out byte mode);
 
