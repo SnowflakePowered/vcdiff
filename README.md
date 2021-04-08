@@ -101,11 +101,11 @@ void DoDecode() {
     using (FileStream output = new FileStream("...some output path", FileMode.Create, FileAccess.Write))
     using (FileStream dict = new FileStream("..dictionary / old file path", FileMode.Open, FileAccess.Read))
     using (FileStream target = new FileStream("..delta encoded part", FileMode.Open, FileAccess.Read)) {
-        VCDecoder decoder = new VCDecoder(dict, target, output);
+        VcDecoder decoder = new VcDecoder(dict, target, output);
 
         // The header of the delta file must be available before the first call to decoder.Decode().
         long bytesWritten = 0;
-        result = decoder.Decode(out bytesWritten);
+        VCDiffResult result = decoder.Decode(out bytesWritten);
 
         if(result != VCDiffResult.SUCCESS) {
             //error decoding
@@ -125,7 +125,7 @@ while (bytesWritten < someSizeThatYouAreExpecting) {
     if(myStream.Length < 22) continue; 
 
     long thisChunk = 0;
-    result = decoder.Decode(out thisChunk);
+    VCDiffResult result = decoder.Decode(out thisChunk);
 
     bytesWritten += thisChunk;
 
