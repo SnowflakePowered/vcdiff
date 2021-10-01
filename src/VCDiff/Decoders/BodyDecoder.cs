@@ -64,7 +64,7 @@ namespace VCDiff.Decoders
 
                 //try to read in all interleaved bytes
                 //if not then it will buffer for next time
-                previous.Write(delta.ReadBytes((int)interleaveLength).Span);
+                previous.Write(delta.ReadBytesAsSpan((int)interleaveLength));
                 using ByteBuffer incoming = new ByteBuffer(previous.ToArray());
                 previous.SetLength(0);
                 long initialLength = incoming.Length;
@@ -112,7 +112,7 @@ namespace VCDiff.Decoders
 
                         if (initialLength - incoming.Position > 0)
                         {
-                            previous.Write(incoming.ReadBytes((int)(initialLength - incoming.Position)).Span);
+                            previous.Write(incoming.ReadBytesAsSpan((int)(initialLength - incoming.Position)));
                         }
 
                         break;
@@ -145,7 +145,7 @@ namespace VCDiff.Decoders
 
                         if (initialLength - incoming.Position > 0)
                         {
-                            previous.Write(incoming.ReadBytes((int)(initialLength - incoming.Position)).Span);
+                            previous.Write(incoming.ReadBytesAsSpan((int)(initialLength - incoming.Position)));
                         }
 
                         break;
@@ -164,7 +164,7 @@ namespace VCDiff.Decoders
 
             if (window.ChecksumFormat == ChecksumFormat.SDCH)
             {
-                uint adler = Checksum.ComputeGoogleAdler32(targetData.GetBuffer().AsMemory(0, (int)targetData.Length));
+                uint adler = Checksum.ComputeGoogleAdler32(targetData.GetBuffer().AsMemory(0, (int)targetData.Length).Span);
 
                 if (adler != window.Checksum)
                 {
@@ -248,7 +248,7 @@ namespace VCDiff.Decoders
 
             if (window.ChecksumFormat == ChecksumFormat.SDCH)
             {
-                uint adler = Checksum.ComputeGoogleAdler32(targetData.GetBuffer().AsMemory(0, (int)targetData.Length));
+                uint adler = Checksum.ComputeGoogleAdler32(targetData.GetBuffer().AsMemory(0, (int)targetData.Length).Span);
 
                 if (adler != window.Checksum)
                 {
@@ -257,7 +257,7 @@ namespace VCDiff.Decoders
             }
             else if (window.ChecksumFormat == ChecksumFormat.Xdelta3)
             {
-                uint adler = Checksum.ComputeXdelta3Adler32(targetData.GetBuffer().AsMemory(0, (int)targetData.Length));
+                uint adler = Checksum.ComputeXdelta3Adler32(targetData.GetBuffer().AsMemory(0, (int)targetData.Length).Span);
 
                 if (adler != window.Checksum)
                 {
@@ -318,9 +318,7 @@ namespace VCDiff.Decoders
             if (decodedAddress + size <= window.SourceSegmentLength)
             {
                 source.Position = decodedAddress + window.SourceSegmentOffset;
-                var rbytes = source.ReadBytes(size).Span;
-                //outputStream.Write(rbytes);
-                targetData.Write(rbytes);
+                targetData.Write(source.ReadBytesAsSpan(size));
                 this.TotalBytesDecoded += size;
                 return VCDiffResult.SUCCESS;
             }
@@ -331,9 +329,7 @@ namespace VCDiff.Decoders
                 // ... plus some data from source segment
                 long partialCopySize = window.SourceSegmentLength - decodedAddress;
                 source.Position = decodedAddress + +window.SourceSegmentOffset;
-                var rbytes = source.ReadBytes((int)partialCopySize).Span;
-                //outputStream.Write(rbytes);
-                targetData.Write(rbytes);
+                targetData.Write(source.ReadBytesAsSpan((int)partialCopySize));
                 this.TotalBytesDecoded += partialCopySize;
                 decodedAddress += partialCopySize;
                 size -= (int)partialCopySize;
@@ -400,10 +396,8 @@ namespace VCDiff.Decoders
             {
                 return VCDiffResult.EOD;
             }
-
-            var rbytes = addRun.ReadBytes(size).Span;
-            //outputStream.Write(rbytes);
-            targetData.Write(rbytes);
+            
+            targetData.Write(addRun.ReadBytesAsSpan(size));
             TotalBytesDecoded += size;
             return VCDiffResult.SUCCESS;
         }

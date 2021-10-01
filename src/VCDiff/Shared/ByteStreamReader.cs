@@ -45,30 +45,18 @@ namespace VCDiff.Shared
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Memory<byte> PeekBytes(int len)
-        {
-            long oldPos = buffer.Position;
-            Memory<byte> buf = new byte[len];
-
-            int actualRead = buffer.Read(buf.Span);
-            lastLenRead = actualRead;
-            if (actualRead > 0)
-            {
-                buffer.Seek(oldPos, SeekOrigin.Begin);
-                return buf[..actualRead];
-            }
-
-            buffer.Seek(oldPos, SeekOrigin.Begin);
-            return Memory<byte>.Empty;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte ReadByte()
         {
             lastLenRead = buffer.ReadByte();
             if (lastLenRead > -1)
                 return (byte)lastLenRead;
             return 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Span<byte> ReadBytesAsSpan(int len)
+        {
+            return ReadBytes(len).Span;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -283,19 +283,19 @@ namespace VCDiff.Encoders
           
             if (lengthToExamine >= vectorSize)
             {
-                byte[]? sBuf = source.DangerousGetMemoryStreamBuffer();
-                byte[]? tBuf = target.DangerousGetMemoryStreamBuffer();
+                var sBuf = source.AsSpan();
+                var tBuf = target.AsSpan();
 
-                if (sBuf != null && tBuf != null)
+                if (sOffset > sLen || tOffset > tLen) 
+                    return false;
+
+                for (; sOffset >= vectorSize && tOffset >= vectorSize &&
+                       lengthToExamine >= vectorSize; sOffset += vectorSize, tOffset += vectorSize, lengthToExamine -= vectorSize)
                 {
-                    if (sOffset > sLen || tOffset > tLen) return false;
-                    for (; sOffset >= vectorSize && tOffset >= vectorSize &&
-                            lengthToExamine >= vectorSize; sOffset += vectorSize, tOffset += vectorSize, lengthToExamine -= vectorSize)
-                    {
-                        Vector<byte> lv = new Vector<byte>(sBuf, (int)(sOffset));
-                        Vector<byte> rv = new Vector<byte>(tBuf, (int)(tOffset));
-                        if (!Vector.EqualsAll(lv, rv)) return false;
-                    }
+                    Vector<byte> lv = new Vector<byte>(sBuf.Slice(sOffset));
+                    Vector<byte> rv = new Vector<byte>(tBuf.Slice((int) tOffset));
+                    if (!Vector.EqualsAll(lv, rv)) 
+                        return false;
                 }
             }
 
@@ -433,24 +433,21 @@ namespace VCDiff.Encoders
             byte* sPtr = sourcePtr;
 
             int vectorSize = Vector<byte>.Count;
-            byte[]? tBuf = target.DangerousGetMemoryStreamBuffer();
-            byte[]? sBuf = source.DangerousGetMemoryStreamBuffer();
+            var tBuf = target.AsSpan();
+            var sBuf = source.AsSpan();
 
-            if (tBuf != null && sBuf != null)
+            for (; (sindex >= vectorSize && tindex >= vectorSize)
+                   && bytesFound <= maxBytes - vectorSize; bytesFound += vectorSize)
             {
-                for (; (sindex >= vectorSize && tindex >= vectorSize) 
-                       && bytesFound <= maxBytes - vectorSize; bytesFound += vectorSize)
-                {
 
-                    tindex -= vectorSize;
-                    sindex -= vectorSize;
-                    var lv = new Vector<byte>(sBuf, (int)sindex);
-                    var rv = new Vector<byte>(tBuf, (int)tindex);
-                    if (Vector.EqualsAll(lv, rv)) continue;
-                    tindex += vectorSize;
-                    sindex += vectorSize;
-                    break;
-                }
+                tindex -= vectorSize;
+                sindex -= vectorSize;
+                var lv = new Vector<byte>(sBuf.Slice((int)sindex));
+                var rv = new Vector<byte>(tBuf.Slice((int)tindex));
+                if (Vector.EqualsAll(lv, rv)) continue;
+                tindex += vectorSize;
+                sindex += vectorSize;
+                break;
             }
 
             while (bytesFound < maxBytes)
@@ -556,21 +553,17 @@ namespace VCDiff.Encoders
             byte* tPtr = targetPtr;
             byte* sPtr = sourcePtr;
             int vectorSize = Vector<byte>.Count;
-            byte[]? tBuf = target.DangerousGetMemoryStreamBuffer();
-            byte[]? sBuf = source.DangerousGetMemoryStreamBuffer();
+            var tBuf = target.AsSpan();
+            var sBuf = source.AsSpan();
 
-            if (tBuf != null && sBuf != null)
+            for (; (srcLength - sindex) >= vectorSize && (trgLength - tindex) >= vectorSize
+                                                      && bytesFound <= maxBytes - vectorSize;
+                bytesFound += vectorSize, tindex += vectorSize, sindex += vectorSize)
             {
-                for (;
-                    (srcLength - sindex) >= vectorSize && (trgLength - tindex) >= vectorSize
-                                                       && bytesFound <= maxBytes - vectorSize;
-                    bytesFound += vectorSize, tindex += vectorSize, sindex += vectorSize)
-                {
-                    var lv = new Vector<byte>(sBuf, (int) sindex);
-                    var rv = new Vector<byte>(tBuf, (int) tindex);
-                    if (Vector.EqualsAll(lv, rv)) continue;
-                    break;
-                }
+                var lv = new Vector<byte>(sBuf.Slice((int)sindex));
+                var rv = new Vector<byte>(tBuf.Slice((int)tindex));
+                if (Vector.EqualsAll(lv, rv)) continue;
+                break;
             }
 
             while (bytesFound < maxBytes)
