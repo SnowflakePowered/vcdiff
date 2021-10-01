@@ -117,8 +117,6 @@ namespace VCDiff.Encoders
             if (this.hasher.WindowSize != this.blockSize)
                 throw new ArgumentException("Supplied RollingHash instance has a different window size than blocksize!");
 
-            
-
             if (this.blockSize % 2 != 0 || this.chunkSize < 2 || this.chunkSize < 2 * this.blockSize)
                 throw new ArgumentException($"{this.blockSize} can not be less than 2 or twice the blocksize of the dictionary {this.blockSize}.");
         }
