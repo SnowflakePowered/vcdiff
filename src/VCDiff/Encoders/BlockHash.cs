@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using VCDiff.Shared;
@@ -56,9 +56,17 @@ namespace VCDiff.Encoders
             this.blocksCount = source.Length / blockSize;
 
             hashTableMask = (ulong)tableSize - 1;
+
+#if NET5_0
+            hashTable = GC.AllocateUninitializedArray<long>((int) tableSize);
+            nextBlockTable = GC.AllocateUninitializedArray<long>((int) blocksCount);
+            lastBlockTable = GC.AllocateUninitializedArray<long>((int) blocksCount);
+#else
             hashTable = new long[tableSize];
             nextBlockTable = new long[blocksCount];
             lastBlockTable = new long[blocksCount];
+#endif
+
             lastBlockAdded = -1;
             SetTablesToInvalid();
         }
