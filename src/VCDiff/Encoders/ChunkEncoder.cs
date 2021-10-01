@@ -2,6 +2,10 @@
 using System.IO;
 using VCDiff.Shared;
 
+#if NET5_0
+using System.Runtime.CompilerServices;
+#endif
+
 namespace VCDiff.Encoders
 {
     internal class ChunkEncoder : IDisposable
@@ -116,6 +120,9 @@ namespace VCDiff.Encoders
 
         //currently does not support looking in target
         //only the dictionary
+#if NET5_0
+        [SkipLocalsInit]
+#endif
         private unsafe long EncodeCopyForBestMatch(ulong hash, long candidateStart, long unencodedStart, long unencodedSize, byte* newDataPtr, ByteBuffer newData)
         {
             BlockHash.Match bestMatch = new BlockHash.Match();

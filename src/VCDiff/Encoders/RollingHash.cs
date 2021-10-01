@@ -230,6 +230,10 @@ namespace VCDiff.Encoders
         /// <param name="firstByte">the original byte of the data for the first hash</param>
         /// <param name="newByte">the first byte of the new data to hash</param>
         /// <returns></returns>
+#if NET5_0
+        [SkipLocalsInit]
+#endif
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong UpdateHash(ulong oldHash, byte firstByte, byte newByte)
         {
             // Remove the first byte from the hash

@@ -166,7 +166,10 @@ namespace VCDiff.Encoders
         /// <param name="target">the target buffer</param>
         /// <param name="m">the match object to use</param>
 #if NETCOREAPP3_1 || NET5_0
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+#endif
+#if NET5_0
+        [SkipLocalsInit]
 #endif
         public unsafe void FindBestMatch(ulong hash, long candidateStart, long targetStart, long targetSize, byte* targetPtr, ByteBuffer target, ref Match m)
         {
@@ -244,6 +247,9 @@ namespace VCDiff.Encoders
             AddAllBlocksThroughIndex(source.Length);
         }
 
+#if NET5_0
+        [SkipLocalsInit]
+#endif
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe bool BlockContentsMatch(long block1, long tOffset, byte *sourcePtr, byte *targetPtr, ByteBuffer target)
         {
@@ -310,6 +316,7 @@ namespace VCDiff.Encoders
             return true;
         }
 
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long FirstMatchingBlock(ulong hash, long toffset, byte* sourcePtr, byte* targetPtr, ByteBuffer target)
         {
@@ -327,7 +334,12 @@ namespace VCDiff.Encoders
             return SkipNonMatchingBlocks(nextBlockTable[blockNumber], toffset, sourcePtr, targetPtr, target);
         }
 
+#if NET5_0
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        [SkipLocalsInit]
+#else
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
         private unsafe long SkipNonMatchingBlocks(long blockNumber, long toffset, byte* sourcePtr, byte* targetPtr, ByteBuffer target)
         {
             int probes = 0;
@@ -418,6 +430,10 @@ namespace VCDiff.Encoders
 
             return bytesFound;
         }
+#endif
+
+#if NET5_0
+        [SkipLocalsInit]
 #endif
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToLeft(long start, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
@@ -531,6 +547,9 @@ namespace VCDiff.Encoders
         }
 #endif
 
+#if NET5_0
+        [SkipLocalsInit]
+#endif
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToRight(long end, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
