@@ -95,6 +95,10 @@ namespace VCDiff.Encoders
             if (maxBufferSize <= 0)
                 maxBufferSize = 1;
 
+            this.bufferSize = maxBufferSize * 1024 * 1024;
+            if (target.Length <= maxBufferSize)
+                this.bufferSize = (int) target.Length;
+
             this.blockSize = blockSize;
             this.chunkSize = chunkSize < 2 ? this.blockSize * 2 : chunkSize;
             this.targetData = new ByteStreamReader(target);
@@ -113,7 +117,8 @@ namespace VCDiff.Encoders
             if (this.hasher.WindowSize != this.blockSize)
                 throw new ArgumentException("Supplied RollingHash instance has a different window size than blocksize!");
 
-            this.bufferSize = maxBufferSize * 1024 * 1024;
+            
+
             if (this.blockSize % 2 != 0 || this.chunkSize < 2 || this.chunkSize < 2 * this.blockSize)
                 throw new ArgumentException($"{this.blockSize} can not be less than 2 or twice the blocksize of the dictionary {this.blockSize}.");
         }
