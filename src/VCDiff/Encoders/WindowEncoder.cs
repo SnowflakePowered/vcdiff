@@ -118,6 +118,9 @@ namespace VCDiff.Encoders
             targetLength += data.Length;
         }
 
+#if NET5_0
+        [SkipLocalsInit]
+#endif
         public void Copy(int offset, int length)
         {
             byte mode = addrCache.EncodeAddress(offset, dictionarySize + targetLength, out long encodedAddr);
