@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace VCDiff.Shared
 {
@@ -83,6 +84,15 @@ namespace VCDiff.Shared
         public int ReadBytesIntoBuf(Span<byte> buf)
         {
             int actualRead = buffer.Read(buf);
+            lastLenRead = actualRead;
+            return actualRead;
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public async Task<int> ReadBytesIntoBufAsync(Memory<byte> buf)
+        {
+            int actualRead = await buffer.ReadAsync(buf);
             lastLenRead = actualRead;
             return actualRead;
         }

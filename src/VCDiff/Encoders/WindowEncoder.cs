@@ -180,11 +180,6 @@ namespace VCDiff.Encoders
         public void Output(Stream outputStream)
         {
             int lengthOfDelta = CalculateLengthOfTheDeltaEncoding();
-            int windowSize = lengthOfDelta +
-            1 +
-            VarIntBE.CalcInt32Length((int)dictionarySize) +
-            VarIntBE.CalcInt32Length(0);
-            VarIntBE.CalcInt32Length(lengthOfDelta);
 
             //Google's Checksum Implementation Support
             if (this.ChecksumFormat != ChecksumFormat.None)

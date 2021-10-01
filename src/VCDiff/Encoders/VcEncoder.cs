@@ -87,67 +87,42 @@ namespace VCDiff.Encoders
         /// Whether to include Adler32 checksums for encoded data windows. If interleaved is true, <see cref="ChecksumFormat.Xdelta3"/>
         /// is not supported.
         /// </param>
+        /// <param name="progress">Reports an estimate of the encoding progress. Value if 0 to 1.</param>
         /// <returns>
         /// <see cref="VCDiffResult.SUCCESS"/> if successful, <see cref="VCDiffResult.ERROR"/> if the sourceStream or target are zero-length.</returns>
         /// <exception cref="ArgumentException">If interleaved is true, and <see cref="ChecksumFormat.Xdelta3"/> is chosen.</exception>
-        public VCDiffResult Encode(bool interleaved = false, 
-            ChecksumFormat checksumFormat = ChecksumFormat.None)
+        public VCDiffResult Encode(bool interleaved = false, ChecksumFormat checksumFormat = ChecksumFormat.None, IProgress<float>? progress = null)
         {
-            if (oldData == null)
+            Task WriteBytes(byte[] bytes)
             {
-                this.oldData = new ByteBuffer(sourceStream);
+                outputStream.Write(bytes);
+                return Task.CompletedTask;
             }
 
-            if (interleaved && checksumFormat == ChecksumFormat.Xdelta3)
-            {
-                throw new ArgumentException("Interleaved diffs can not have an xdelta3 checksum!");
-            }
-
-            if (targetData.Length == 0 || oldData.Length == 0)
-            {
+            ValidateParameters(interleaved, checksumFormat);
+            if (!Encode_Init(interleaved, checksumFormat, WriteBytes).Result) 
                 return VCDiffResult.ERROR;
-            }
 
-            VCDiffResult result = VCDiffResult.SUCCESS;
-
-            oldData.Position = 0;
-            targetData.Position = 0;
-
-            // file header
-            // write magic bytes
-            if (!interleaved && checksumFormat != ChecksumFormat.SDCH)
-            {
-                outputStream.Write(MagicBytes);
-            }
-            else
-            {
-                outputStream.Write(MagicBytesExtended);
-            }
-
-            //read in all the dictionary it is the only thing that needs to be
-            BlockHash dictionary = new BlockHash(oldData, 0, hasher, blockSize);
-            dictionary.AddAllBlocks();
-            oldData.Position = 0;
-
-            ChunkEncoder chunker = new ChunkEncoder(dictionary, oldData, hasher, checksumFormat, interleaved, chunkSize);
-            Memory<byte> buf = new Memory<byte>(new byte[bufferSize]);
-            Span<byte> bufSpan = buf.Span;
-
+            // Read in all the dictionary it is the only thing that needs to be
+            Encode_Setup(interleaved, checksumFormat, out var chunker, out var buf);
+            var bufSpan = buf.Span;
             while (targetData.CanRead)
             {
                 int bytesRead = targetData.ReadBytesIntoBuf(bufSpan);
                 using ByteBuffer ntarget = new ByteBuffer(buf[..bytesRead]);
                 chunker.EncodeChunk(ntarget, outputStream);
+                progress?.Report((float)targetData.Position / targetData.Length);
             }
 
-            return result;
+            return VCDiffResult.SUCCESS;
         }
 
         /// <summary>
         /// Calculate and write a diff for the file.
-        ///
-        /// This method is only asynchronous for the initial buffering of the sourceStream into memory.
-        /// Writing to the output stream will still occur synchronously. 
+        /// 
+        /// This method is only asynchronous for buffering of <see cref="sourceStream"/> and <see cref="targetData"/>.
+        /// Writing to the output stream will still occur synchronously.
+        /// 
         /// It is recommended you use the synchronous <see cref="Encode"/> method for most use cases.
         /// </summary>
         /// <param name="interleaved">Whether to output in SDCH interleaved diff format.</param>
@@ -155,28 +130,37 @@ namespace VCDiff.Encoders
         /// Whether to include Adler32 checksums for encoded data windows. If interleaved is true, <see cref="ChecksumFormat.Xdelta3"/>
         /// is not supported.
         /// </param>
+        /// <param name="progress">Reports an estimate of the encoding progress. Value if 0 to 1.</param>
         /// <returns>
         /// <see cref="VCDiffResult.SUCCESS"/> if successful, <see cref="VCDiffResult.ERROR"/> if the sourceStream or target are zero-length.</returns>
         /// <exception cref="ArgumentException">If interleaved is true, and <see cref="ChecksumFormat.Xdelta3"/> is chosen.</exception>
         public async Task<VCDiffResult> EncodeAsync(bool interleaved = false,
-            ChecksumFormat checksumFormat = ChecksumFormat.None)
+            ChecksumFormat checksumFormat = ChecksumFormat.None, IProgress<float>? progress = null)
+        {
+            ValidateParameters(interleaved, checksumFormat);
+            if (!await Encode_Init(interleaved, checksumFormat, async bytes => await outputStream.WriteAsync(bytes)))
+                return VCDiffResult.ERROR;
+
+            //read in all the dictionary it is the only thing that needs to be
+            Encode_Setup(interleaved, checksumFormat, out var chunker, out var buf);
+            while (targetData.CanRead)
+            {
+                int read = await targetData.ReadBytesIntoBufAsync(buf);
+                using ByteBuffer ntarget = new ByteBuffer(buf[..read]);
+                chunker.EncodeChunk(ntarget, outputStream);
+                progress?.Report((float) targetData.Position / targetData.Length);
+            }
+
+            return VCDiffResult.SUCCESS;
+        }
+
+        private async Task<bool> Encode_Init(bool interleaved, ChecksumFormat checksumFormat, WriteMagicHeader writeBytes)
         {
             if (oldData == null)
-            {
-                this.oldData = await ByteBuffer.CreateBufferAsync(sourceStream);
-            }
-
-            if (interleaved && checksumFormat == ChecksumFormat.Xdelta3)
-            {
-                throw new ArgumentException("Interleaved diffs can not have an xdelta3 checksum!");
-            }
+                this.oldData = new ByteBuffer(sourceStream);
 
             if (targetData.Length == 0 || oldData.Length == 0)
-            {
-                return VCDiffResult.ERROR;
-            }
-
-            VCDiffResult result = VCDiffResult.SUCCESS;
+                return false;
 
             oldData.Position = 0;
             targetData.Position = 0;
@@ -184,31 +168,28 @@ namespace VCDiff.Encoders
             // file header
             // write magic bytes
             if (!interleaved && checksumFormat != ChecksumFormat.SDCH)
-            {
-                await outputStream.WriteAsync(MagicBytes);
-            }
+                await writeBytes(MagicBytes);
             else
-            {
-                await outputStream.WriteAsync(MagicBytesExtended);
-            }
+                await writeBytes(MagicBytesExtended);
 
-            //read in all the dictionary it is the only thing that needs to be
-            BlockHash dictionary = new BlockHash(oldData, 0, hasher, blockSize);
+            return true;
+        }
+
+        private void ValidateParameters(bool interleaved, ChecksumFormat checksumFormat)
+        {
+            if (interleaved && checksumFormat == ChecksumFormat.Xdelta3)
+                throw new ArgumentException("Interleaved diffs can not have an xdelta3 checksum!");
+        }
+
+        private void Encode_Setup(bool interleaved, ChecksumFormat checksumFormat, out ChunkEncoder chunkEncoder, out Memory<byte> buf)
+        {
+            var dictionary = new BlockHash(oldData, 0, hasher, blockSize);
             dictionary.AddAllBlocks();
             oldData.Position = 0;
 
-            Memory<byte> buf = new Memory<byte>(new byte[bufferSize]);
-            ChunkEncoder chunker = new ChunkEncoder(dictionary, oldData, hasher, checksumFormat, interleaved, chunkSize);
-            while (targetData.CanRead)
-            {
-                int read = targetData.ReadBytesIntoBuf(buf.Span);
-                using ByteBuffer ntarget = new ByteBuffer(buf[..read]);
-                chunker.EncodeChunk(ntarget, outputStream);
-            }
-
-            return result;
+            chunkEncoder = new ChunkEncoder(dictionary, oldData, hasher, checksumFormat, interleaved, chunkSize);
+            buf = new Memory<byte>(new byte[bufferSize]);
         }
-
 
         /// <summary>
         /// Disposes the encoder.
@@ -217,9 +198,9 @@ namespace VCDiff.Encoders
         {
             oldData?.Dispose();
             if (this.disposeRollingHash)
-            {
                 this.hasher.Dispose();
-            }
         }
+
+        private delegate Task WriteMagicHeader(byte[] writeBytes);
     }
 }

@@ -15,54 +15,14 @@ namespace VCDiff.Shared
         private long[] nearCache;
         private long[] sameCache;
         private int nextSlot;
+        
+        public byte FirstNear => (byte)VCDiffModes.FIRST;
 
-        public byte NearSize
-        {
-            get
-            {
-                return nearSize;
-            }
-        }
+        public byte FirstSame => (byte)(VCDiffModes.FIRST + nearSize);
 
-        public byte SameSize
-        {
-            get
-            {
-                return sameSize;
-            }
-        }
+        public byte Last => (byte)(FirstSame + sameSize - 1);
 
-        public byte FirstNear
-        {
-            get
-            {
-                return (byte)VCDiffModes.FIRST;
-            }
-        }
-
-        public byte FirstSame
-        {
-            get
-            {
-                return (byte)(VCDiffModes.FIRST + nearSize);
-            }
-        }
-
-        public byte Last
-        {
-            get
-            {
-                return (byte)(FirstSame + sameSize - 1);
-            }
-        }
-
-        public static byte DefaultLast
-        {
-            get
-            {
-                return (byte)(VCDiffModes.FIRST + DefaultNearCacheSize + DefaultSameCacheSize - 1);
-            }
-        }
+        public static byte DefaultLast => (byte)(VCDiffModes.FIRST + DefaultNearCacheSize + DefaultSameCacheSize - 1);
 
         public AddressCache(byte nearSize, byte sameSize)
         {
