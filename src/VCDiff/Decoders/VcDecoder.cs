@@ -130,7 +130,7 @@ namespace VCDiff.Decoders
                 
                 int headerLength = VarIntBE.ParseInt32(delta);
                 // skip the app header
-                delta.ReadBytes(headerLength);
+                delta.ReadBytesAsSpan(headerLength);
             }
 
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using VCDiff.Includes;
 using VCDiff.Shared;
@@ -23,6 +24,8 @@ namespace VCDiff.Encoders
         private readonly int blockSize;
         private readonly int chunkSize;
         private readonly bool disposeRollingHash = false;
+
+        private IntPtr sourceStreamDataPtr;
 
         /// <summary>
         /// Creates a new VCDIFF Encoder. The input streams will not be closed once this object is disposed.
@@ -48,15 +51,22 @@ namespace VCDiff.Encoders
         /// If you provide a <see cref="RollingHash"/> instance, you must dispose of it yourself.
         /// </param>
         /// <exception cref="ArgumentException">If an invalid blockSize or chunkSize is used..</exception>
-        public VcEncoder(Stream source, Stream target, Stream outputStream,
-            int maxBufferSize = 1, int blockSize = 16, int chunkSize = 0, RollingHash? rollingHash = null)
+        public unsafe VcEncoder(Stream source, Stream target, Stream outputStream, int maxBufferSize = 1, int blockSize = 16, int chunkSize = 0, RollingHash? rollingHash = null)
         {
-            if (maxBufferSize <= 0) maxBufferSize = 1;
+            if (maxBufferSize <= 0) 
+                maxBufferSize = 1;
+
             this.blockSize = blockSize;
             this.chunkSize = chunkSize < 2 ? this.blockSize * 2 : chunkSize;
             this.sourceStream = source;
             this.targetData = new ByteStreamReader(target);
             this.outputStream = outputStream;
+
+            sourceStreamDataPtr = Marshal.AllocHGlobal((int) sourceStream.Length);
+            var sourceStreamBytes = new Span<byte>((void*)sourceStreamDataPtr, (int)sourceStream.Length);
+            sourceStream.Read(sourceStreamBytes);
+            this.oldData = new ByteBuffer(sourceStreamBytes);
+
             if (rollingHash == null)
             {
                 this.disposeRollingHash = true;
@@ -66,6 +76,7 @@ namespace VCDiff.Encoders
             {
                 this.hasher = rollingHash;
             }
+
             if (this.hasher.WindowSize != this.blockSize)
             {
                 throw new ArgumentException("Supplied RollingHash instance has a different window size than blocksize!");
@@ -76,7 +87,6 @@ namespace VCDiff.Encoders
             {
                 throw new ArgumentException($"{this.blockSize} can not be less than 2 or twice the blocksize of the dictionary {this.blockSize}.");
             }
-
         }
 
         /// <summary>
@@ -156,9 +166,6 @@ namespace VCDiff.Encoders
 
         private async Task<bool> Encode_Init(bool interleaved, ChecksumFormat checksumFormat, WriteMagicHeader writeBytes)
         {
-            if (oldData == null)
-                this.oldData = new ByteBuffer(sourceStream);
-
             if (targetData.Length == 0 || oldData.Length == 0)
                 return false;
 
@@ -196,6 +203,7 @@ namespace VCDiff.Encoders
         /// </summary>
         public void Dispose()
         {
+            Marshal.FreeHGlobal(sourceStreamDataPtr);
             oldData?.Dispose();
             if (this.disposeRollingHash)
                 this.hasher.Dispose();

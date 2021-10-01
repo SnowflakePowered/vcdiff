@@ -44,7 +44,7 @@ namespace VCDiff.Encoders
         public unsafe void EncodeChunk(ByteBuffer newData, Stream outputStream)
         {
             newData.Position = 0;
-            ReadOnlyMemory<byte> checksumBytes = newData.ReadBytes((int)newData.Length);
+            var checksumBytes = newData.ReadBytesAsSpan((int)newData.Length);
 
             uint checksum = this.checksumFormat switch
             {
@@ -120,7 +120,7 @@ namespace VCDiff.Encoders
             {
                 int len = (int)(newData.Length - nextEncode);
                 newData.Position = nextEncode;
-                windowEncoder.Add(newData.ReadBytes(len).Span);
+                windowEncoder.Add(newData.ReadBytesAsSpan(len));
             }
 
             //output the final window
@@ -144,7 +144,7 @@ namespace VCDiff.Encoders
             if (bestMatch.tOffset > 0)
             {
                 newData.Position = unencodedStart;
-                windowEncoder?.Add(newData.ReadBytes((int)bestMatch.tOffset).Span);
+                windowEncoder?.Add(newData.ReadBytesAsSpan((int)bestMatch.tOffset));
             }
 
             windowEncoder?.Copy((int)bestMatch.sOffset, (int)bestMatch.size);

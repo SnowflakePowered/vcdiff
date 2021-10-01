@@ -6,15 +6,15 @@ namespace VCDiff.Shared
     internal class Checksum
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static uint ComputeGoogleAdler32(ReadOnlyMemory<byte> buffer)
+        public static uint ComputeGoogleAdler32(ReadOnlySpan<byte> buffer)
         {
-            return Adler32.Hash(0, buffer.Span);
+            return Adler32.Hash(0, buffer);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static uint ComputeXdelta3Adler32(ReadOnlyMemory<byte> buffer)
+        public static uint ComputeXdelta3Adler32(ReadOnlySpan<byte> buffer)
         {
-            return Adler32.Hash(1, buffer.Span);
+            return Adler32.Hash(1, buffer);
         }
     }
 }

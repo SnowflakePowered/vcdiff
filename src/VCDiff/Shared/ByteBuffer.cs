@@ -8,49 +8,64 @@ namespace VCDiff.Shared
 {
     internal class ByteBuffer : IByteBuffer, IDisposable
     {
-        private Memory<byte> bytes;
-        private MemoryHandle byteHandle;
-        private unsafe byte* bytePtr;
+        private MemoryHandle? byteHandle;
+        private unsafe byte*  bytePtr;
         private int length;
         private int offset;
-        private byte[]? buf;
-        private MemoryStream? copyStream;
 
         private ByteBuffer()
         {
 
         }
 
-        public ByteBuffer(Stream copyStream)
+        /// <summary>
+        /// Basically a simple wrapper for byte[] arrays
+        /// for easier reading and parsing.
+        /// </summary>
+        public unsafe ByteBuffer(byte[] bytes)
         {
-            this.copyStream = new MemoryStream();
-            copyStream.CopyTo(this.copyStream);
-            this.copyStream.Seek(0, SeekOrigin.Begin);
             offset = 0;
-            this.buf = this.copyStream.GetBuffer();
-            this.bytes = new Memory<byte>(buf, 0, (int)copyStream.Length);
-            this.byteHandle = this.bytes.Pin();
-
-            unsafe
-            {
-                this.bytePtr = (byte*)this.byteHandle.Pointer;
-            }
-
-            length = this.bytes.Length;
+            var memory      = bytes != null ? new Memory<byte>(bytes) : Memory<byte>.Empty;
+            this.byteHandle = memory.Pin();
+            CreateFromPointer((byte*)this.byteHandle.Value.Pointer, memory.Length);
         }
 
+        public unsafe ByteBuffer(Memory<byte> bytes)
+        {
+            offset = 0;
+            this.byteHandle = bytes.Pin();
+            CreateFromPointer((byte*)this.byteHandle.Value.Pointer, bytes.Length);
+        }
+
+        public unsafe ByteBuffer(Span<byte> bytes)
+        {
+            offset = 0;
+
+            // Using GetPinnableReference because length of 0 means out of bound exception.
+            CreateFromPointer((byte*)Unsafe.AsPointer(ref bytes.GetPinnableReference()), bytes.Length);
+        }
+
+        public unsafe ByteBuffer(byte* bytes, int length)
+        {
+            offset = 0;
+            CreateFromPointer(bytes, length);
+        }
+
+        private unsafe void CreateFromPointer(byte* pointer, int length)
+        {
+            this.bytePtr = pointer;
+            this.length = length;
+        }
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public byte[]? DangerousGetMemoryStreamBuffer() => buf;
+        public unsafe Span<byte> AsSpan() => new Span<byte>(bytePtr, length);
 
         /// <summary>
         /// Dangerously gets the byte pointer.
         /// </summary>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe byte* DangerousGetBytePointer()
-        {
-            return bytePtr;
-        }
+        public unsafe byte* DangerousGetBytePointer() => bytePtr;
 
         /// <summary>
         /// Dangerously retrieves the byte pointer at the current position and then increases the offset after.
@@ -63,36 +78,6 @@ namespace VCDiff.Shared
             byte* ptr = bytePtr + offset;
             offset += read;
             return ptr;
-        }
-        /// <summary>
-        /// Basically a simple wrapper for byte[] arrays
-        /// for easier reading and parsing
-        /// </summary>
-        /// <param name="bytes"></param>
-        public ByteBuffer(byte[] bytes)
-        {
-            offset = 0;
-            this.buf = bytes;
-            this.bytes = bytes != null ? new Memory<byte>(bytes) : Memory<byte>.Empty;
-            this.byteHandle = this.bytes.Pin();
-            unsafe
-            {
-                this.bytePtr = (byte*)this.byteHandle.Pointer;
-            }
-
-            length = this.bytes.Length;
-        }
-
-        public ByteBuffer(Memory<byte> bytes)
-        {
-            offset = 0;
-            this.bytes = bytes;
-            this.byteHandle = bytes.Pin();
-            unsafe
-            {
-                this.bytePtr = (byte*)this.byteHandle.Pointer;
-            }
-            length = this.bytes.Length;
         }
 
         public bool CanRead
@@ -116,28 +101,24 @@ namespace VCDiff.Shared
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public byte PeekByte()
-        {
-            unsafe
-            {
-                return *((byte*)this.bytePtr + offset);
-            }
-        }
+        public unsafe byte PeekByte() => *((byte*)this.bytePtr + offset);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Memory<byte> PeekBytes(int len)
+        public Span<byte> PeekBytes(int len)
         {
             int sliceLen = offset + len > this.length ? this.length - offset : len;
-            return bytes.Slice(offset, sliceLen);
+            return AsSpan().Slice(offset, sliceLen);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public byte ReadByte()
+        public unsafe byte ReadByte() => this.bytePtr[offset++];
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Span<byte> ReadBytesAsSpan(int len)
         {
-            unsafe
-            {
-                return this.bytePtr[offset++];
-            }
+            var slice = PeekBytes(len);
+            offset += len;
+            return slice;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -145,18 +126,11 @@ namespace VCDiff.Shared
         {
             var slice = PeekBytes(len);
             offset += len;
-            return slice;
+            return slice.ToArray();
         }
 
-        public void Next()
-        {
-            offset++;
-        }
+        public void Next() => offset++;
 
-        public void Dispose()
-        {
-            this.byteHandle.Dispose();
-            this.copyStream?.Dispose();
-        }
+        public void Dispose() => this.byteHandle?.Dispose();
     }
 }

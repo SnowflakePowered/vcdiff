@@ -29,9 +29,10 @@ namespace VCDiff.Shared
         Memory<byte> ReadBytes(int len);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        byte ReadByte();
+        Span<byte> ReadBytesAsSpan(int len);
 
-        Memory<byte> PeekBytes(int len);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        byte ReadByte();
 
         byte PeekByte();
 

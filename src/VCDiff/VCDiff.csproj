@@ -19,4 +19,7 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="5.0.0" Condition="'$(TargetFramework)' == 'netstandard2.1'" />
+  </ItemGroup>
 </Project>
