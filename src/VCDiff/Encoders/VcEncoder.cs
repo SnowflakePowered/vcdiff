@@ -166,7 +166,7 @@ namespace VCDiff.Encoders
 
         private async Task<bool> Encode_Init(bool interleaved, ChecksumFormat checksumFormat, WriteMagicHeader writeBytes)
         {
-            if (targetData.Length == 0 || oldData.Length == 0)
+            if (targetData.Length == 0 || oldData!.Length == 0)
                 return false;
 
             oldData.Position = 0;
@@ -190,9 +190,9 @@ namespace VCDiff.Encoders
 
         private void Encode_Setup(bool interleaved, ChecksumFormat checksumFormat, out ChunkEncoder chunkEncoder, out Memory<byte> buf)
         {
-            var dictionary = new BlockHash(oldData, 0, hasher, blockSize);
+            var dictionary = new BlockHash(oldData!, 0, hasher, blockSize);
             dictionary.AddAllBlocks();
-            oldData.Position = 0;
+            oldData!.Position = 0;
 
             chunkEncoder = new ChunkEncoder(dictionary, oldData, hasher, checksumFormat, interleaved, chunkSize);
             buf = new Memory<byte>(new byte[bufferSize]);
