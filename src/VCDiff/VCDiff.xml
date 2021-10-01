@@ -255,7 +255,7 @@
              </param>
              <exception cref="T:System.ArgumentException">If an invalid blockSize or chunkSize is used..</exception>
         </member>
-        <member name="M:VCDiff.Encoders.VcEncoder.Encode(System.Boolean,VCDiff.Shared.ChecksumFormat)">
+        <member name="M:VCDiff.Encoders.VcEncoder.Encode(System.Boolean,VCDiff.Shared.ChecksumFormat,System.IProgress{System.Single})">
             <summary>
             Calculate and write a diff for the file.
             </summary>
@@ -264,26 +264,29 @@
             Whether to include Adler32 checksums for encoded data windows. If interleaved is true, <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/>
             is not supported.
             </param>
+            <param name="progress">Reports an estimate of the encoding progress. Value if 0 to 1.</param>
             <returns>
             <see cref="F:VCDiff.Includes.VCDiffResult.SUCCESS"/> if successful, <see cref="F:VCDiff.Includes.VCDiffResult.ERROR"/> if the sourceStream or target are zero-length.</returns>
             <exception cref="T:System.ArgumentException">If interleaved is true, and <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/> is chosen.</exception>
         </member>
-        <member name="M:VCDiff.Encoders.VcEncoder.EncodeAsync(System.Boolean,VCDiff.Shared.ChecksumFormat)">
-             <summary>
-             Calculate and write a diff for the file.
+        <member name="M:VCDiff.Encoders.VcEncoder.EncodeAsync(System.Boolean,VCDiff.Shared.ChecksumFormat,System.IProgress{System.Single})">
+            <summary>
+            Calculate and write a diff for the file.
             
-             This method is only asynchronous for the initial buffering of the sourceStream into memory.
-             Writing to the output stream will still occur synchronously. 
-             It is recommended you use the synchronous <see cref="M:VCDiff.Encoders.VcEncoder.Encode(System.Boolean,VCDiff.Shared.ChecksumFormat)"/> method for most use cases.
-             </summary>
-             <param name="interleaved">Whether to output in SDCH interleaved diff format.</param>
-             <param name="checksumFormat">
-             Whether to include Adler32 checksums for encoded data windows. If interleaved is true, <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/>
-             is not supported.
-             </param>
-             <returns>
-             <see cref="F:VCDiff.Includes.VCDiffResult.SUCCESS"/> if successful, <see cref="F:VCDiff.Includes.VCDiffResult.ERROR"/> if the sourceStream or target are zero-length.</returns>
-             <exception cref="T:System.ArgumentException">If interleaved is true, and <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/> is chosen.</exception>
+            This method is only asynchronous for buffering of <see cref="F:VCDiff.Encoders.VcEncoder.sourceStream"/> and <see cref="F:VCDiff.Encoders.VcEncoder.targetData"/>.
+            Writing to the output stream will still occur synchronously.
+            
+            It is recommended you use the synchronous <see cref="M:VCDiff.Encoders.VcEncoder.Encode(System.Boolean,VCDiff.Shared.ChecksumFormat,System.IProgress{System.Single})"/> method for most use cases.
+            </summary>
+            <param name="interleaved">Whether to output in SDCH interleaved diff format.</param>
+            <param name="checksumFormat">
+            Whether to include Adler32 checksums for encoded data windows. If interleaved is true, <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/>
+            is not supported.
+            </param>
+            <param name="progress">Reports an estimate of the encoding progress. Value if 0 to 1.</param>
+            <returns>
+            <see cref="F:VCDiff.Includes.VCDiffResult.SUCCESS"/> if successful, <see cref="F:VCDiff.Includes.VCDiffResult.ERROR"/> if the sourceStream or target are zero-length.</returns>
+            <exception cref="T:System.ArgumentException">If interleaved is true, and <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/> is chosen.</exception>
         </member>
         <member name="M:VCDiff.Encoders.VcEncoder.Dispose">
             <summary>
@@ -319,6 +322,15 @@
             <summary>
             Zlib implementation of the Adler32 Hash
             </summary>
+        </member>
+        <member name="M:VCDiff.Shared.Adler32.HashSsse3(System.UInt32,System.ReadOnlySpan{System.Byte})">
+            <summary>
+            SSSE3 Version of Adler32
+            https://chromium.googlesource.com/chromium/src/third_party/zlib/+/master/adler32_simd.c
+            </summary>
+            <param name="adler"></param>
+            <param name="buff"></param>
+            <returns></returns>
         </member>
         <member name="M:VCDiff.Shared.ByteBuffer.DangerousGetBytePointer">
             <summary>

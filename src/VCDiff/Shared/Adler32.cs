@@ -45,25 +45,6 @@ namespace VCDiff.Shared
         }
 #endif
 
-        public static uint Combine(uint adler1, uint adler2, uint len)
-        {
-            uint sum1 = 0;
-            uint sum2 = 0;
-            uint rem = 0;
-
-            rem = len % BASE;
-            sum1 = adler1 & 0xffff;
-            sum2 = rem * sum1;
-            sum2 %= BASE;
-            sum1 += (adler2 & 0xffff) + BASE - 1;
-            sum2 += ((adler1 >> 16) & 0xffff) + ((adler2 >> 16) & 0xffff) + BASE - rem;
-            if (sum1 >= BASE) sum1 -= BASE;
-            if (sum1 >= BASE) sum1 -= BASE;
-            if (sum2 >= (BASE << 1)) sum2 -= (BASE << 1);
-            if (sum2 >= BASE) sum2 -= BASE;
-            return sum1 | (sum2 << 16);
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void Do(ref uint adler, ref uint sum2, ReadOnlySpan<byte> buffer, int i, int times)
         {

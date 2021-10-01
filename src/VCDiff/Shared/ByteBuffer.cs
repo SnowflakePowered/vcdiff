@@ -39,25 +39,6 @@ namespace VCDiff.Shared
             length = this.bytes.Length;
         }
 
-        public static async Task<ByteBuffer> CreateBufferAsync(Stream copyStream)
-        {
-            var buffer = new ByteBuffer { copyStream = new MemoryStream() };
-            await copyStream.CopyToAsync(buffer.copyStream);
-            buffer.copyStream.Seek(0, SeekOrigin.Begin);
-            buffer.offset = 0;
-            buffer.buf = buffer.copyStream.GetBuffer();
-            buffer.bytes = new Memory<byte>(buffer.buf, 0, (int)copyStream.Length);
-            buffer.byteHandle = buffer.bytes.Pin();
-            unsafe
-            {
-                buffer.bytePtr = (byte*)buffer.byteHandle.Pointer;
-            }
-
-            buffer.length = buffer.bytes.Length;
-
-            return buffer;
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte[]? DangerousGetMemoryStreamBuffer() => buf;
 
