@@ -6,7 +6,10 @@ using System.Threading.Tasks;
 
 namespace VCDiff.Shared
 {
-    internal class ByteBuffer : IByteBuffer, IDisposable
+    /// <summary>
+    /// Encapsulates a buffer that reads bytes from managed or unmanaged memory.
+    /// </summary>
+    public class ByteBuffer : IByteBuffer, IDisposable
     {
         private MemoryHandle? byteHandle;
         private unsafe byte*  bytePtr;
@@ -18,10 +21,7 @@ namespace VCDiff.Shared
 
         }
 
-        /// <summary>
-        /// Basically a simple wrapper for byte[] arrays
-        /// for easier reading and parsing.
-        /// </summary>
+        /// <summary/>
         public unsafe ByteBuffer(byte[] bytes)
         {
             offset = 0;
@@ -30,6 +30,7 @@ namespace VCDiff.Shared
             CreateFromPointer((byte*)this.byteHandle.Value.Pointer, memory.Length);
         }
 
+        /// <summary/>
         public unsafe ByteBuffer(Memory<byte> bytes)
         {
             offset = 0;
@@ -37,6 +38,7 @@ namespace VCDiff.Shared
             CreateFromPointer((byte*)this.byteHandle.Value.Pointer, bytes.Length);
         }
 
+        /// <summary/>
         public unsafe ByteBuffer(Span<byte> bytes)
         {
             offset = 0;
@@ -45,6 +47,7 @@ namespace VCDiff.Shared
             CreateFromPointer((byte*)Unsafe.AsPointer(ref bytes.GetPinnableReference()), bytes.Length);
         }
 
+        /// <summary/>
         public unsafe ByteBuffer(byte* bytes, int length)
         {
             offset = 0;
@@ -86,16 +89,16 @@ namespace VCDiff.Shared
             get => offset < length;
         }
 
-        public long Position
+        public int Position
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => offset;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             // We used to check, but this is never true in calls. if (value > length || value < 0) return;
-            set => offset = (int)value;
+            set => offset = value;
         }
 
-        public long Length {         
+        public int Length {         
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => length;
         }

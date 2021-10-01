@@ -60,26 +60,17 @@ namespace VCDiff.Encoders
             newData.Position = 0;
 
             long nextEncode = newData.Position;
-            long targetEnd = newData.Length;
+            long targetEnd  = newData.Length;
             long startOfLastBlock = targetEnd - this.dictionary.blockSize;
             long candidatePos = nextEncode;
 
-            ulong hash;
-            //create the first hash
-            hash = hasher.Hash(newData.DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(0),
-                this.dictionary.blockSize);
-
-
+            // Create the first hash
+            ulong hash = hasher.Hash(newData.DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(0), this.dictionary.blockSize);
             byte* newDataPtr = newData.DangerousGetBytePointer();
-            while (true)
+
+            // If less than block size exit and then write as an ADD
+            while (newData.Length - nextEncode >= this.dictionary.blockSize)
             {
-                //if less than block size exit and then write as an ADD
-                if (newData.Length - nextEncode < this.dictionary.blockSize)
-                {
-                    break;
-                }
-
-
                 //try and encode the copy and add instructions that best match
                 var bytesEncoded = EncodeCopyForBestMatch(hash, candidatePos, nextEncode, targetEnd, newDataPtr, newData);
 
@@ -89,26 +80,22 @@ namespace VCDiff.Encoders
                     candidatePos = nextEncode;
 
                     if (candidatePos > startOfLastBlock)
-                    {
                         break;
-                    }
 
-                    newData.Position = candidatePos;
+                    newData.Position = (int) candidatePos;
                     //cannot use rolling hash since we skipped so many
                     hash = hasher.Hash(newData.DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(this.dictionary.blockSize), this.dictionary.blockSize);
                 }
                 else
                 {
                     if (candidatePos + 1 > startOfLastBlock)
-                    {
                         break;
-                    }
 
                     //update hash requires the first byte of the last hash as well as the byte that is first byte pos + blockSize
                     //in order to properly calculate the rolling hash
-                    newData.Position = candidatePos;
+                    newData.Position = (int) candidatePos;
                     byte peek0 = newData.ReadByte();
-                    newData.Position = candidatePos + this.dictionary.blockSize;
+                    newData.Position = (int)(candidatePos + this.dictionary.blockSize);
                     byte peek1 = newData.ReadByte();
                     hash = hasher.UpdateHash(hash, peek0, peek1);
                     candidatePos++;
@@ -119,7 +106,7 @@ namespace VCDiff.Encoders
             if (nextEncode < newData.Length)
             {
                 int len = (int)(newData.Length - nextEncode);
-                newData.Position = nextEncode;
+                newData.Position = (int) nextEncode;
                 windowEncoder.Add(newData.ReadBytesAsSpan(len));
             }
 
@@ -133,9 +120,7 @@ namespace VCDiff.Encoders
         {
             BlockHash.Match bestMatch = new BlockHash.Match();
 
-            dictionary.FindBestMatch(hash, candidateStart, unencodedStart, unencodedSize, newDataPtr, newData,
-                ref bestMatch);
-
+            dictionary.FindBestMatch(hash, candidateStart, unencodedStart, unencodedSize, newDataPtr, newData, ref bestMatch);
             if (bestMatch.size < minBlockSize)
             {
                 return 0;
@@ -143,7 +128,7 @@ namespace VCDiff.Encoders
 
             if (bestMatch.tOffset > 0)
             {
-                newData.Position = unencodedStart;
+                newData.Position = (int) unencodedStart;
                 windowEncoder?.Add(newData.ReadBytesAsSpan((int)bestMatch.tOffset));
             }
 

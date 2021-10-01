@@ -13,19 +13,19 @@ namespace VCDiff.Encoders
     public class VcEncoder : IDisposable
     {
         private ByteBuffer? oldData;
-        private readonly ByteStreamReader targetData;
-        private readonly Stream outputStream;
-        private readonly Stream sourceStream;
-        private readonly RollingHash hasher;
-        private readonly int bufferSize;
+        private ByteStreamReader targetData;
+        private Stream outputStream;
+        private Stream sourceStream;
+        private RollingHash hasher;
+        private int bufferSize;
 
         private static readonly byte[] MagicBytes = { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
         private static readonly byte[] MagicBytesExtended = { 0xD6, 0xC3, 0xC4, (byte)'S', 0x00 };
-        private readonly int blockSize;
-        private readonly int chunkSize;
-        private readonly bool disposeRollingHash = false;
+        private int blockSize;
+        private int chunkSize;
+        private bool disposeRollingHash = false;
 
-        private IntPtr sourceStreamDataPtr;
+        private NativeAllocation _nativeAllocation;
 
         /// <summary>
         /// Creates a new VCDIFF Encoder. The input streams will not be closed once this object is disposed.
@@ -53,19 +53,52 @@ namespace VCDiff.Encoders
         /// <exception cref="ArgumentException">If an invalid blockSize or chunkSize is used..</exception>
         public unsafe VcEncoder(Stream source, Stream target, Stream outputStream, int maxBufferSize = 1, int blockSize = 16, int chunkSize = 0, RollingHash? rollingHash = null)
         {
-            if (maxBufferSize <= 0) 
+            _nativeAllocation = new NativeAllocation((int)source.Length);
+            source.Read(_nativeAllocation.AsSpan());
+            this.oldData = new ByteBuffer(_nativeAllocation.AsSpan());
+
+            InitializeEncoder(target, outputStream, maxBufferSize, blockSize, chunkSize, rollingHash);
+        }
+
+        /// <summary>
+        /// Creates a new VCDIFF Encoder. The input streams will not be closed once this object is disposed.
+        /// </summary>
+        /// <param name="buffer">The dictionary (source file).</param>
+        /// <param name="target">The target to create the diff from.</param>
+        /// <param name="outputStream">The stream to write the diff into.</param>
+        /// <param name="maxBufferSize">The maximum buffer size for window chunking in megabytes (MiB).</param>
+        /// <param name="blockSize">
+        /// The block size to use. Must be a power of two. No match smaller than this block size will be identified.
+        /// Increasing blockSize by a factor of two will halve the amount of memory needed for the next block table, and will halve the setup time
+        /// for a new BlockHash.  However, it also doubles the minimum match length that is guaranteed to be found.
+        /// 
+        /// Blocksizes that are n mod 32 = 0 are AVX2 accelerated. Blocksizes that are n mod 16 = 0 are SSE2 accelerated, if supported. 16 is a good default
+        /// for most scenarios, but you should use a block size of 32 or 64 for very similar data, or to optimize for speed.
+        /// </param>
+        /// <param name="chunkSize">
+        /// The minimum size of a string match that is worth putting into a COPY. This must be bigger than twice the block size.</param>
+        /// <param name="rollingHash">
+        /// Manually provide a <see cref="RollingHash"/> instance that can be reused for multiple encoding instances
+        /// of the same block size.
+        ///
+        /// If you provide a <see cref="RollingHash"/> instance, you must dispose of it yourself.
+        /// </param>
+        /// <exception cref="ArgumentException">If an invalid blockSize or chunkSize is used..</exception>
+        public unsafe VcEncoder(ByteBuffer buffer, Stream target, Stream outputStream, int maxBufferSize = 1, int blockSize = 16, int chunkSize = 0, RollingHash? rollingHash = null)
+        {
+            this.oldData = buffer;
+            InitializeEncoder(target, outputStream, maxBufferSize, blockSize, chunkSize, rollingHash);
+        }
+
+        private void InitializeEncoder(Stream target, Stream outputStream, int maxBufferSize, int blockSize, int chunkSize, RollingHash? rollingHash)
+        {
+            if (maxBufferSize <= 0)
                 maxBufferSize = 1;
 
             this.blockSize = blockSize;
             this.chunkSize = chunkSize < 2 ? this.blockSize * 2 : chunkSize;
-            this.sourceStream = source;
             this.targetData = new ByteStreamReader(target);
             this.outputStream = outputStream;
-
-            sourceStreamDataPtr = Marshal.AllocHGlobal((int) sourceStream.Length);
-            var sourceStreamBytes = new Span<byte>((void*)sourceStreamDataPtr, (int)sourceStream.Length);
-            sourceStream.Read(sourceStreamBytes);
-            this.oldData = new ByteBuffer(sourceStreamBytes);
 
             if (rollingHash == null)
             {
@@ -78,16 +111,13 @@ namespace VCDiff.Encoders
             }
 
             if (this.hasher.WindowSize != this.blockSize)
-            {
                 throw new ArgumentException("Supplied RollingHash instance has a different window size than blocksize!");
-            }
-            this.bufferSize = maxBufferSize * 1024 * 1024;
 
+            this.bufferSize = maxBufferSize * 1024 * 1024;
             if (this.blockSize % 2 != 0 || this.chunkSize < 2 || this.chunkSize < 2 * this.blockSize)
-            {
                 throw new ArgumentException($"{this.blockSize} can not be less than 2 or twice the blocksize of the dictionary {this.blockSize}.");
-            }
         }
+
 
         /// <summary>
         /// Calculate and write a diff for the file.
@@ -129,9 +159,7 @@ namespace VCDiff.Encoders
 
         /// <summary>
         /// Calculate and write a diff for the file.
-        /// 
-        /// This method is only asynchronous for buffering of <see cref="sourceStream"/> and <see cref="targetData"/>.
-        /// Writing to the output stream will still occur synchronously.
+        /// This method isn't fully asynchonous; writes to the output stream are still synchronous.
         /// 
         /// It is recommended you use the synchronous <see cref="Encode"/> method for most use cases.
         /// </summary>
@@ -144,8 +172,7 @@ namespace VCDiff.Encoders
         /// <returns>
         /// <see cref="VCDiffResult.SUCCESS"/> if successful, <see cref="VCDiffResult.ERROR"/> if the sourceStream or target are zero-length.</returns>
         /// <exception cref="ArgumentException">If interleaved is true, and <see cref="ChecksumFormat.Xdelta3"/> is chosen.</exception>
-        public async Task<VCDiffResult> EncodeAsync(bool interleaved = false,
-            ChecksumFormat checksumFormat = ChecksumFormat.None, IProgress<float>? progress = null)
+        public async Task<VCDiffResult> EncodeAsync(bool interleaved = false, ChecksumFormat checksumFormat = ChecksumFormat.None, IProgress<float>? progress = null)
         {
             ValidateParameters(interleaved, checksumFormat);
             if (!await Encode_Init(interleaved, checksumFormat, async bytes => await outputStream.WriteAsync(bytes)))
@@ -203,7 +230,7 @@ namespace VCDiff.Encoders
         /// </summary>
         public void Dispose()
         {
-            Marshal.FreeHGlobal(sourceStreamDataPtr);
+            _nativeAllocation.Dispose();
             oldData?.Dispose();
             if (this.disposeRollingHash)
                 this.hasher.Dispose();
