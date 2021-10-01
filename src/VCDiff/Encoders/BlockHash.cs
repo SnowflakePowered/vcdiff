@@ -135,7 +135,7 @@ namespace VCDiff.Encoders
 
             long offset = source.Position + NextIndexToAdd;
             long end = source.Position + endLimit;
-            source.Position = offset;
+            source.Position = (int) offset;
             while (offset < end)
             {
                 unsafe

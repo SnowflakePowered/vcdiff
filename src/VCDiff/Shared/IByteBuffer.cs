@@ -5,13 +5,13 @@ namespace VCDiff.Shared
 {
     internal interface IByteBuffer 
     {
-        long Length
+        int Length
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get; 
         }
 
-        long Position
+        int Position
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get;

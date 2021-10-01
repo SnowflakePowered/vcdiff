@@ -255,6 +255,32 @@
              </param>
              <exception cref="T:System.ArgumentException">If an invalid blockSize or chunkSize is used..</exception>
         </member>
+        <member name="M:VCDiff.Encoders.VcEncoder.#ctor(VCDiff.Shared.ByteBuffer,System.IO.Stream,System.IO.Stream,System.Int32,System.Int32,System.Int32,VCDiff.Encoders.RollingHash)">
+             <summary>
+             Creates a new VCDIFF Encoder. The input streams will not be closed once this object is disposed.
+             </summary>
+             <param name="buffer">The dictionary (source file).</param>
+             <param name="target">The target to create the diff from.</param>
+             <param name="outputStream">The stream to write the diff into.</param>
+             <param name="maxBufferSize">The maximum buffer size for window chunking in megabytes (MiB).</param>
+             <param name="blockSize">
+             The block size to use. Must be a power of two. No match smaller than this block size will be identified.
+             Increasing blockSize by a factor of two will halve the amount of memory needed for the next block table, and will halve the setup time
+             for a new BlockHash.  However, it also doubles the minimum match length that is guaranteed to be found.
+             
+             Blocksizes that are n mod 32 = 0 are AVX2 accelerated. Blocksizes that are n mod 16 = 0 are SSE2 accelerated, if supported. 16 is a good default
+             for most scenarios, but you should use a block size of 32 or 64 for very similar data, or to optimize for speed.
+             </param>
+             <param name="chunkSize">
+             The minimum size of a string match that is worth putting into a COPY. This must be bigger than twice the block size.</param>
+             <param name="rollingHash">
+             Manually provide a <see cref="T:VCDiff.Encoders.RollingHash"/> instance that can be reused for multiple encoding instances
+             of the same block size.
+            
+             If you provide a <see cref="T:VCDiff.Encoders.RollingHash"/> instance, you must dispose of it yourself.
+             </param>
+             <exception cref="T:System.ArgumentException">If an invalid blockSize or chunkSize is used..</exception>
+        </member>
         <member name="M:VCDiff.Encoders.VcEncoder.Encode(System.Boolean,VCDiff.Shared.ChecksumFormat,System.IProgress{System.Single})">
             <summary>
             Calculate and write a diff for the file.
@@ -272,9 +298,7 @@
         <member name="M:VCDiff.Encoders.VcEncoder.EncodeAsync(System.Boolean,VCDiff.Shared.ChecksumFormat,System.IProgress{System.Single})">
             <summary>
             Calculate and write a diff for the file.
-            
-            This method is only asynchronous for buffering of <see cref="F:VCDiff.Encoders.VcEncoder.sourceStream"/> and <see cref="F:VCDiff.Encoders.VcEncoder.targetData"/>.
-            Writing to the output stream will still occur synchronously.
+            This method isn't fully asynchonous; writes to the output stream are still synchronous.
             
             It is recommended you use the synchronous <see cref="M:VCDiff.Encoders.VcEncoder.Encode(System.Boolean,VCDiff.Shared.ChecksumFormat,System.IProgress{System.Single})"/> method for most use cases.
             </summary>
@@ -332,11 +356,22 @@
             <param name="buff"></param>
             <returns></returns>
         </member>
-        <member name="M:VCDiff.Shared.ByteBuffer.#ctor(System.Byte[])">
+        <member name="T:VCDiff.Shared.ByteBuffer">
             <summary>
-            Basically a simple wrapper for byte[] arrays
-            for easier reading and parsing.
+            Encapsulates a buffer that reads bytes from managed or unmanaged memory.
             </summary>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.#ctor(System.Byte[])">
+            <summary/>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.#ctor(System.Memory{System.Byte})">
+            <summary/>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.#ctor(System.Span{System.Byte})">
+            <summary/>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.#ctor(System.Byte*,System.Int32)">
+            <summary/>
         </member>
         <member name="M:VCDiff.Shared.ByteBuffer.DangerousGetBytePointer">
             <summary>

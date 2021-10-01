@@ -203,7 +203,7 @@ namespace VCDiff.Shared
                         return encoded;
 
                     case (int)VCDiffResult.EOD:
-                        sin.Position = start;
+                        sin.Position = (int) start;
                         return encoded;
                 }
 

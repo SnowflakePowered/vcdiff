@@ -19,10 +19,10 @@ namespace VCDiff.Shared
             buffer = stream;
         }
 
-        public long Position
+        public int Position
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => buffer.Position;
+            get => (int) buffer.Position;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
@@ -32,10 +32,10 @@ namespace VCDiff.Shared
             }
         }
 
-        public long Length
+        public int Length
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => buffer.CanRead? buffer.Length: 0;
+            get => (int)(buffer.CanRead ? buffer.Length : 0);
         }
 
         public bool CanRead
