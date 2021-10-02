@@ -13,6 +13,9 @@ namespace VCDiff.Decoders
     /// </summary>
     public class VcDecoder : VcDecoderEx<ByteStreamReader, ByteStreamReader>, IDisposable
     {
+        private bool _ownsSources;
+        private bool _disposed;
+
         /// <summary>
         /// Creates a new VCDIFF decoder.
         /// </summary>
@@ -27,6 +30,21 @@ namespace VCDiff.Decoders
             base.outputStream      = outputStream;
             base.maxTargetFileSize = maxTargetFileSize;
             base.IsInitialized     = false;
+            _ownsSources = true;
+        }
+
+        /// <inheritdoc />
+        public override void Dispose()
+        {
+            base.Dispose();
+            if (_ownsSources && !_disposed)
+            {
+                base.delta.Dispose();
+                base.source.Dispose();
+                _disposed = true;
+            }
+
+            GC.SuppressFinalize(this);
         }
     }
 
@@ -302,10 +320,6 @@ namespace VCDiff.Decoders
         /// <summary>
         /// Disposes the decoder
         /// </summary>
-        public void Dispose()
-        {
-            delta?.Dispose();
-            source?.Dispose();
-        }
+        public virtual void Dispose() { }
     }
 }
