@@ -43,7 +43,7 @@ namespace VCDiff.Shared
         public static unsafe void FillArrayVectorized(long* first, int numValues, long value)
         {
 #if NETCOREAPP3_1 || NET5_0
-            int bytesLeft = numValues * sizeof(long);
+            long bytesLeft = (long) numValues * sizeof(long);
             if (bytesLeft >= MaxRegisterSize)
             {
                 // Note: This can be 0 cost in .NET 5 when paired with pinned GC.AllocateUnitializedArray.
