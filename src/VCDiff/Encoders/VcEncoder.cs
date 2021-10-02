@@ -249,6 +249,7 @@ namespace VCDiff.Encoders
         {
             _nativeAllocation.Dispose();
             oldData?.Dispose();
+            targetData?.Dispose();
             if (this.disposeRollingHash)
                 this.hasher.Dispose();
         }

@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace VCDiff.Shared
@@ -11,13 +13,19 @@ namespace VCDiff.Shared
     //also has a helper function for reading all the bytes in at once
     public class ByteStreamReader : IByteBuffer
     {
+        private const int CACHE_SIZE = 8192;
+
         private readonly Stream buffer;
         private int lastLenRead;
+        private byte[] cache;
 
         public ByteStreamReader(Stream stream)
         {
+            cache  = ArrayPool<byte>.Shared.Rent(CACHE_SIZE);
             buffer = stream;
         }
+
+        ~ByteStreamReader() => Dispose();
 
         public int Position
         {
@@ -48,22 +56,32 @@ namespace VCDiff.Shared
             return 0;
         }
 
+#if NET5_0
+        [SkipLocalsInit]
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+#else
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
         public Span<byte> ReadBytesAsSpan(int len)
         {
-            var buf = new byte[len];
-            int actualRead = buffer.Read(buf, 0, buf.Length);
+            byte[] buf = GetCachedBuffer(len);
+            int actualRead = buffer.Read(buf.AsSpanFast(len));
             lastLenRead = actualRead;
-            return actualRead > 0 ? buf.AsSpan()[..actualRead] : Span<byte>.Empty;
+            return actualRead > 0 ? buf.AsSpanFast(actualRead) : Span<byte>.Empty;
         }
 
+#if NET5_0
+        [SkipLocalsInit]
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+#else
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
         public Memory<byte> ReadBytes(int len)
         {
-            var buf = new byte[len];
-            int actualRead = buffer.Read(buf, 0, buf.Length);
+            byte[] buf = GetCachedBuffer(len);
+            int actualRead = buffer.Read(buf.AsSpanFast(len));
             lastLenRead = actualRead;
-            return actualRead > 0 ? buf.AsMemory()[..actualRead] : Memory<byte>.Empty;
+            return actualRead > 0 ? buf.AsMemory(0, actualRead) : Memory<byte>.Empty;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -73,7 +91,6 @@ namespace VCDiff.Shared
             lastLenRead = actualRead;
             return actualRead;
         }
-
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public async Task<int> ReadBytesIntoBufAsync(Memory<byte> buf)
@@ -96,6 +113,28 @@ namespace VCDiff.Shared
             buffer.Seek(1, SeekOrigin.Current);
         }
 
-        public void Dispose() { }
+        public void Dispose()
+        {
+            ArrayPool<byte>.Shared.Return(cache, false);
+            GC.SuppressFinalize(this);
+        }
+
+#if NET5_0
+        [SkipLocalsInit]
+        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
+#else
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        private byte[] GetCachedBuffer(int len)
+        {
+            if (len <= CACHE_SIZE)
+                return cache;
+
+#if NET5_0
+            return GC.AllocateUninitializedArray<byte>(len);
+#else
+            return new byte[len];
+#endif
+        }
     }
 }
