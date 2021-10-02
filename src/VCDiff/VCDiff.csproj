@@ -4,11 +4,12 @@
   <PropertyGroup>
     <RootNamespace>VCDiff</RootNamespace>
     <TargetFrameworks>netstandard2.1;netcoreapp3.1;net5.0</TargetFrameworks>
-    <DocumentationFile>$(OutputPath)$(AssemblyName).xml</DocumentationFile>
     <Nullable>enable</Nullable>
     <Version>3.3.2</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
+
   <PropertyGroup>
     <Authors>Metric;chyyran;Snowflake Authors</Authors>
     <PackageTags>diff;difference;patch;sdch;compare;delta;vcdiff;bsdiff</PackageTags>
