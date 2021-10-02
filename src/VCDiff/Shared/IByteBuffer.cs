@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+#pragma warning disable 1591
 
 namespace VCDiff.Shared
 {
-    internal interface IByteBuffer 
+    public interface IByteBuffer : IDisposable
     {
         int Length
         {

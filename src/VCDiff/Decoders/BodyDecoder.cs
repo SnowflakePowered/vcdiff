@@ -7,12 +7,15 @@ using VCDiff.Shared;
 
 namespace VCDiff.Decoders
 {
-    internal class BodyDecoder : IDisposable
+    internal class BodyDecoder<TWindowDecoderByteBuffer, TSourceBuffer, TDeltaBuffer> : IDisposable 
+        where TWindowDecoderByteBuffer : IByteBuffer
+        where TSourceBuffer : IByteBuffer
+        where TDeltaBuffer : IByteBuffer
     {
-        private WindowDecoder window;
+        private WindowDecoder<TWindowDecoderByteBuffer> window;
         private Stream outputStream;
-        private IByteBuffer source;
-        private IByteBuffer delta;
+        private TSourceBuffer source;
+        private TDeltaBuffer delta;
         private AddressCache addressCache;
         private MemoryStream targetData;
         private CustomCodeTableDecoder? customTable;
@@ -28,7 +31,7 @@ namespace VCDiff.Decoders
         /// <param name="delta">The delta</param>
         /// <param name="decodedTarget">the out stream</param>
         /// <param name="customTable">custom table if any. Default is null.</param>
-        public BodyDecoder(WindowDecoder w, IByteBuffer source, IByteBuffer delta, Stream decodedTarget, CustomCodeTableDecoder? customTable = null)
+        public BodyDecoder(WindowDecoder<TWindowDecoderByteBuffer> w, TSourceBuffer source, TDeltaBuffer delta, Stream decodedTarget, CustomCodeTableDecoder? customTable = null)
         {
             if (customTable != null)
             {

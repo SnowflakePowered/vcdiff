@@ -8,16 +8,42 @@ using VCDiff.Shared;
 namespace VCDiff.Decoders
 {
     /// <summary>
+    /// Backwards compatibility shim for VCDiff decoder.
+    /// Please use <see cref="VcDecoderEx{TSourceBuffer,TDeltaBuffer}"/> if you wish to use different stream sources.
+    /// </summary>
+    public class VcDecoder : VcDecoderEx<ByteStreamReader, ByteStreamReader>, IDisposable
+    {
+        /// <summary>
+        /// Creates a new VCDIFF decoder.
+        /// </summary>
+        /// <param name="source">The dictionary stream, or the base file.</param>
+        /// <param name="delta">The stream containing the VCDIFF delta.</param>
+        /// <param name="outputStream">The stream to write the output in.</param>
+        /// <param name="maxTargetFileSize">The maximum target file size (and target window size) in bytes</param>
+        public VcDecoder(Stream source, Stream delta, Stream outputStream, int maxTargetFileSize = WindowDecoderBase.DefaultMaxTargetFileSize)
+        {
+            base.delta  = new ByteStreamReader(delta);
+            base.source = new ByteStreamReader(source);
+            base.outputStream      = outputStream;
+            base.maxTargetFileSize = maxTargetFileSize;
+            base.IsInitialized     = false;
+        }
+    }
+
+    /// <summary>
     /// A simple VCDIFF decoder class.
     /// </summary>
-    public class VcDecoder : IDisposable
+    /// <typeparam name="TSourceBuffer">Type of <see cref="IByteBuffer"/> used for the source buffer.</typeparam>
+    /// <typeparam name="TDeltaBuffer">Type of <see cref="IByteBuffer"/> used for the delta buffer.</typeparam>
+    public class VcDecoderEx<TSourceBuffer, TDeltaBuffer> : IDisposable where TSourceBuffer : IByteBuffer
+                                                                        where TDeltaBuffer : IByteBuffer
     {
-        private readonly Stream outputStream;
-        private readonly IByteBuffer delta;
-        private readonly IByteBuffer source;
-        private readonly int maxTargetFileSize;
+        protected Stream outputStream;
+        protected TDeltaBuffer delta;
+        protected TSourceBuffer source;
+        protected int maxTargetFileSize;
         private CustomCodeTableDecoder? customTable;
-        private static readonly byte[] MagicBytes = { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
+        protected static readonly byte[] MagicBytes = { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
 
         /// <summary>
         /// If the provided delta is in Shared-Dictionary Compression over HTTP (Sandwich) protocol.
@@ -27,27 +53,20 @@ namespace VCDiff.Decoders
         /// <summary>
         /// If the decoder has been initialized.
         /// </summary>
-        private bool IsInitialized { get; set; }
+        protected bool IsInitialized { get; set; }
+
+        protected VcDecoderEx() { }
 
         /// <summary>
         /// Creates a new VCDIFF decoder.
         /// </summary>
-        /// <param name="source">The dictionary stream, or the base file.</param>
+        /// <param name="dict">The dictionary stream, or the base file.</param>
         /// <param name="delta">The stream containing the VCDIFF delta.</param>
         /// <param name="outputStream">The stream to write the output in.</param>
         /// <param name="maxTargetFileSize">The maximum target file size (and target window size) in bytes</param>
-        public VcDecoder(Stream source, Stream delta, Stream outputStream, int maxTargetFileSize = WindowDecoder.DefaultMaxTargetFileSize)
+        public VcDecoderEx(TSourceBuffer dict, TDeltaBuffer delta, Stream outputStream, int maxTargetFileSize = WindowDecoderBase.DefaultMaxTargetFileSize)
         {
-            this.delta = new ByteStreamReader(delta);
-            this.source = new ByteStreamReader(source);
-            this.outputStream = outputStream;
-            this.maxTargetFileSize = maxTargetFileSize;
-            this.IsInitialized = false;
-        }
-
-        internal VcDecoder(IByteBuffer dict, IByteBuffer delta, Stream outputStream, int maxTargetFileSize = WindowDecoder.DefaultMaxTargetFileSize)
-        {
-            this.delta = delta;
+            this.delta  = delta;
             this.source = dict;
             this.outputStream = outputStream;
             this.maxTargetFileSize = maxTargetFileSize;
@@ -154,12 +173,12 @@ namespace VCDiff.Decoders
             while (delta.CanRead)
             {
                 //delta is streamed in order aka not random access
-                WindowDecoder w = new WindowDecoder(source.Length, delta, maxTargetFileSize);
+                var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, maxTargetFileSize);
 
                 if (!w.Decode(this.IsSDCHFormat))
                     return (VCDiffResult)w.Result;
 
-                using BodyDecoder body = new BodyDecoder(w, source, delta, outputStream);
+                using var body = new BodyDecoder<TDeltaBuffer, TSourceBuffer, TDeltaBuffer>(w, source, delta, outputStream);
                 if (this.IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
                 {
                     //interleaved
@@ -206,27 +225,19 @@ namespace VCDiff.Decoders
         {
             if (!Decode_Init(out var bytesWritten, out var result, out var decodeAsync)) 
                 return decodeAsync;
-
-            return await Decode_Exec(result, bytesWritten, 
-                async decoder => await decoder.DecodeInterleaveAsync(), 
-                async decoder => await decoder.DecodeAsync());
-        }
-
-        private async Task<(VCDiffResult result, long bytesWritten)> Decode_Exec(VCDiffResult result, long bytesWritten, DecodeAsyncFn decodeInterleaveAsyncFn, DecodeAsyncFn decodeAsyncFn)
-        {
             while (delta.CanRead)
             {
                 //delta is streamed in order aka not random access
-                WindowDecoder w = new WindowDecoder(source.Length, delta, maxTargetFileSize);
+                var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, maxTargetFileSize);
 
                 if (w.Decode(this.IsSDCHFormat))
                 {
-                    using BodyDecoder body = new BodyDecoder(w, source, delta, outputStream);
+                    using var body = new BodyDecoder<TDeltaBuffer, TSourceBuffer, TDeltaBuffer>(w, source, delta, outputStream);
                     if (this.IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
                     {
                         //interleaved
                         //decodedinterleave actually has an internal loop for waiting and streaming the incoming rest of the interleaved window
-                        result = await decodeInterleaveAsyncFn(body);
+                        result = await body.DecodeInterleaveAsync();
 
                         if (result != VCDiffResult.SUCCESS && result != VCDiffResult.EOD)
                             return (result, bytesWritten);
@@ -241,7 +252,7 @@ namespace VCDiff.Decoders
                         //not interleaved
                         //expects the full window to be available
                         //in the stream
-                        result = await decodeAsyncFn(body);
+                        result = await body.DecodeAsync();
 
                         if (result != VCDiffResult.SUCCESS)
                             return (result, bytesWritten);
@@ -293,10 +304,8 @@ namespace VCDiff.Decoders
         /// </summary>
         public void Dispose()
         {
-            (delta as ByteBuffer)?.Dispose();
-            (source as ByteBuffer)?.Dispose();
+            delta?.Dispose();
+            source?.Dispose();
         }
-
-        private delegate Task<VCDiffResult> DecodeAsyncFn(BodyDecoder bodyDecoder);
     }
 }
