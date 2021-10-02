@@ -17,7 +17,7 @@ namespace VCDiff.Shared
         public const int int32MaxValue = 0x7FFFFFFF;
         public const long int64MaxValue = 0x7FFFFFFFFFFFFFFF;
 
-        public static int ParseInt32(IByteBuffer sin)
+        public static int ParseInt32<TByteBuffer>(TByteBuffer sin) where TByteBuffer : IByteBuffer
         {
             int result = 0;
             while (sin.CanRead)
@@ -38,7 +38,7 @@ namespace VCDiff.Shared
             return (int)VCDiffResult.EOD;
         }
 
-        public static long ParseInt64(IByteBuffer sin)
+        public static long ParseInt64<TByteBuffer>(TByteBuffer sin) where TByteBuffer : IByteBuffer
         {
             long result = 0;
             while (sin.CanRead)
