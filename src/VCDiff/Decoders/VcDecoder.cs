@@ -148,71 +148,14 @@ namespace VCDiff.Decoders
         /// <returns></returns>
         public VCDiffResult Decode(out long bytesWritten)
         {
-            if (!this.IsInitialized)
-            {
-                var initializeResult = this.Initialize();
-                if (initializeResult != VCDiffResult.SUCCESS || !this.IsInitialized)
-                {
-                    bytesWritten = 0;
-                    return initializeResult;
-                }
-            }
+            if (!Decode_Init(out bytesWritten, out var result, out var decodeAsync))
+                return result;
 
-            VCDiffResult result = VCDiffResult.SUCCESS;
-            bytesWritten = 0;
+            var res = Decode_Exec(result, bytesWritten,
+                decoder => decoder.DecodeInterleave(),
+                decoder => decoder.Decode()).Result;
 
-            if (!delta.CanRead) return VCDiffResult.EOD;
-
-            while (delta.CanRead)
-            {
-                //delta is streamed in order aka not random access
-                WindowDecoder w = new WindowDecoder(source.Length, delta, maxTargetFileSize);
-
-                if (w.Decode(this.IsSDCHFormat))
-                {
-                    using BodyDecoder body = new BodyDecoder(w, source, delta, outputStream);
-                    if (this.IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
-                    {
-                        //interleaved
-                        //decodedinterleave actually has an internal loop for waiting and streaming the incoming rest of the interleaved window
-                        result = body.DecodeInterleave();
-
-                        if (result != VCDiffResult.SUCCESS && result != VCDiffResult.EOD)
-                        {
-                            return result;
-                        }
-
-                        bytesWritten += body.TotalBytesDecoded;
-                    }
-                    //technically add could be 0 if it is all copy instructions
-                    //so do an or check on those two
-                    else if (!this.IsSDCHFormat || (this.IsSDCHFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) && w.InstructionAndSizesLength > 0))
-                    {
-                        //not interleaved
-                        //expects the full window to be available
-                        //in the stream
-
-                        result = body.Decode();
-
-                        if (result != VCDiffResult.SUCCESS)
-                        {
-                            return result;
-                        }
-
-                        bytesWritten += body.TotalBytesDecoded;
-                    }
-                    else
-                    {
-                        //invalid file
-                        return VCDiffResult.ERROR;
-                    }
-                }
-                else
-                {
-                    return (VCDiffResult)w.Result;
-                }
-            }
-
+            bytesWritten = res.bytesWritten;
             return result;
         }
 
@@ -224,22 +167,16 @@ namespace VCDiff.Decoders
         /// <returns></returns>
         public async Task<(VCDiffResult result, long bytesWritten)> DecodeAsync()
         {
-            long bytesWritten;
-            if (!this.IsInitialized)
-            {
-                var initializeResult = this.Initialize();
-                if (initializeResult != VCDiffResult.SUCCESS || !this.IsInitialized)
-                {
-                    bytesWritten = 0;
-                    return (initializeResult, bytesWritten);
-                }
-            }
+            if (!Decode_Init(out var bytesWritten, out var result, out var decodeAsync)) 
+                return decodeAsync;
 
-            VCDiffResult result = VCDiffResult.SUCCESS;
-            bytesWritten = 0;
+            return await Decode_Exec(result, bytesWritten, 
+                async decoder => await decoder.DecodeInterleaveAsync(), 
+                async decoder => await decoder.DecodeAsync());
+        }
 
-            if (!delta.CanRead) return (VCDiffResult.EOD, bytesWritten);
-
+        private async Task<(VCDiffResult result, long bytesWritten)> Decode_Exec(VCDiffResult result, long bytesWritten, DecodeAsyncFn decodeInterleaveAsyncFn, DecodeAsyncFn decodeAsyncFn)
+        {
             while (delta.CanRead)
             {
                 //delta is streamed in order aka not random access
@@ -252,29 +189,25 @@ namespace VCDiff.Decoders
                     {
                         //interleaved
                         //decodedinterleave actually has an internal loop for waiting and streaming the incoming rest of the interleaved window
-                        result = await body.DecodeInterleaveAsync();
+                        result = await decodeInterleaveAsyncFn(body);
 
                         if (result != VCDiffResult.SUCCESS && result != VCDiffResult.EOD)
-                        {
                             return (result, bytesWritten);
-                        }
 
                         bytesWritten += body.TotalBytesDecoded;
                     }
                     //technically add could be 0 if it is all copy instructions
                     //so do an or check on those two
-                    else if (!this.IsSDCHFormat || (this.IsSDCHFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) && w.InstructionAndSizesLength > 0))
+                    else if (!this.IsSDCHFormat || (this.IsSDCHFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) &&
+                                                    w.InstructionAndSizesLength > 0))
                     {
                         //not interleaved
                         //expects the full window to be available
                         //in the stream
-
-                        result = await body.DecodeAsync();
+                        result = await decodeAsyncFn(body);
 
                         if (result != VCDiffResult.SUCCESS)
-                        {
                             return (result, bytesWritten);
-                        }
 
                         bytesWritten += body.TotalBytesDecoded;
                     }
@@ -292,6 +225,32 @@ namespace VCDiff.Decoders
 
             return (result, bytesWritten);
         }
+
+        private bool Decode_Init(out long bytesWritten, out VCDiffResult result, out (VCDiffResult result, long bytesWritten) decodeAsync)
+        {
+            bytesWritten = 0;
+            if (!this.IsInitialized)
+            {
+                var initializeResult = this.Initialize();
+                if (initializeResult != VCDiffResult.SUCCESS || !this.IsInitialized)
+                {
+                    decodeAsync = (initializeResult, bytesWritten);
+                    result      = initializeResult;
+                    return false;
+                }
+            }
+
+            result = VCDiffResult.SUCCESS;
+            if (!delta.CanRead)
+            {
+                decodeAsync = (VCDiffResult.EOD, bytesWritten);
+                return false;
+            }
+
+            decodeAsync = default;
+            return true;
+        }
+
         /// <summary>
         /// Disposes the decoder
         /// </summary>
@@ -300,5 +259,7 @@ namespace VCDiff.Decoders
             (delta as ByteBuffer)?.Dispose();
             (source as ByteBuffer)?.Dispose();
         }
+
+        private delegate Task<VCDiffResult> DecodeAsyncFn(BodyDecoder bodyDecoder);
     }
 }
