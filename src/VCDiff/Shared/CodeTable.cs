@@ -3,7 +3,7 @@ using VCDiff.Includes;
 
 namespace VCDiff.Shared
 {
-    internal class CodeTable
+    internal class CodeTable : IDisposable
     {
         /// <summary>
         /// Default CodeTable as described in the RFC doc
@@ -14,12 +14,12 @@ namespace VCDiff.Shared
 
         public byte[] table = new byte[kCodeTableSize * 6];
 
-        public Memory<byte> inst1;
-        public Memory<byte> inst2;
-        public Memory<byte> size1;
-        public Memory<byte> size2;
-        public Memory<byte> mode1;
-        public Memory<byte> mode2;
+        public NativeAllocation inst1;
+        public NativeAllocation inst2;
+        public NativeAllocation size1;
+        public NativeAllocation size2;
+        public NativeAllocation mode1;
+        public NativeAllocation mode2;
 
         public const byte N = (byte)VCDiffInstructionType.NOOP;
         public const byte A = (byte)VCDiffInstructionType.ADD;
@@ -176,23 +176,26 @@ namespace VCDiff.Shared
 
         public CodeTable()
         {
-            inst1 = table.AsMemory(0 * kCodeTableSize, kCodeTableSize);
-            defaultInst1.CopyTo(inst1);
+            InitTableSegment(0, defaultInst1, ref inst1);
+            InitTableSegment(1, defaultInst2, ref inst2);
 
-            inst2 = table.AsMemory(1 * kCodeTableSize, kCodeTableSize);
-            defaultInst2.CopyTo(inst2);
+            InitTableSegment(2, defaultSize1, ref size1);
+            InitTableSegment(3, defaultSize2, ref size2);
 
-            size1 = table.AsMemory(2 * kCodeTableSize, kCodeTableSize);
-            defaultSize1.CopyTo(size1);
+            InitTableSegment(4, defaultMode1, ref mode1);
+            InitTableSegment(5, defaultMode2, ref mode2);
+        }
 
-            size2 = table.AsMemory(3 * kCodeTableSize, kCodeTableSize);
-            defaultSize2.CopyTo(size2);
+        ~CodeTable()
+        {
+            Dispose();
+        }
 
-            mode1 = table.AsMemory(4 * kCodeTableSize, kCodeTableSize);
-            defaultMode1.CopyTo(mode1);
-
-            mode2 = table.AsMemory(5 * kCodeTableSize, kCodeTableSize);
-            defaultMode2.CopyTo(mode2);
+        private void InitTableSegment(int row, byte[] defaultBytes, ref NativeAllocation alloc)
+        {
+            var rowSpan = table.AsSpan(row * kCodeTableSize, kCodeTableSize);
+            alloc = new NativeAllocation(rowSpan.Length);
+            defaultBytes.CopyTo(alloc.AsSpan());
         }
 
         public bool SetBytes(byte[] items)
@@ -209,6 +212,17 @@ namespace VCDiff.Shared
         public ByteBuffer GetBytes()
         {
             return new ByteBuffer(table);
+        }
+
+        public void Dispose()
+        {
+            inst1.Dispose();
+            inst2.Dispose();
+            size1.Dispose();
+            size2.Dispose();
+            mode1.Dispose();
+            mode2.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

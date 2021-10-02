@@ -27,7 +27,7 @@ namespace VCDiff.Decoders
         /// <param name="size">the size</param>
         /// <param name="mode">the mode</param>
         /// <returns></returns>
-        public VCDiffInstructionType Next(out int size, out byte mode)
+        public unsafe VCDiffInstructionType Next(out int size, out byte mode)
         {
             byte opcode = 0;
             byte instructionType = CodeTable.N;
@@ -40,9 +40,9 @@ namespace VCDiff.Decoders
                 {
                     opcode = (byte)pendingSecond;
                     pendingSecond = CodeTable.kNoOpcode;
-                    instructionType = table.inst2.Span[opcode];
-                    instructionSize = table.size2.Span[opcode];
-                    instructionMode = table.mode2.Span[opcode];
+                    instructionType = table.inst2.Pointer[opcode];
+                    instructionSize = table.size2.Pointer[opcode];
+                    instructionMode = table.mode2.Pointer[opcode];
                     break;
                 }
 
@@ -54,14 +54,14 @@ namespace VCDiff.Decoders
                 }
 
                 opcode = source.PeekByte();
-                if (table.inst2.Span[opcode] != CodeTable.N)
+                if (table.inst2.Pointer[opcode] != CodeTable.N)
                 {
                     pendingSecond = source.PeekByte();
                 }
                 source.Next();
-                instructionType = table.inst1.Span[opcode];
-                instructionSize = table.size1.Span[opcode];
-                instructionMode = table.mode1.Span[opcode];
+                instructionType = table.inst1.Pointer[opcode];
+                instructionSize = table.size1.Pointer[opcode];
+                instructionMode = table.mode1.Pointer[opcode];
             } while (instructionType == CodeTable.N);
 
             if (instructionSize == 0)
