@@ -151,6 +151,7 @@ namespace VCDiff.Encoders
 
         public void Dispose()
         {
+            dictionary?.Dispose();
             oldData?.Dispose();
             windowEncoder?.Dispose();
             GC.SuppressFinalize(this);

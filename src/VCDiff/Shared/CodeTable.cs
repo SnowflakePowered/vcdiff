@@ -14,12 +14,12 @@ namespace VCDiff.Shared
 
         public byte[] table = new byte[kCodeTableSize * 6];
 
-        public NativeAllocation inst1;
-        public NativeAllocation inst2;
-        public NativeAllocation size1;
-        public NativeAllocation size2;
-        public NativeAllocation mode1;
-        public NativeAllocation mode2;
+        public NativeAllocation<byte> inst1;
+        public NativeAllocation<byte> inst2;
+        public NativeAllocation<byte> size1;
+        public NativeAllocation<byte> size2;
+        public NativeAllocation<byte> mode1;
+        public NativeAllocation<byte> mode2;
 
         public const byte N = (byte)VCDiffInstructionType.NOOP;
         public const byte A = (byte)VCDiffInstructionType.ADD;
@@ -191,10 +191,10 @@ namespace VCDiff.Shared
             Dispose();
         }
 
-        private void InitTableSegment(int row, byte[] defaultBytes, ref NativeAllocation alloc)
+        private void InitTableSegment(int row, byte[] defaultBytes, ref NativeAllocation<byte> alloc)
         {
             var rowSpan = table.AsSpan(row * kCodeTableSize, kCodeTableSize);
-            alloc = new NativeAllocation(rowSpan.Length);
+            alloc = new NativeAllocation<byte>(rowSpan.Length);
             defaultBytes.CopyTo(alloc.AsSpan());
         }
 
