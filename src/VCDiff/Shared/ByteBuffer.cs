@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace VCDiff.Shared
@@ -61,7 +62,7 @@ namespace VCDiff.Shared
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe Span<byte> AsSpan() => new Span<byte>(bytePtr, length);
+        public unsafe Span<byte> AsSpan() => MemoryMarshal.CreateSpan(ref Unsafe.AsRef<byte>(bytePtr), length);
 
         /// <summary>
         /// Dangerously gets the byte pointer.
@@ -110,6 +111,7 @@ namespace VCDiff.Shared
         public Span<byte> PeekBytes(int len)
         {
             int sliceLen = offset + len > this.length ? this.length - offset : len;
+
             return AsSpan().Slice(offset, sliceLen);
         }
 
