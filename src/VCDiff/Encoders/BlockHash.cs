@@ -9,7 +9,7 @@ using System.Runtime.Intrinsics.X86;
 #endif
 namespace VCDiff.Encoders
 {
-    internal class BlockHash
+    internal class BlockHash : IDisposable
     {
         internal int blockSize = 16;
 
@@ -18,9 +18,9 @@ namespace VCDiff.Encoders
         private long offset;
         private ulong hashTableMask;
         private long lastBlockAdded;
-        private long[] hashTable;
-        private long[] nextBlockTable;
-        private long[] lastBlockTable;
+        private NativeAllocation<long> hashTable;
+        private NativeAllocation<long> nextBlockTable;
+        private NativeAllocation<long> lastBlockTable;
         private long tableSize;
         private RollingHash hasher;
         private readonly ByteBuffer source;
@@ -34,7 +34,7 @@ namespace VCDiff.Encoders
         /// <param name="offset">the offset usually 0</param>
         /// <param name="hasher">the hashing method</param>
         /// <param name="blockSize">The block size to use</param>
-        public BlockHash(ByteBuffer sin, int offset, RollingHash hasher, int blockSize = 16)
+        public unsafe BlockHash(ByteBuffer sin, int offset, RollingHash hasher, int blockSize = 16)
         {
             this.blockSize = blockSize;
             this.maxMatchesToCheck = (this.blockSize >= 32) ? 32 : (32 * (32 / this.blockSize));
@@ -57,25 +57,24 @@ namespace VCDiff.Encoders
 
             hashTableMask = (ulong)tableSize - 1;
 
-#if NET5_0
-            hashTable = GC.AllocateUninitializedArray<long>((int) tableSize, true);
-            nextBlockTable = GC.AllocateUninitializedArray<long>((int) blocksCount, true);
-            lastBlockTable = GC.AllocateUninitializedArray<long>((int) blocksCount, true);
-#else
-            hashTable = new long[tableSize];
-            nextBlockTable = new long[blocksCount];
-            lastBlockTable = new long[blocksCount];
-#endif
+            hashTable = new NativeAllocation<long>((int)tableSize);
+            nextBlockTable = new NativeAllocation<long>((int)blocksCount);
+            lastBlockTable = new NativeAllocation<long>((int)blocksCount);
 
             lastBlockAdded = -1;
             SetTablesToInvalid();
         }
 
-        private void SetTablesToInvalid()
+        ~BlockHash()
         {
-            Intrinsics.FillArrayVectorized(lastBlockTable, -1);
-            Intrinsics.FillArrayVectorized(nextBlockTable, -1);
-            Intrinsics.FillArrayVectorized(hashTable, -1);
+            Dispose();
+        }
+
+        private unsafe void SetTablesToInvalid()
+        {
+            Intrinsics.FillArrayVectorized(lastBlockTable.Pointer, lastBlockTable.NumItems, -1);
+            Intrinsics.FillArrayVectorized(nextBlockTable.Pointer, nextBlockTable.NumItems, -1);
+            Intrinsics.FillArrayVectorized(hashTable.Pointer, hashTable.NumItems, -1);
         }
 
         private long CalcTableSize()
@@ -212,7 +211,7 @@ namespace VCDiff.Encoders
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddBlock(ulong hash)
+        public unsafe void AddBlock(ulong hash)
         {
             long blockNumber = lastBlockAdded + 1;
             long totalBlocks = blocksCount;
@@ -221,27 +220,27 @@ namespace VCDiff.Encoders
                 return;
             }
 
-            if (nextBlockTable[blockNumber] != -1)
+            if (nextBlockTable.Pointer[blockNumber] != -1)
             {
                 return;
             }
 
             long tableIndex = GetTableIndex(hash);
-            long firstMatching = hashTable[tableIndex];
+            long firstMatching = hashTable.Pointer[tableIndex];
             if (firstMatching < 0)
             {
-                hashTable[tableIndex] = blockNumber;
-                lastBlockTable[blockNumber] = blockNumber;
+                hashTable.Pointer[tableIndex] = blockNumber;
+                lastBlockTable.Pointer[blockNumber] = blockNumber;
             }
             else
             {
-                long lastMatching = lastBlockTable[firstMatching];
-                if (nextBlockTable[lastMatching] != -1)
+                long lastMatching = lastBlockTable.Pointer[firstMatching];
+                if (nextBlockTable.Pointer[lastMatching] != -1)
                 {
                     return;
                 }
-                nextBlockTable[lastMatching] = blockNumber;
-                lastBlockTable[firstMatching] = blockNumber;
+                nextBlockTable.Pointer[lastMatching] = blockNumber;
+                lastBlockTable.Pointer[firstMatching] = blockNumber;
             }
             lastBlockAdded = blockNumber;
         }
@@ -344,7 +343,7 @@ namespace VCDiff.Encoders
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long FirstMatchingBlock(ulong hash, long toffset, byte* sourcePtr, byte* targetPtr, ByteBuffer target)
         {
-            return SkipNonMatchingBlocks(hashTable[GetTableIndex(hash)], toffset, sourcePtr, targetPtr, target);
+            return SkipNonMatchingBlocks(hashTable.Pointer[GetTableIndex(hash)], toffset, sourcePtr, targetPtr, target);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -355,7 +354,7 @@ namespace VCDiff.Encoders
                 return -1;
             }
 
-            return SkipNonMatchingBlocks(nextBlockTable[blockNumber], toffset, sourcePtr, targetPtr, target);
+            return SkipNonMatchingBlocks(nextBlockTable.Pointer[blockNumber], toffset, sourcePtr, targetPtr, target);
         }
 
 #if NET5_0
@@ -367,13 +366,14 @@ namespace VCDiff.Encoders
         private unsafe long SkipNonMatchingBlocks(long blockNumber, long toffset, byte* sourcePtr, byte* targetPtr, ByteBuffer target)
         {
             int probes = 0;
+            var ptr = nextBlockTable.Pointer;
             while ((blockNumber >= 0) && !BlockContentsMatch(blockNumber, toffset, sourcePtr, targetPtr, target))
             {
                 if (++probes > maxProbes)
                 {
                     return -1;
                 }
-                blockNumber = nextBlockTable[blockNumber];
+                blockNumber = ptr[blockNumber];
             }
             return blockNumber;
         }
@@ -675,6 +675,14 @@ namespace VCDiff.Encoders
                 sOffset = sourcOffset;
                 tOffset = targetOffset;
             }
+        }
+
+        public void Dispose()
+        {
+            hashTable.Dispose();
+            nextBlockTable.Dispose();
+            lastBlockTable.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

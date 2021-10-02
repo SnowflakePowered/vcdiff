@@ -3,27 +3,27 @@ using System.Runtime.InteropServices;
 
 namespace VCDiff.Shared
 {
-    internal unsafe struct NativeAllocation : IDisposable
+    internal unsafe struct NativeAllocation<T> : IDisposable where T : unmanaged
     {
-        public byte* Pointer;
-        public int Size;
+        public T* Pointer;
+        public int NumItems;
         public bool OwnsAllocation;
 
-        public NativeAllocation(int size)
+        public NativeAllocation(int numItems)
         {
-            Pointer = (byte*) Marshal.AllocHGlobal(size);
-            Size = size;
+            Pointer = (T*) Marshal.AllocHGlobal(numItems * sizeof(T));
+            NumItems = numItems;
             OwnsAllocation = true;
         }
 
         public NativeAllocation(IntPtr address, int size) : this()
         {
-            Pointer = (byte*) address;
-            Size = size;
+            Pointer = (T*) address;
+            NumItems = size;
             OwnsAllocation = false;
         }
 
-        public unsafe Span<byte> AsSpan() => new Span<byte>((void*) Pointer, Size);
+        public unsafe Span<byte> AsSpan() => new Span<byte>((void*) Pointer, NumItems);
 
         public void Dispose()
         {

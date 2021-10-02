@@ -25,7 +25,7 @@ namespace VCDiff.Encoders
         private int chunkSize;
         private bool disposeRollingHash = false;
 
-        private NativeAllocation _nativeAllocation;
+        private NativeAllocation<byte> _nativeAllocation;
 
         /// <summary>
         /// Creates a new VCDIFF Encoder. The input streams will not be closed once this object is disposed.
@@ -53,7 +53,7 @@ namespace VCDiff.Encoders
         /// <exception cref="ArgumentException">If an invalid blockSize or chunkSize is used..</exception>
         public unsafe VcEncoder(Stream source, Stream target, Stream outputStream, int maxBufferSize = 1, int blockSize = 16, int chunkSize = 0, RollingHash? rollingHash = null)
         {
-            _nativeAllocation = new NativeAllocation((int)source.Length);
+            _nativeAllocation = new NativeAllocation<byte>((int)source.Length);
             source.Read(_nativeAllocation.AsSpan());
             this.oldData = new ByteBuffer(_nativeAllocation.AsSpan());
 

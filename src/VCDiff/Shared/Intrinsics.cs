@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 #if NETCOREAPP3_1 || NET5_0
 using System.Runtime.Intrinsics;
@@ -39,35 +40,32 @@ namespace VCDiff.Shared
 #endif
         }
 
-        public static unsafe void FillArrayVectorized(long[] array, long value)
+        public static unsafe void FillArrayVectorized(long* first, int numValues, long value)
         {
 #if NETCOREAPP3_1 || NET5_0
-            int bytesLeft = array.Length * sizeof(long);
+            int bytesLeft = numValues * sizeof(long);
             if (bytesLeft >= MaxRegisterSize)
             {
                 // Note: This can be 0 cost in .NET 5 when paired with pinned GC.AllocateUnitializedArray.
-                fixed (long* first = &array[0])
-                {
-                    if (UseAvx)
-                        Avx2FillArray(first, value, ref bytesLeft);
-                    else
-                        Sse2FillArray(first, value, ref bytesLeft);
-
-                    // Fill rest of array.
-                    var elementsLeft = bytesLeft / sizeof(long);
-                    for (int x = array.Length - elementsLeft; x < array.Length; x++)
-                        array[x] = value;
-                }
+                if (UseAvx)
+                    Avx2FillArray(first, value, ref bytesLeft);
+                else
+                    Sse2FillArray(first, value, ref bytesLeft);
+                    
+                // Fill rest of array.
+                var elementsLeft = bytesLeft / sizeof(long);
+                for (int x = numValues - elementsLeft; x < numValues; x++)
+                    first[x] = value;
             }
             else
             {
                 // Copy remaining elements.
-                for (int x = 0; x < array.Length; x++)
-                    array[x] = value;
+                for (int x = 0; x < numValues; x++)
+                    first[x] = value;
             }
 #else
             // Accelerate via loop unrolled solution.
-            array.AsSpan().Fill(value);
+            MemoryMarshal.CreateSpan(ref Unsafe.AsRef<long>((void*) first), numValues).Fill(value);
 #endif
         }
 
