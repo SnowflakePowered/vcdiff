@@ -16,7 +16,7 @@ namespace VCDiff.Shared
         private long[] sameCache;
         private int nextSlot;
         
-        public byte FirstNear => (byte)VCDiffModes.FIRST;
+        public const byte FirstNear = (byte)VCDiffModes.FIRST;
 
         public byte FirstSame => (byte)(VCDiffModes.FIRST + nearSize);
 
