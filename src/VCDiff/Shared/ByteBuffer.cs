@@ -112,6 +112,9 @@ namespace VCDiff.Shared
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe byte PeekByte() => *((byte*)this.bytePtr + offset);
 
+#if NET5_0
+        [SkipLocalsInit]
+#endif
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe Span<byte> PeekBytes(int len)
         {
@@ -122,6 +125,9 @@ namespace VCDiff.Shared
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe byte ReadByte() => this.bytePtr[offset++];
 
+#if NET5_0
+        [SkipLocalsInit]
+#endif
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<byte> ReadBytesAsSpan(int len)
         {

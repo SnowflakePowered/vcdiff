@@ -121,17 +121,18 @@ namespace VCDiff.Decoders
                 return true;
             }
 
+            // Note: Copied required here due to caching behaviour.
             if (buffer.CanRead)
             {
-                AddRunData = buffer.ReadBytes((int)addRunLength);
+                AddRunData = buffer.ReadBytes((int)addRunLength).ToArray();
             }
             if (buffer.CanRead)
             {
-                InstructionsAndSizesData = buffer.ReadBytes((int)instructionAndSizesLength);
+                InstructionsAndSizesData = buffer.ReadBytes((int)instructionAndSizesLength).ToArray();
             }
             if (buffer.CanRead)
             {
-                AddressesForCopyData = buffer.ReadBytes((int)addressForCopyLength);
+                AddressesForCopyData = buffer.ReadBytes((int)addressForCopyLength).ToArray();
             }
 
             return true;

@@ -21,7 +21,7 @@ namespace VCDiff.Decoders
 
             if (lengthOfCodeTable == 0) return VCDiffResult.ERROR;
 
-            using ByteBuffer codeTable = new ByteBuffer(source.ReadBytes(lengthOfCodeTable));
+            using ByteBuffer codeTable = new ByteBuffer(source.ReadBytes(lengthOfCodeTable).ToArray());
 
             //according to the RFC specifications the next two items will be the size of near and size of same
             //they are bytes in the RFC spec, but for some reason Google uses the varint to read which does
