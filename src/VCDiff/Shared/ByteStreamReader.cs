@@ -9,7 +9,7 @@ namespace VCDiff.Shared
     //Wrapper Class for any stream that supports Position
     //and Length to make reading bytes easier
     //also has a helper function for reading all the bytes in at once
-    internal class ByteStreamReader : IByteBuffer
+    public class ByteStreamReader : IByteBuffer
     {
         private readonly Stream buffer;
         private int lastLenRead;
@@ -95,5 +95,7 @@ namespace VCDiff.Shared
         {
             buffer.Seek(1, SeekOrigin.Current);
         }
+
+        public void Dispose() { }
     }
 }

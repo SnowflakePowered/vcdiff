@@ -42,7 +42,7 @@ namespace VCDiff.Decoders
             //Decode the code table VCDiff file itself
             //stream the decoded output into a memory stream
             using MemoryStream sout = new MemoryStream();
-            VcDecoder decoder = new VcDecoder(dictionary, codeTable, sout);
+            var decoder = new VcDecoderEx<ByteBuffer, ByteBuffer>(dictionary, codeTable, sout);
             var result = decoder.Decode(out long bytesWritten);
 
             if (result != VCDiffResult.SUCCESS || bytesWritten == 0)

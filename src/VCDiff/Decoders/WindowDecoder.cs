@@ -4,17 +4,19 @@ using VCDiff.Shared;
 
 namespace VCDiff.Decoders
 {
-    internal class WindowDecoder
+    internal class WindowDecoderBase
     {
-
         /**
          * The default maximum target file size (and target window size) 
          */
         public const int DefaultMaxTargetFileSize = 67108864;  // 64 MB
+    }
 
+    internal class WindowDecoder<TByteBuffer> : WindowDecoderBase where TByteBuffer : IByteBuffer
+    {
         private int maxWindowSize;
 
-        private IByteBuffer buffer;
+        private TByteBuffer buffer;
         private int returnCode;
         private long deltaEncodingLength;
         private long deltaEncodingStart;
@@ -62,7 +64,7 @@ namespace VCDiff.Decoders
         /// <param name="dictionarySize">the dictionary size</param>
         /// <param name="buffer">the buffer containing the incoming data</param>
         /// <param name="maxWindowSize">The maximum target window size in bytes</param>
-        public WindowDecoder(long dictionarySize, IByteBuffer buffer, int maxWindowSize = WindowDecoder.DefaultMaxTargetFileSize)
+        public WindowDecoder(long dictionarySize, TByteBuffer buffer, int maxWindowSize = DefaultMaxTargetFileSize)
         {
             this.dictionarySize = dictionarySize;
             this.buffer = buffer;
