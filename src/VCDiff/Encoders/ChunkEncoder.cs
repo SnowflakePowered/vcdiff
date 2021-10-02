@@ -40,6 +40,11 @@ namespace VCDiff.Encoders
             this.interleaved = interleaved;
         }
 
+        ~ChunkEncoder()
+        {
+            Dispose();
+        }
+
         /// <summary>
         /// Encodes the data using the settings from initialization
         /// </summary>
@@ -148,6 +153,7 @@ namespace VCDiff.Encoders
         {
             oldData?.Dispose();
             windowEncoder?.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }
