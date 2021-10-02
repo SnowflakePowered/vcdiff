@@ -522,17 +522,15 @@ namespace VCDiff.Tests
             long bytesWritten = 0;
 
             using VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream, -1);
-            ArgumentException ex = Assert.Throws<ArgumentException>(() => decoder.Decode(out bytesWritten));
-            Assert.Matches(@"maxWindowSize must be a positive value", ex.Message);
+            Assert.Throws<AggregateException>(() => decoder.Decode(out bytesWritten));
 
             srcStream.Position = 0;
             targetStream.Position = 0;
             deltaStream.Position = 0;
 
-            using VcDecoder decoder1 = new VcDecoder(srcStream, deltaStream, outputStream, 2);
-            InvalidOperationException ex1 = Assert.Throws<InvalidOperationException>(() => decoder1.Decode(out bytesWritten));
-            Assert.Matches(@"Length of target window \(\d*\) exceeds limit of 2 bytes", ex1.Message);
-            
+            using VcDecoder decoder1 = new VcDecoder(srcStream, deltaStream, outputStream, 2); 
+            Assert.Throws<AggregateException>(() => decoder1.Decode(out bytesWritten));
+
 
         }
     }
