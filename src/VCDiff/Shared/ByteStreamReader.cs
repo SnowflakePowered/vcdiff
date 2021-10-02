@@ -62,10 +62,10 @@ namespace VCDiff.Shared
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Memory<byte> ReadBytes(int len)
         {
-            Memory<byte> buf = new byte[len];
-            int actualRead = buffer.Read(buf.Span);
+            var buf = new byte[len];
+            int actualRead = buffer.Read(buf, 0, buf.Length);
             lastLenRead = actualRead;
-            return actualRead > 0 ? buf[..actualRead] : Memory<byte>.Empty;
+            return actualRead > 0 ? buf.AsMemory()[..actualRead] : Memory<byte>.Empty;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
