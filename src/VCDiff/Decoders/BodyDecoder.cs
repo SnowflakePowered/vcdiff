@@ -179,13 +179,13 @@ namespace VCDiff.Decoders
         /// Decode if as expecting interleave
         /// </summary>
         /// <returns></returns>
-        public Task<VCDiffResult> DecodeInterleave()
+        public VCDiffResult DecodeInterleave()
         {
             var result = DecodeInterleaveCore();
             targetData.Seek(0, SeekOrigin.Begin);
             targetData.CopyTo(outputStream);
             targetData.SetLength(0);
-            return Task.FromResult(result);
+            return result;
         }
 
         /// <summary>
@@ -272,13 +272,13 @@ namespace VCDiff.Decoders
         /// Decode normally
         /// </summary>
         /// <returns></returns>
-        public Task<VCDiffResult> Decode()
+        public VCDiffResult Decode()
         {
             var result = this.DecodeCore();
             targetData.Seek(0, SeekOrigin.Begin);
             targetData.CopyTo(outputStream);
             targetData.SetLength(0);
-            return Task.FromResult(result);
+            return result;
         }
 
         /// <summary>

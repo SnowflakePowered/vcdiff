@@ -522,16 +522,14 @@ namespace VCDiff.Tests
             long bytesWritten = 0;
 
             using VcDecoder decoder = new VcDecoder(srcStream, deltaStream, outputStream, -1);
-            Assert.Throws<AggregateException>(() => decoder.Decode(out bytesWritten));
+            Assert.Throws<ArgumentException>(() => decoder.Decode(out bytesWritten));
 
             srcStream.Position = 0;
             targetStream.Position = 0;
             deltaStream.Position = 0;
 
             using VcDecoder decoder1 = new VcDecoder(srcStream, deltaStream, outputStream, 2); 
-            Assert.Throws<AggregateException>(() => decoder1.Decode(out bytesWritten));
-
-
+            Assert.Throws<InvalidOperationException>(() => decoder1.Decode(out bytesWritten));
         }
     }
 }

@@ -151,11 +151,48 @@ namespace VCDiff.Decoders
             if (!Decode_Init(out bytesWritten, out var result, out var decodeAsync))
                 return result;
 
-            var res = Decode_Exec(result, bytesWritten,
-                decoder => decoder.DecodeInterleave(),
-                decoder => decoder.Decode()).Result;
+            while (delta.CanRead)
+            {
+                //delta is streamed in order aka not random access
+                WindowDecoder w = new WindowDecoder(source.Length, delta, maxTargetFileSize);
 
-            bytesWritten = res.bytesWritten;
+                if (!w.Decode(this.IsSDCHFormat))
+                    return (VCDiffResult)w.Result;
+
+                using BodyDecoder body = new BodyDecoder(w, source, delta, outputStream);
+                if (this.IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
+                {
+                    //interleaved
+                    //decodedinterleave actually has an internal loop for waiting and streaming the incoming rest of the interleaved window
+                    result = body.DecodeInterleave();
+
+                    if (result != VCDiffResult.SUCCESS && result != VCDiffResult.EOD)
+                        return result;
+
+                    bytesWritten += body.TotalBytesDecoded;
+                }
+                //technically add could be 0 if it is all copy instructions
+                //so do an or check on those two
+                else if (!this.IsSDCHFormat ||
+                         (this.IsSDCHFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) &&
+                          w.InstructionAndSizesLength > 0))
+                {
+                    //not interleaved
+                    //expects the full window to be available
+                    //in the stream
+                    result = body.Decode();
+                    if (result != VCDiffResult.SUCCESS)
+                        return result;
+
+                    bytesWritten += body.TotalBytesDecoded;
+                }
+                else
+                {
+                    //invalid file
+                    return VCDiffResult.ERROR;
+                }
+            }
+
             return result;
         }
 
