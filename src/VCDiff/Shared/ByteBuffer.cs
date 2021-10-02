@@ -108,11 +108,10 @@ namespace VCDiff.Shared
         public unsafe byte PeekByte() => *((byte*)this.bytePtr + offset);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Span<byte> PeekBytes(int len)
+        public unsafe Span<byte> PeekBytes(int len)
         {
             int sliceLen = offset + len > this.length ? this.length - offset : len;
-
-            return AsSpan().Slice(offset, sliceLen);
+            return MemoryMarshal.CreateSpan(ref Unsafe.AsRef<byte>(bytePtr + offset), sliceLen);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
