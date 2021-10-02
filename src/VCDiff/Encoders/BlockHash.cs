@@ -58,9 +58,9 @@ namespace VCDiff.Encoders
             hashTableMask = (ulong)tableSize - 1;
 
 #if NET5_0
-            hashTable = GC.AllocateUninitializedArray<long>((int) tableSize);
-            nextBlockTable = GC.AllocateUninitializedArray<long>((int) blocksCount);
-            lastBlockTable = GC.AllocateUninitializedArray<long>((int) blocksCount);
+            hashTable = GC.AllocateUninitializedArray<long>((int) tableSize, true);
+            nextBlockTable = GC.AllocateUninitializedArray<long>((int) blocksCount, true);
+            lastBlockTable = GC.AllocateUninitializedArray<long>((int) blocksCount, true);
 #else
             hashTable = new long[tableSize];
             nextBlockTable = new long[blocksCount];
@@ -73,9 +73,9 @@ namespace VCDiff.Encoders
 
         private void SetTablesToInvalid()
         {
-            Array.Fill(lastBlockTable, -1);
-            Array.Fill(nextBlockTable, -1);
-            Array.Fill(hashTable, -1);
+            Intrinsics.FillArrayVectorized(lastBlockTable, -1);
+            Intrinsics.FillArrayVectorized(nextBlockTable, -1);
+            Intrinsics.FillArrayVectorized(hashTable, -1);
         }
 
         private long CalcTableSize()
@@ -188,7 +188,6 @@ namespace VCDiff.Encoders
                 blockNumber = NextMatchingBlock(blockNumber, candidateStart, sourcePtr, targetPtr, target))
             {
                 long sourceMatchOffset = blockNumber * blockSize;
-                long sourceStart = blockNumber * blockSize;
                 long sourceMatchEnd = sourceMatchOffset + blockSize;
                 long targetMatchOffset = candidateStart - targetStart;
                 long targetMatchEnd = targetMatchOffset + blockSize;
@@ -206,11 +205,8 @@ namespace VCDiff.Encoders
                 long targetBytesToRight = targetSize - targetMatchEnd;
                 long rightLimit = Math.Min(sourceBytesToRight, targetBytesToRight);
 
-                long rightMatching = MatchingBytesToRight(sourceMatchEnd, targetStart + targetMatchEnd, sourcePtr, targetPtr, 
-                    target, rightLimit);
+                long rightMatching = MatchingBytesToRight(sourceMatchEnd, targetStart + targetMatchEnd, sourcePtr, targetPtr, target, rightLimit);
                 matchSize += rightMatching;
-                //sourceMatchEnd += rightMatching;
-                //targetMatchEnd += rightMatching;
                 m.ReplaceIfBetterMatch(matchSize, sourceMatchOffset + offset, targetMatchOffset);
             }
         }
@@ -267,55 +263,75 @@ namespace VCDiff.Encoders
             long tLen = target.Length;
             byte* sPtr = sourcePtr;
             byte* tPtr = targetPtr;
+
+            if (sOffset > sLen || tOffset > tLen)
+                return false;
+
 #if NETCOREAPP3_1 || NET5_0
-            if (Avx2.IsSupported && lengthToExamine >= 32)
+            if (Avx2.IsSupported && lengthToExamine >= Intrinsics.AvxRegisterSize)
             {
-                if (sOffset > sLen || tOffset > tLen) return false;
-                for (; sOffset >= 32 && tOffset >= 32 &&
-                       lengthToExamine >= 32; sOffset += 32, tOffset += 32, lengthToExamine -= 32)
+                if (sOffset >= Intrinsics.AvxRegisterSize && tOffset >= Intrinsics.AvxRegisterSize)
                 {
-                    Vector256<byte> lv = Avx.LoadVector256(&sPtr[sOffset]);
-                    Vector256<byte> rv = Avx.LoadVector256(&tPtr[tOffset]);
-                    if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) != EQMASK) return false;
+                    while (lengthToExamine >= Intrinsics.AvxRegisterSize)
+                    {
+                        Vector256<byte> lv = Avx.LoadVector256(&sPtr[sOffset]);
+                        Vector256<byte> rv = Avx.LoadVector256(&tPtr[tOffset]);
+                        if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) != EQMASK)
+                            return false;
+
+                        sOffset += Intrinsics.AvxRegisterSize;
+                        tOffset += Intrinsics.AvxRegisterSize;
+                        lengthToExamine -= Intrinsics.AvxRegisterSize;
+                    }
                 }
             }
 
-            if (Sse2.IsSupported && lengthToExamine >= 16)
+            if (Sse2.IsSupported && lengthToExamine >= Intrinsics.SseRegisterSize)
             {
-                if (sOffset > sLen || tOffset > tLen) return false;
-
-                for (; sOffset >= 16 && tOffset >= 16 &&
-                       lengthToExamine >= 16; sOffset += 16, tOffset += 16, lengthToExamine -= 16)
+                if (sOffset >= Intrinsics.SseRegisterSize && tOffset >= Intrinsics.SseRegisterSize)
                 {
-                    Vector128<byte> lv = Sse2.LoadVector128(&sPtr[sOffset]);
-                    Vector128<byte> rv = Sse2.LoadVector128(&tPtr[tOffset]);
-                    if ((uint) Sse2.MoveMask(Sse2.CompareEqual(lv, rv)) != ushort.MaxValue) return false;
+                    while (lengthToExamine >= Intrinsics.SseRegisterSize)
+                    {
+                        Vector128<byte> lv = Sse2.LoadVector128(&sPtr[sOffset]);
+                        Vector128<byte> rv = Sse2.LoadVector128(&tPtr[tOffset]);
+                        if ((uint)Sse2.MoveMask(Sse2.CompareEqual(lv, rv)) != ushort.MaxValue)
+                            return false;
+
+                        sOffset += Intrinsics.SseRegisterSize;
+                        tOffset += Intrinsics.SseRegisterSize;
+                        lengthToExamine -= Intrinsics.SseRegisterSize;
+                    }
                 }
             }
-#endif
+#else
             int vectorSize = Vector<byte>.Count;
-          
             if (lengthToExamine >= vectorSize)
             {
                 var sBuf = source.AsSpan();
                 var tBuf = target.AsSpan();
-
-                if (sOffset > sLen || tOffset > tLen) 
-                    return false;
-
-                for (; sOffset >= vectorSize && tOffset >= vectorSize &&
-                       lengthToExamine >= vectorSize; sOffset += vectorSize, tOffset += vectorSize, lengthToExamine -= vectorSize)
+                
+                if (sOffset >= vectorSize && tOffset >= vectorSize)
                 {
-                    Vector<byte> lv = new Vector<byte>(sBuf.Slice(sOffset));
-                    Vector<byte> rv = new Vector<byte>(tBuf.Slice((int) tOffset));
-                    if (!Vector.EqualsAll(lv, rv)) 
-                        return false;
+                    while (lengthToExamine >= vectorSize)
+                    {
+                        Vector<byte> lv = new Vector<byte>(sBuf.Slice(sOffset));
+                        Vector<byte> rv = new Vector<byte>(tBuf.Slice((int)tOffset));
+                        if (!Vector.EqualsAll(lv, rv))
+                            return false;
+
+                        sOffset += vectorSize;
+                        tOffset += vectorSize;
+                        lengthToExamine -= vectorSize;
+                    }
                 }
             }
+#endif
 
             while (lengthToExamine > 0 && !(sOffset > sLen || tOffset > tLen))
             {
-                if (sPtr[sOffset] != tPtr[tOffset]) return false;
+                if (sPtr[sOffset] != tPtr[tOffset]) 
+                    return false;
+
                 --lengthToExamine;
                 ++sOffset;
                 ++tOffset;
@@ -372,16 +388,23 @@ namespace VCDiff.Encoders
             byte* tPtr = targetPtr;
             byte* sPtr = sourcePtr;
 
-            for (; (sindex >= 32 && tindex >= 32) && bytesFound <= maxBytes - 32; bytesFound += 32)
+            if (sindex >= Intrinsics.AvxRegisterSize && tindex >= Intrinsics.AvxRegisterSize)
             {
-                tindex -= 32;
-                sindex -= 32;
-                var lv = Avx2.LoadVector256(&sPtr[sindex]);
-                var rv = Avx2.LoadVector256(&tPtr[tindex]);
-                if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) == EQMASK) continue;
-                tindex += 32;
-                sindex += 32;
-                break;
+                while (bytesFound <= maxBytes - Intrinsics.AvxRegisterSize)
+                {
+                    tindex -= Intrinsics.AvxRegisterSize;
+                    sindex -= Intrinsics.AvxRegisterSize;
+                    var lv = Avx2.LoadVector256(&sPtr[sindex]);
+                    var rv = Avx2.LoadVector256(&tPtr[tindex]);
+                    if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) != EQMASK)
+                    {
+                        tindex += Intrinsics.AvxRegisterSize;
+                        sindex += Intrinsics.AvxRegisterSize;
+                        break;
+                    }
+
+                    bytesFound += Intrinsics.AvxRegisterSize;
+                }
             }
 
             while (bytesFound < maxBytes)
@@ -410,18 +433,25 @@ namespace VCDiff.Encoders
             byte* tPtr = targetPtr;
             byte* sPtr = sourcePtr;
 
-            for (; (sindex >= 16 && tindex >= 16) && bytesFound <= maxBytes - 16; bytesFound += 16)
+            if (sindex >= Intrinsics.SseRegisterSize && tindex >= Intrinsics.SseRegisterSize)
             {
-                tindex -= 16;
-                sindex -= 16;
-                var lv = Sse2.LoadVector128(&sPtr[sindex]);
-                var rv = Sse2.LoadVector128(&tPtr[tindex]);
-                if ((uint)Sse2.MoveMask(Sse2.CompareEqual(lv, rv)) == ushort.MaxValue) continue;
-                tindex += 16;
-                sindex += 16;
-                break;
-            }
+                while (bytesFound <= maxBytes - Intrinsics.SseRegisterSize)
+                {
+                    tindex -= Intrinsics.SseRegisterSize;
+                    sindex -= Intrinsics.SseRegisterSize;
+                    var lv = Sse2.LoadVector128(&sPtr[sindex]);
+                    var rv = Sse2.LoadVector128(&tPtr[tindex]);
+                    if ((uint)Sse2.MoveMask(Sse2.CompareEqual(lv, rv)) != ushort.MaxValue)
+                    {
+                        tindex += Intrinsics.SseRegisterSize;
+                        sindex += Intrinsics.SseRegisterSize;
+                        break;
+                    }
 
+                    bytesFound += Intrinsics.SseRegisterSize;
+                }
+            }
+            
             while (bytesFound < maxBytes)
             {
                 --sindex;
@@ -460,18 +490,20 @@ namespace VCDiff.Encoders
             var tBuf = target.AsSpan();
             var sBuf = source.AsSpan();
 
-            for (; (sindex >= vectorSize && tindex >= vectorSize)
-                   && bytesFound <= maxBytes - vectorSize; bytesFound += vectorSize)
+            while (sindex >= vectorSize && tindex >= vectorSize && bytesFound <= maxBytes - vectorSize)
             {
-
                 tindex -= vectorSize;
                 sindex -= vectorSize;
                 var lv = new Vector<byte>(sBuf.Slice((int)sindex));
                 var rv = new Vector<byte>(tBuf.Slice((int)tindex));
-                if (Vector.EqualsAll(lv, rv)) continue;
-                tindex += vectorSize;
-                sindex += vectorSize;
-                break;
+                if (!Vector.EqualsAll(lv, rv))
+                {
+                    tindex += vectorSize;
+                    sindex += vectorSize;
+                    break;
+                }
+
+                bytesFound += vectorSize;
             }
 
             while (bytesFound < maxBytes)
@@ -501,12 +533,18 @@ namespace VCDiff.Encoders
             byte* tPtr = targetPtr;
             byte* sPtr = sourcePtr;
 
-            for (; (srcLength - sindex) >= 32 && (trgLength - tindex) >= 32 && bytesFound <= maxBytes - 32; bytesFound += 32, tindex += 32, sindex += 32)
+            while ((srcLength - sindex) >= Intrinsics.AvxRegisterSize && 
+                   (trgLength - tindex) >= Intrinsics.AvxRegisterSize && 
+                   bytesFound <= maxBytes - Intrinsics.AvxRegisterSize)
             {
                 var lv = Avx2.LoadVector256(&sPtr[sindex]);
                 var rv = Avx2.LoadVector256(&tPtr[tindex]);
-                if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) == EQMASK) continue;
-                break;
+                if (Avx2.MoveMask(Avx2.CompareEqual(lv, rv)) != EQMASK)
+                    break;
+
+                bytesFound += Intrinsics.AvxRegisterSize;
+                tindex += Intrinsics.AvxRegisterSize;
+                sindex += Intrinsics.AvxRegisterSize;
             }
 
             while (bytesFound < maxBytes)
@@ -533,14 +571,20 @@ namespace VCDiff.Encoders
             byte* tPtr = targetPtr;
             byte* sPtr = sourcePtr;
 
-            for (; (srcLength - sindex) >= 16 && (trgLength - tindex) >= 16 && bytesFound <= maxBytes - 16; bytesFound += 16, tindex += 16, sindex += 16)
+            while ((srcLength - sindex) >= Intrinsics.SseRegisterSize && 
+                   (trgLength - tindex) >= Intrinsics.SseRegisterSize && 
+                   bytesFound <= maxBytes - Intrinsics.SseRegisterSize)
             {
                 var lv = Sse2.LoadVector128(&sPtr[sindex]);
                 var rv = Sse2.LoadVector128(&tPtr[tindex]);
-                if (Sse2.MoveMask(Sse2.CompareEqual(lv, rv)) == ushort.MaxValue) continue;
-                break;
-            }
+                if (Sse2.MoveMask(Sse2.CompareEqual(lv, rv)) != ushort.MaxValue)
+                    break;
 
+                bytesFound += Intrinsics.SseRegisterSize;
+                tindex += Intrinsics.SseRegisterSize;
+                sindex += Intrinsics.SseRegisterSize;
+            }
+            
             while (bytesFound < maxBytes)
             {
                 if (sindex >= srcLength || tindex >= trgLength) break;
@@ -551,6 +595,7 @@ namespace VCDiff.Encoders
                 ++sindex;
                 ++bytesFound;
             }
+
             return bytesFound;
         }
 #endif
@@ -583,14 +628,18 @@ namespace VCDiff.Encoders
             var tBuf = target.AsSpan();
             var sBuf = source.AsSpan();
 
-            for (; (srcLength - sindex) >= vectorSize && (trgLength - tindex) >= vectorSize
-                                                      && bytesFound <= maxBytes - vectorSize;
-                bytesFound += vectorSize, tindex += vectorSize, sindex += vectorSize)
+            while ((srcLength - sindex) >= vectorSize 
+                   && (trgLength - tindex) >= vectorSize
+                   && bytesFound <= maxBytes - vectorSize)
             {
                 var lv = new Vector<byte>(sBuf.Slice((int)sindex));
                 var rv = new Vector<byte>(tBuf.Slice((int)tindex));
-                if (Vector.EqualsAll(lv, rv)) continue;
-                break;
+                if (!Vector.EqualsAll(lv, rv))
+                    break;
+
+                bytesFound += vectorSize;
+                tindex += vectorSize;
+                sindex += vectorSize;
             }
 
             while (bytesFound < maxBytes)
