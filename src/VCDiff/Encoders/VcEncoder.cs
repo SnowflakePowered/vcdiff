@@ -148,16 +148,23 @@ namespace VCDiff.Encoders
 
             // Read in all the dictionary it is the only thing that needs to be
             Encode_Setup(interleaved, checksumFormat, out var chunker, out var buf);
-            var bufSpan = buf.Span;
-            while (targetData.CanRead)
+            try
             {
-                int bytesRead = targetData.ReadBytesIntoBuf(bufSpan);
-                using ByteBuffer ntarget = new ByteBuffer(buf[..bytesRead]);
-                chunker.EncodeChunk(ntarget, outputStream);
-                progress?.Report((float)targetData.Position / targetData.Length);
-            }
+                var bufSpan = buf.Span;
+                while (targetData.CanRead)
+                {
+                    int bytesRead = targetData.ReadBytesIntoBuf(bufSpan);
+                    using ByteBuffer ntarget = new ByteBuffer(buf[..bytesRead]);
+                    chunker.EncodeChunk(ntarget, outputStream);
+                    progress?.Report((float)targetData.Position / targetData.Length);
+                }
 
-            return VCDiffResult.SUCCESS;
+                return VCDiffResult.SUCCESS;
+            }
+            finally
+            {
+                chunker.Dispose();
+            }
         }
 
         /// <summary>
@@ -183,15 +190,22 @@ namespace VCDiff.Encoders
 
             //read in all the dictionary it is the only thing that needs to be
             Encode_Setup(interleaved, checksumFormat, out var chunker, out var buf);
-            while (targetData.CanRead)
+            try
             {
-                int read = await targetData.ReadBytesIntoBufAsync(buf);
-                using ByteBuffer ntarget = new ByteBuffer(buf[..read]);
-                chunker.EncodeChunk(ntarget, outputStream);
-                progress?.Report((float) targetData.Position / targetData.Length);
-            }
+                while (targetData.CanRead)
+                {
+                    int read = await targetData.ReadBytesIntoBufAsync(buf);
+                    using ByteBuffer ntarget = new ByteBuffer(buf[..read]);
+                    chunker.EncodeChunk(ntarget, outputStream);
+                    progress?.Report((float)targetData.Position / targetData.Length);
+                }
 
-            return VCDiffResult.SUCCESS;
+                return VCDiffResult.SUCCESS;
+            }
+            finally
+            {
+                chunker.Dispose();
+            }
         }
 
         private async Task<bool> Encode_Init(bool interleaved, ChecksumFormat checksumFormat, WriteMagicHeader writeBytes)
