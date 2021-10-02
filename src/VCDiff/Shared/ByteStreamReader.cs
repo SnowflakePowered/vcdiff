@@ -24,12 +24,7 @@ namespace VCDiff.Shared
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (int) buffer.Position;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set
-            {
-
-                if (buffer.CanRead && value >= 0)
-                    buffer.Seek(value, SeekOrigin.Begin);
-            }
+            set => buffer.Seek(value, SeekOrigin.Begin);
         }
 
         public int Length
