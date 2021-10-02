@@ -56,7 +56,10 @@ namespace VCDiff.Shared
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<byte> ReadBytesAsSpan(int len)
         {
-            return ReadBytes(len).Span;
+            var buf = new byte[len];
+            int actualRead = buffer.Read(buf, 0, buf.Length);
+            lastLenRead = actualRead;
+            return actualRead > 0 ? buf.AsSpan()[..actualRead] : Span<byte>.Empty;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
