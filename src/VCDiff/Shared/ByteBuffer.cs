@@ -22,6 +22,11 @@ namespace VCDiff.Shared
 
         }
 
+        ~ByteBuffer()
+        {
+            Dispose();
+        }
+
         /// <summary/>
         public unsafe ByteBuffer(byte[] bytes)
         {
@@ -135,6 +140,10 @@ namespace VCDiff.Shared
 
         public void Next() => offset++;
 
-        public void Dispose() => this.byteHandle?.Dispose();
+        public void Dispose()
+        {
+            this.byteHandle?.Dispose();
+            GC.SuppressFinalize(this);
+        }
     }
 }
