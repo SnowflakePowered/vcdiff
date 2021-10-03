@@ -11,7 +11,8 @@ namespace VCDiff.Shared
 
         public NativeAllocation(int numItems)
         {
-            Pointer = (T*) Marshal.AllocHGlobal(numItems * sizeof(T));
+            var bytes = (long)numItems * sizeof(T);
+            Pointer = (T*) Marshal.AllocHGlobal((IntPtr) bytes);
             NumItems = numItems;
             OwnsAllocation = true;
         }

@@ -43,7 +43,7 @@ namespace VCDiff.Shared
         public static unsafe void FillArrayVectorized(long* first, int numValues, long value)
         {
 #if NETCOREAPP3_1 || NET5_0
-            long bytesLeft = (long) numValues * sizeof(long);
+            long bytesLeft = (long)((long)numValues * sizeof(long));
             if (bytesLeft >= MaxRegisterSize)
             {
                 // Note: This can be 0 cost in .NET 5 when paired with pinned GC.AllocateUnitializedArray.
@@ -53,7 +53,7 @@ namespace VCDiff.Shared
                     Sse2FillArray(first, value, ref bytesLeft);
                     
                 // Fill rest of array.
-                var elementsLeft = bytesLeft / sizeof(long);
+                var elementsLeft = (int)(bytesLeft / sizeof(long));
                 for (int x = numValues - elementsLeft; x < numValues; x++)
                     first[x] = value;
             }
@@ -72,7 +72,7 @@ namespace VCDiff.Shared
 
 #if NETCOREAPP3_1 || NET5_0
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private static unsafe void Sse2FillArray(long* first, long value, ref int bytesLeft)
+        private static unsafe void Sse2FillArray(long* first, long value, ref long bytesLeft)
         {
             // Initialize.
             var numValues = SseRegisterSize / sizeof(long);
@@ -89,7 +89,7 @@ namespace VCDiff.Shared
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private static unsafe void Avx2FillArray(long* first, long value, ref int bytesLeft)
+        private static unsafe void Avx2FillArray(long* first, long value, ref long bytesLeft)
         {
             // Initialize.
             var numValues    = AvxRegisterSize / sizeof(long);
