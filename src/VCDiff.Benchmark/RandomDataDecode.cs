@@ -10,6 +10,7 @@ using VCDiff.Encoders;
 
 namespace VCDiff.Benchmark
 {
+    [MemoryDiagnoser()]
     [SimpleJob(1, 3, 8)]
     public class RandomDataDecode
     {

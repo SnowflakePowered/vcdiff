@@ -229,9 +229,9 @@ namespace VCDiff.Encoders
                     }
                 }
 
-                outputStream.Write(dataForAddAndRun.GetBuffer().AsSpan(0, (int)dataForAddAndRun.Length)); //data section for adds and runs
-                outputStream.Write(instructionAndSizes.GetBuffer().AsSpan(0, (int)instructionAndSizes.Length)); //data for instructions and sizes
-                outputStream.Write(addressForCopy.GetBuffer().AsSpan(0, (int)addressForCopy.Length)); //data for addresses section copys
+                outputStream.Write(dataForAddAndRun.GetBuffer().AsSpanFast((int)dataForAddAndRun.Length)); //data section for adds and runs
+                outputStream.Write(instructionAndSizes.GetBuffer().AsSpanFast((int)instructionAndSizes.Length)); //data for instructions and sizes
+                outputStream.Write(addressForCopy.GetBuffer().AsSpanFast((int)addressForCopy.Length)); //data for addresses section copys
             }
             else
             {
