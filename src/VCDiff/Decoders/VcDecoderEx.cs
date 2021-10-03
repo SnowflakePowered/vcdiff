@@ -191,7 +191,7 @@ namespace VCDiff.Decoders
             while (delta.CanRead)
             {
                 //delta is streamed in order aka not random access
-                var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, maxTargetFileSize);
+                using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, maxTargetFileSize);
 
                 if (!w.Decode(this.IsSDCHFormat))
                     return (VCDiffResult)w.Result;
@@ -246,7 +246,7 @@ namespace VCDiff.Decoders
             while (delta.CanRead)
             {
                 //delta is streamed in order aka not random access
-                var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, maxTargetFileSize);
+                using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, maxTargetFileSize);
 
                 if (w.Decode(this.IsSDCHFormat))
                 {
