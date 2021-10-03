@@ -42,7 +42,7 @@ namespace VCDiff.Encoders
             addrCache = new AddressCache();
             targetLength = 0;
             lastOpcodeIndex = -1;
-            instrMap = new InstructionMap();
+            instrMap = InstructionMap.Instance;
 
             //Separate buffers for each type if not interleaved
             if (!interleaved)

@@ -6,6 +6,8 @@ namespace VCDiff.Encoders
 {
     internal class InstructionMap
     {
+        public static InstructionMap Instance = new InstructionMap();
+
         private CodeTable table;
         private OpcodeMap firstMap;
         private OpcodeMap2 secondMap;
