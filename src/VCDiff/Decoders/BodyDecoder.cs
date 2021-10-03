@@ -206,9 +206,9 @@ namespace VCDiff.Decoders
 
         private VCDiffResult DecodeCore()
         {
-            using ByteBuffer instructionBuffer = new ByteBuffer(window.InstructionsAndSizesData);
-            using ByteBuffer addressBuffer = new ByteBuffer(window.AddressesForCopyData);
-            using ByteBuffer addRunBuffer = new ByteBuffer(window.AddRunData);
+            using ByteBuffer instructionBuffer = new ByteBuffer(window.InstructionsAndSizesData.AsSpanOrDefault());
+            using ByteBuffer addressBuffer = new ByteBuffer(window.AddressesForCopyData.AsSpanOrDefault());
+            using ByteBuffer addRunBuffer = new ByteBuffer(window.AddRunData.AsSpanOrDefault());
 
             InstructionDecoder instrDecoder = new InstructionDecoder(instructionBuffer, customTable);
 

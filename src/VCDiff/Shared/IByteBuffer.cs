@@ -33,6 +33,9 @@ namespace VCDiff.Shared
         Span<byte> ReadBytesAsSpan(int len);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        Span<byte> ReadBytesToSpan(Span<byte> data);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         byte ReadByte();
 
         byte PeekByte();

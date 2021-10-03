@@ -18,6 +18,7 @@ namespace VCDiff.Shared
         private readonly Stream buffer;
         private int lastLenRead;
         private byte[] cache;
+        private bool _isDisposed = false;
 
         public ByteStreamReader(Stream stream)
         {
@@ -45,6 +46,13 @@ namespace VCDiff.Shared
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => buffer.CanRead && buffer.Position < buffer.Length;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Span<byte> ReadBytesToSpan(Span<byte> data)
+        {
+            int bytesRead = buffer.Read(data);
+            return data.Slice(0, bytesRead);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -115,7 +123,12 @@ namespace VCDiff.Shared
 
         public void Dispose()
         {
-            ArrayPool<byte>.Shared.Return(cache, false);
+            if (!_isDisposed)
+            {
+                ArrayPool<byte>.Shared.Return(cache, false);
+                _isDisposed = true;
+            }
+
             GC.SuppressFinalize(this);
         }
 

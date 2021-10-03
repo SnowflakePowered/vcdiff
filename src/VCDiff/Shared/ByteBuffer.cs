@@ -123,6 +123,14 @@ namespace VCDiff.Shared
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Span<byte> ReadBytesToSpan(Span<byte> data)
+        {
+            var result = PeekBytes(data.Length);
+            result.CopyTo(data);
+            return result.Slice(0, result.Length);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe byte ReadByte() => this.bytePtr[offset++];
 
 #if NET5_0

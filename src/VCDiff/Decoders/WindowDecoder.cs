@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
@@ -12,7 +13,7 @@ namespace VCDiff.Decoders
         public const int DefaultMaxTargetFileSize = 67108864;  // 64 MB
     }
 
-    internal class WindowDecoder<TByteBuffer> : WindowDecoderBase where TByteBuffer : IByteBuffer
+    internal class WindowDecoder<TByteBuffer> : WindowDecoderBase, IDisposable where TByteBuffer : IByteBuffer
     {
         private int maxWindowSize;
 
@@ -32,11 +33,11 @@ namespace VCDiff.Decoders
         private long addressForCopyLength;
         private uint checksum;
 
-        public Memory<byte> AddRunData { get; private set; }
+        public PinnedArrayRental AddRunData;
 
-        public Memory<byte> InstructionsAndSizesData { get; private set; }
+        public PinnedArrayRental InstructionsAndSizesData;
 
-        public Memory<byte> AddressesForCopyData { get; private set; }
+        public PinnedArrayRental AddressesForCopyData;
 
         public long AddRunLength => addRunLength;
 
@@ -124,15 +125,21 @@ namespace VCDiff.Decoders
             // Note: Copied required here due to caching behaviour.
             if (buffer.CanRead)
             {
-                AddRunData = buffer.ReadBytes((int)addRunLength).ToArray();
+                AddRunData = new PinnedArrayRental((int)addRunLength);
+                Debug.Assert(addRunLength <= int.MaxValue);
+                buffer.ReadBytesToSpan(AddRunData.AsSpan());
             }
             if (buffer.CanRead)
             {
-                InstructionsAndSizesData = buffer.ReadBytes((int)instructionAndSizesLength).ToArray();
+                InstructionsAndSizesData = new PinnedArrayRental((int)instructionAndSizesLength);
+                Debug.Assert(instructionAndSizesLength <= int.MaxValue);
+                buffer.ReadBytesToSpan(InstructionsAndSizesData.AsSpan());
             }
             if (buffer.CanRead)
             {
-                AddressesForCopyData = buffer.ReadBytes((int)addressForCopyLength).ToArray();
+                AddressesForCopyData = new PinnedArrayRental((int)addressForCopyLength);
+                Debug.Assert(addressForCopyLength <= int.MaxValue);
+                buffer.ReadBytesToSpan(AddressesForCopyData.AsSpan());
             }
 
             return true;
@@ -386,6 +393,12 @@ namespace VCDiff.Decoders
 
         }
 
+        public void Dispose()
+        {
+            AddRunData.Dispose();
+            InstructionsAndSizesData.Dispose();
+            AddressesForCopyData.Dispose();
+        }
         public class ParseableChunk
         {
             private long end;
