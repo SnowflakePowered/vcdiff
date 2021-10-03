@@ -248,6 +248,7 @@ namespace VCDiff.Encoders
 
                 outputStream.Write(instructionAndSizes.GetBuffer().AsSpan(0, (int)instructionAndSizes.Length)); //data for instructions and sizes, in interleaved it is everything
             }
+
             //end of delta encoding
 
             long sizeAfterDelta = outputStream.Position;
@@ -262,7 +263,6 @@ namespace VCDiff.Encoders
             {
                 throw new IOException("Empty target window");
             }
-            addrCache = new AddressCache();
         }
 
         public void Dispose()
