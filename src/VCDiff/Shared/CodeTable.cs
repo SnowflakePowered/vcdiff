@@ -172,7 +172,7 @@ namespace VCDiff.Shared
                 0, 0, 0, 0, 0, 0, 0, 0, 0  // opcodes 247-255
             };
 
-        public static CodeTable DefaultTable => new CodeTable();
+        public static CodeTable DefaultTable = new CodeTable();
 
         public CodeTable()
         {

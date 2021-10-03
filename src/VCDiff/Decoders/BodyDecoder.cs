@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.IO;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
@@ -46,7 +47,7 @@ namespace VCDiff.Decoders
             this.outputStream = decodedTarget;
             this.source = source;
             this.delta = delta;
-            this.targetData = new MemoryStream();
+            this.targetData = Pool.MemoryStreamManager.GetStream(nameof(BodyDecoder<TWindowDecoderByteBuffer, TSourceBuffer, TDeltaBuffer>), (int) w.TargetWindowLength);
         }
 
         private VCDiffResult DecodeInterleaveCore()
@@ -55,7 +56,7 @@ namespace VCDiff.Decoders
             //since interleave expected then the last point that was most likely decoded was the lengths section
             //so following is all data for the add run copy etc
             long interleaveLength = window.InstructionAndSizesLength;
-            using var previous = new MemoryStream();
+            using var previous = Pool.MemoryStreamManager.GetStream(nameof(BodyDecoder<TWindowDecoderByteBuffer, TSourceBuffer, TDeltaBuffer>), (int) interleaveLength);
             int lastDecodedSize = 0;
             VCDiffInstructionType lastDecodedInstruction = VCDiffInstructionType.NOOP;
 
@@ -68,7 +69,7 @@ namespace VCDiff.Decoders
                 //try to read in all interleaved bytes
                 //if not then it will buffer for next time
                 previous.Write(delta.ReadBytesAsSpan((int)interleaveLength));
-                using ByteBuffer incoming = new ByteBuffer(previous.ToArray());
+                using ByteBuffer incoming = new ByteBuffer(previous.GetBuffer());
                 previous.SetLength(0);
                 long initialLength = incoming.Length;
 

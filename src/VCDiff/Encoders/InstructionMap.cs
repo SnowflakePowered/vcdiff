@@ -75,7 +75,7 @@ namespace VCDiff.Encoders
             return maxSize;
         }
 
-        private class OpcodeMap2
+        private struct OpcodeMap2
         {
             private int[][][] opcodes2;
             private int maxSize;
@@ -134,7 +134,7 @@ namespace VCDiff.Encoders
             }
         }
 
-        private class OpcodeMap
+        private struct OpcodeMap
         {
             private int[] opcodes;
             private int maxSize;

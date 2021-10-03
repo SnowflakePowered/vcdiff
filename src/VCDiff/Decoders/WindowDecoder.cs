@@ -27,7 +27,7 @@ namespace VCDiff.Decoders
         private byte winIndicator;
         private long sourceSegmentLength;
         private long sourceSegmentOffset;
-        private long targetLength;
+        private long _targetLength;
         private long addRunLength;
         private long instructionAndSizesLength;
         private long addressForCopyLength;
@@ -51,7 +51,7 @@ namespace VCDiff.Decoders
 
         public long SourceSegmentLength => sourceSegmentLength;
 
-        public long TargetWindowLength => targetLength;
+        public long TargetWindowLength => _targetLength;
 
         public uint Checksum => checksum;
 
@@ -95,7 +95,7 @@ namespace VCDiff.Decoders
                 return false;
             }
 
-            if (!ParseWindowLengths(out targetLength))
+            if (!ParseWindowLengths(out _targetLength))
             {
                 return false;
             }
@@ -399,7 +399,7 @@ namespace VCDiff.Decoders
             InstructionsAndSizesData.Dispose();
             AddressesForCopyData.Dispose();
         }
-        public class ParseableChunk
+        public struct ParseableChunk
         {
             private long end;
             private long position;
