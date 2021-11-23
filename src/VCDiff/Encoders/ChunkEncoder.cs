@@ -2,7 +2,7 @@
 using System.IO;
 using VCDiff.Shared;
 
-#if NET5_0
+#if NET5_0 || NET5_0_OR_GREATER
 using System.Runtime.CompilerServices;
 #endif
 
@@ -125,7 +125,7 @@ namespace VCDiff.Encoders
 
         //currently does not support looking in target
         //only the dictionary
-#if NET5_0
+#if NET5_0 || NET5_0_OR_GREATER
         [SkipLocalsInit]
 #endif
         private unsafe long EncodeCopyForBestMatch(ulong hash, long candidateStart, long unencodedStart, long unencodedSize, byte* newDataPtr, ByteBuffer newData)

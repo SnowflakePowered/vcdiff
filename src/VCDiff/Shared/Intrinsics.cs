@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 #endif
@@ -18,7 +18,7 @@ namespace VCDiff.Shared
 
         static Intrinsics()
         {
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
             if (Sse2.IsSupported)
             {
                 MaxRegisterSize = SseRegisterSize;
@@ -42,7 +42,7 @@ namespace VCDiff.Shared
 
         public static unsafe void FillArrayVectorized(long* first, int numValues, long value)
         {
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
             long bytesLeft = (long)((long)numValues * sizeof(long));
             if (bytesLeft >= MaxRegisterSize)
             {
@@ -70,7 +70,7 @@ namespace VCDiff.Shared
         }
 
 
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         private static unsafe void Sse2FillArray(long* first, long value, ref long bytesLeft)
         {

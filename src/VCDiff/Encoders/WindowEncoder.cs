@@ -57,7 +57,7 @@ namespace VCDiff.Encoders
             }
         }
 
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
 #endif
         private void EncodeInstruction(VCDiffInstructionType inst, int size, byte mode = 0)
@@ -118,7 +118,7 @@ namespace VCDiff.Encoders
             targetLength += data.Length;
         }
 
-#if NET5_0
+#if NET5_0 || NET5_0_OR_GREATER
         [SkipLocalsInit]
 #endif
         public void Copy(int offset, int length)

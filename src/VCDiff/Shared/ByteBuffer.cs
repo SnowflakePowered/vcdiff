@@ -112,7 +112,7 @@ namespace VCDiff.Shared
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe byte PeekByte() => *((byte*)this.bytePtr + offset);
 
-#if NET5_0
+#if NET5_0 || NET5_0_OR_GREATER
         [SkipLocalsInit]
 #endif
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -133,7 +133,7 @@ namespace VCDiff.Shared
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe byte ReadByte() => this.bytePtr[offset++];
 
-#if NET5_0
+#if NET5_0 || NET5_0_OR_GREATER
         [SkipLocalsInit]
 #endif
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -3,7 +3,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using VCDiff.Shared;
 
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 #endif
@@ -172,10 +172,10 @@ namespace VCDiff.Encoders
         /// <param name="targetPtr">pointer to the target buffer</param>
         /// <param name="target">the target buffer</param>
         /// <param name="m">the match object to use</param>
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
 #endif
-#if NET5_0
+#if NET5_0 || NET5_0_OR_GREATER
         [SkipLocalsInit]
 #endif
         public unsafe void FindBestMatch(ulong hash, long candidateStart, long targetStart, long targetSize, byte* targetPtr, ByteBuffer target, ref Match m)
@@ -250,7 +250,7 @@ namespace VCDiff.Encoders
             AddAllBlocksThroughIndex(source.Length);
         }
 
-#if NET5_0
+#if NET5_0 || NET5_0_OR_GREATER
         [SkipLocalsInit]
 #endif
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -266,7 +266,7 @@ namespace VCDiff.Encoders
             if (sOffset > sLen || tOffset > tLen)
                 return false;
 
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
             if (Avx2.IsSupported && lengthToExamine >= Intrinsics.AvxRegisterSize)
             {
                 if (sOffset >= Intrinsics.AvxRegisterSize && tOffset >= Intrinsics.AvxRegisterSize)
@@ -357,7 +357,7 @@ namespace VCDiff.Encoders
             return SkipNonMatchingBlocks(nextBlockTable.Pointer[blockNumber], toffset, sourcePtr, targetPtr, target);
         }
 
-#if NET5_0
+#if NET5_0 || NET5_0_OR_GREATER
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         [SkipLocalsInit]
 #else
@@ -378,7 +378,7 @@ namespace VCDiff.Encoders
             return blockNumber;
         }
 
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToLeftAvx2(long start, long tstart, byte* sourcePtr, byte* targetPtr, long maxBytes)
         {
@@ -470,7 +470,7 @@ namespace VCDiff.Encoders
         }
 #endif
 
-#if NET5_0
+#if NET5_0 || NET5_0_OR_GREATER
         [SkipLocalsInit]
 #endif
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -521,7 +521,7 @@ namespace VCDiff.Encoders
             return bytesFound;
         }
 
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToRightAvx2(long end, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
@@ -600,14 +600,14 @@ namespace VCDiff.Encoders
         }
 #endif
 
-#if NET5_0
+#if NET5_0 || NET5_0_OR_GREATER
         [SkipLocalsInit]
 #endif
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToRight(long end, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
 
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
             // ByteBuffer is already pinned, so its safe to just use raw pointer access
             // but Vector<T> can only create vectors from a Span and not an address. 
             // We can probably unroll the while loop in the scalar implementation

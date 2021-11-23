@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
 using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -23,7 +23,7 @@ namespace VCDiff.Shared
         private const byte S23O1 = (((2) << 6) | ((3) << 4) | ((0) << 2) | ((1)));
         private const byte S1O32 = (((1) << 6) | ((0) << 4) | ((3) << 2) | ((2)));
 
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
         private static readonly Vector128<sbyte> tap1;
         private static readonly Vector128<sbyte> tap2;
 
@@ -55,7 +55,7 @@ namespace VCDiff.Shared
             }
         }
 
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
         /// <summary>
         /// SSSE3 Version of Adler32
         /// https://chromium.googlesource.com/chromium/src/third_party/zlib/+/master/adler32_simd.c
@@ -297,7 +297,7 @@ namespace VCDiff.Shared
                 return adler | (sum2 << 16);
             }
 
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
             if (Avx2.IsSupported) return Adler32.HashAvx2(adler, buff);
             if (Ssse3.IsSupported) return Adler32.HashSsse3(adler, buff);
 #endif

@@ -64,7 +64,7 @@ namespace VCDiff.Shared
             return 0;
         }
 
-#if NET5_0
+#if NET5_0 || NET5_0_OR_GREATER
         [SkipLocalsInit]
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
 #else
@@ -78,7 +78,7 @@ namespace VCDiff.Shared
             return actualRead > 0 ? buf.AsSpanFast(actualRead) : Span<byte>.Empty;
         }
 
-#if NET5_0
+#if NET5_0 || NET5_0_OR_GREATER
         [SkipLocalsInit]
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
 #else
@@ -132,7 +132,7 @@ namespace VCDiff.Shared
             GC.SuppressFinalize(this);
         }
 
-#if NET5_0
+#if NET5_0 || NET5_0_OR_GREATER
         [SkipLocalsInit]
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
 #else
@@ -143,7 +143,7 @@ namespace VCDiff.Shared
             if (len <= CACHE_SIZE)
                 return cache;
 
-#if NET5_0
+#if NET5_0 || NET5_0_OR_GREATER
             return GC.AllocateUninitializedArray<byte>(len);
 #else
             return new byte[len];
