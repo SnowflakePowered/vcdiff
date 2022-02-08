@@ -286,6 +286,11 @@ namespace VCDiff.Decoders
 
             switch (sourceFlags)
             {
+                case 0:
+                    sourceSegmentPosition = 0;
+                    sourceSegmentLength = 0;
+                    return true;
+
                 case (int)VCDiffWindowFlags.VCDSOURCE:
                     return ParseSourceSegmentLengthAndPosition(dictionarySize, out sourceSegmentLength, out sourceSegmentPosition);
 
