@@ -13,7 +13,7 @@ namespace VCDiff.Shared
     public class ByteBuffer : IByteBuffer, IDisposable
     {
         private MemoryHandle? byteHandle;
-        private unsafe byte*  bytePtr;
+        private unsafe byte* bytePtr;
         private int length;
         private int offset;
 
@@ -31,7 +31,7 @@ namespace VCDiff.Shared
         public unsafe ByteBuffer(byte[] bytes)
         {
             offset = 0;
-            var memory      = bytes != null ? new Memory<byte>(bytes) : Memory<byte>.Empty;
+            var memory = bytes != null ? new Memory<byte>(bytes) : Memory<byte>.Empty;
             this.byteHandle = memory.Pin();
             CreateFromPointer((byte*)this.byteHandle.Value.Pointer, memory.Length);
         }
@@ -65,9 +65,14 @@ namespace VCDiff.Shared
             this.bytePtr = pointer;
             this.length = length;
         }
-        
+
+#if NET5_0 || NET5_0_OR_GREATER || NETCOREAPP3_1 || NETSTANDARD2_1_OR_GREATER
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe Span<byte> AsSpan() => MemoryMarshal.CreateSpan(ref Unsafe.AsRef<byte>(bytePtr), length);
+#else
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe Span<byte> AsSpan() => new Span<byte>(bytePtr, length);
+#endif
 
         /// <summary>
         /// Dangerously gets the byte pointer.
@@ -104,7 +109,8 @@ namespace VCDiff.Shared
             set => offset = value;
         }
 
-        public int Length {         
+        public int Length
+        {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => length;
         }
@@ -119,7 +125,11 @@ namespace VCDiff.Shared
         public unsafe Span<byte> PeekBytes(int len)
         {
             int sliceLen = offset + len > this.length ? this.length - offset : len;
+#if NET5_0 || NET5_0_OR_GREATER || NETCOREAPP3_1 || NETSTANDARD2_1_OR_GREATER
             return MemoryMarshal.CreateSpan(ref Unsafe.AsRef<byte>(bytePtr + offset), sliceLen);
+#else
+            return new Span<byte>(bytePtr + offset, sliceLen);
+#endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
