@@ -41,7 +41,7 @@ jobs:
       run: dotnet test --no-build --configuration ${{ matrix.configuration }} src
       continue-on-error: ${{ matrix.os == 'macos-latest' }}
     - name: Tests (Full Framework)
-      run: dotnet test --no-build --configuration ${{ matrix.configuration }} src/VCDiff.Tests/VCDiff.Tests.NetFx.csproj
+      run: dotnet test --configuration ${{ matrix.configuration }} src/VCDiff.Tests/VCDiff.Tests.NetFx.csproj
       if: ${{ matrix.os == 'windows-latest' }}
     - name: Upload code coverage
       uses: codecov/codecov-action@v1.2.1
