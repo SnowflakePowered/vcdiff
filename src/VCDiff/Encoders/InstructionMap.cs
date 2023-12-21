@@ -114,7 +114,7 @@ namespace VCDiff.Encoders
             private int[] NewSizeOpcodeArray(int size)
             {
                 int[] nn = new int[size];
-                Array.Fill(nn, CodeTable.kNoOpcode);
+                new Span<int>(nn).Fill(CodeTable.kNoOpcode);
                 return nn;
             }
 
@@ -147,8 +147,7 @@ namespace VCDiff.Encoders
                 this.maxSize = maxSize + 1;
                 this.numInstAndModes = numInstAndModes;
                 opcodes = new int[numInstAndModes * this.maxSize];
-
-                Array.Fill(opcodes, CodeTable.kNoOpcode);
+                new Span<int>(opcodes).Fill(CodeTable.kNoOpcode);
             }
 
             public void Add(byte inst, byte size, byte mode, byte opcode)

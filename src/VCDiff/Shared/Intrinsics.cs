@@ -65,7 +65,7 @@ namespace VCDiff.Shared
             }
 #else
             // Accelerate via loop unrolled solution.
-            MemoryMarshal.CreateSpan(ref Unsafe.AsRef<long>((void*) first), numValues).Fill(value);
+            new Span<long>((void*)first, numValues).Fill(value);
 #endif
         }
 

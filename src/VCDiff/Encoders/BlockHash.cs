@@ -302,7 +302,7 @@ namespace VCDiff.Encoders
                     }
                 }
             }
-#else
+#elif NETSTANDARD2_1
             int vectorSize = Vector<byte>.Count;
             if (lengthToExamine >= vectorSize)
             {
@@ -476,7 +476,7 @@ namespace VCDiff.Encoders
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe long MatchingBytesToLeft(long start, long tstart, byte* sourcePtr, byte* targetPtr, ByteBuffer target, long maxBytes)
         {
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER
             if (Avx2.IsSupported) return MatchingBytesToLeftAvx2(start, tstart, sourcePtr, targetPtr, maxBytes);
             if (Sse2.IsSupported) return MatchingBytesToLeftSse2(start, tstart, sourcePtr, targetPtr, maxBytes);
 #endif
@@ -490,6 +490,7 @@ namespace VCDiff.Encoders
             var tBuf = target.AsSpan();
             var sBuf = source.AsSpan();
 
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
             while (sindex >= vectorSize && tindex >= vectorSize && bytesFound <= maxBytes - vectorSize)
             {
                 tindex -= vectorSize;
@@ -505,6 +506,7 @@ namespace VCDiff.Encoders
 
                 bytesFound += vectorSize;
             }
+#endif
 
             while (bytesFound < maxBytes)
             {
@@ -624,6 +626,8 @@ namespace VCDiff.Encoders
             long trgLength = target.Length;
             byte* tPtr = targetPtr;
             byte* sPtr = sourcePtr;
+
+#if NETCOREAPP3_1 || NET5_0 || NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
             int vectorSize = Vector<byte>.Count;
             var tBuf = target.AsSpan();
             var sBuf = source.AsSpan();
@@ -641,6 +645,7 @@ namespace VCDiff.Encoders
                 tindex += vectorSize;
                 sindex += vectorSize;
             }
+#endif
 
             while (bytesFound < maxBytes)
             {
