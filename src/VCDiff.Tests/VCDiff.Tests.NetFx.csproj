@@ -1,0 +1,9 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="VCDiff.Tests.csproj" />
+
+  <PropertyGroup>
+    <TargetFrameworks>net462;net48</TargetFrameworks>
+  </PropertyGroup>
+
+</Project>
