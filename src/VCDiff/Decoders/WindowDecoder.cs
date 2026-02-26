@@ -37,7 +37,7 @@ namespace VCDiff.Decoders
         private bool instructionsAndSizesCompressed;
         private bool addressForCopyCompressed;
         private uint checksum;
-        private readonly SharedDecompressors sharedDecompressors;
+        private readonly SharedDecompressors? sharedDecompressors;
 
         public PinnedArrayRental AddRunData;
 
@@ -78,7 +78,7 @@ namespace VCDiff.Decoders
         /// <param name="buffer">the buffer containing the incoming data</param>
         /// <param name="maxWindowSize">The maximum target window size in bytes</param>
         /// <param name="sharedDecompressors">Container for compression streams used across windows</param>
-        public WindowDecoder(long dictionarySize, TByteBuffer buffer, SharedDecompressors sharedDecompressors, int maxWindowSize = DefaultMaxTargetFileSize)
+        public WindowDecoder(long dictionarySize, TByteBuffer buffer, SharedDecompressors? sharedDecompressors, int maxWindowSize = DefaultMaxTargetFileSize)
         {
             this.dictionarySize = dictionarySize;
             this.buffer = buffer;
@@ -143,8 +143,13 @@ namespace VCDiff.Decoders
                 AddRunData = new PinnedArrayRental((int)addRunLength);
                 Debug.Assert(addRunLength <= int.MaxValue);
                 buffer.ReadBytesToSpan(AddRunData.AsSpan());
-                if (AddRunCompressed)
+                if (AddRunCompressed && secondaryCompressorId != 0)
                 {
+                    if (sharedDecompressors == null)
+                    {
+                        throw new InvalidOperationException("AddRunData is compressed but no SharedDecompressors were provided to the WindowDecoder");
+                    }
+
                     AddRunData = Decompress(AddRunData, secondaryCompressorId, ref sharedDecompressors.AddRunDecompressor, ref sharedDecompressors.AddRunCompressedBuffer);
                 }
             }
@@ -153,8 +158,13 @@ namespace VCDiff.Decoders
                 InstructionsAndSizesData = new PinnedArrayRental((int)instructionAndSizesLength);
                 Debug.Assert(instructionAndSizesLength <= int.MaxValue);
                 buffer.ReadBytesToSpan(InstructionsAndSizesData.AsSpan());
-                if (instructionsAndSizesCompressed)
+                if (instructionsAndSizesCompressed && secondaryCompressorId != 0)
                 {
+                    if (sharedDecompressors == null)
+                    {
+                        throw new InvalidOperationException("AddRunData is compressed but no SharedDecompressors were provided to the WindowDecoder");
+                    }
+
                     InstructionsAndSizesData = Decompress(InstructionsAndSizesData, secondaryCompressorId, ref sharedDecompressors.InstructionsDecompressor, ref sharedDecompressors.InstructionsCompressedBuffer);
                 }
             }
@@ -163,8 +173,13 @@ namespace VCDiff.Decoders
                 AddressesForCopyData = new PinnedArrayRental((int)addressForCopyLength);
                 Debug.Assert(addressForCopyLength <= int.MaxValue);
                 buffer.ReadBytesToSpan(AddressesForCopyData.AsSpan());
-                if (addressForCopyCompressed)
+                if (addressForCopyCompressed && secondaryCompressorId != 0)
                 {
+                    if (sharedDecompressors == null)
+                    {
+                        throw new InvalidOperationException("AddRunData is compressed but no SharedDecompressors were provided to the WindowDecoder");
+                    }
+
                     AddressesForCopyData = Decompress(AddressesForCopyData, secondaryCompressorId, ref sharedDecompressors.AddressesDecompressor, ref sharedDecompressors.AddressesCompressedBuffer);
                 }
             }

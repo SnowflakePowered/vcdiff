@@ -197,7 +197,7 @@ namespace VCDiff.Decoders
             if (!Decode_Init(out bytesWritten, out var result, out var decodeAsync))
                 return result;
 
-            var decompressors = new SharedDecompressors(); // Decompression streams are shared across windows
+            var decompressors = SecondaryCompressorId != 0 ? new SharedDecompressors() : null; // Decompression streams are shared across windows
             while (delta.CanRead)
             {
                 //delta is streamed in order aka not random access
