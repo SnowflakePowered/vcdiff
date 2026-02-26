@@ -38,6 +38,36 @@ namespace VCDiff.Shared
             return (int)VCDiffResult.EOD;
         }
 
+        public static int ParseInt32(Span<byte> sin, out int bytesConsumed)
+        {
+            bytesConsumed = 0;
+            int result = 0;
+            int index = 0;
+
+            while (index < sin.Length)
+            {
+                byte currentByte = sin[index];
+                result += currentByte & 0x7f;
+
+                if ((currentByte & 0x80) == 0)
+                {
+                    bytesConsumed = index + 1;
+                    return result;
+                }
+
+                if (result > (int32MaxValue >> 7))
+                {
+                    bytesConsumed = index + 1;
+                    return (int)VCDiffResult.ERROR;
+                }
+
+                result = result << 7;
+                index++;
+            }
+
+            return (int)VCDiffResult.EOD;
+        }
+
         public static long ParseInt64<TByteBuffer>(TByteBuffer sin) where TByteBuffer : IByteBuffer
         {
             long result = 0;

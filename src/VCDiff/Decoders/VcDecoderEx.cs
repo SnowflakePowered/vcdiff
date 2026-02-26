@@ -23,13 +23,15 @@ namespace VCDiff.Decoders
         /// <param name="delta">The stream containing the VCDIFF delta.</param>
         /// <param name="outputStream">The stream to write the output in.</param>
         /// <param name="maxTargetFileSize">The maximum target file size (and target window size) in bytes</param>
-        public VcDecoder(Stream source, Stream delta, Stream outputStream, int maxTargetFileSize = WindowDecoderBase.DefaultMaxTargetFileSize)
+        /// <param name="disableChecksums">Whether to disable checksums when applying the delta. This can be dangerous, but can be useful when the input file differs in ways that the delta does not reference.</param>
+        public VcDecoder(Stream source, Stream delta, Stream outputStream, int maxTargetFileSize = WindowDecoderBase.DefaultMaxTargetFileSize, bool disableChecksums = false)
         {
             base.delta  = new ByteStreamReader(delta);
             base.source = new ByteStreamReader(source);
             base.outputStream      = outputStream;
             base.maxTargetFileSize = maxTargetFileSize;
             base.IsInitialized     = false;
+            base.disableChecksums = disableChecksums;
             _ownsSources = true;
         }
 
@@ -60,6 +62,7 @@ namespace VCDiff.Decoders
         protected TDeltaBuffer delta;
         protected TSourceBuffer source;
         protected int maxTargetFileSize;
+        protected bool disableChecksums;
         private CustomCodeTableDecoder? customTable;
         protected static readonly byte[] MagicBytes = { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
 
@@ -67,6 +70,8 @@ namespace VCDiff.Decoders
         /// If the provided delta is in Shared-Dictionary Compression over HTTP (Sandwich) protocol.
         /// </summary>
         public bool IsSDCHFormat { get; private set; }
+
+        private byte SecondaryCompressorId { get; set; }
 
         /// <summary>
         /// If the decoder has been initialized.
@@ -82,12 +87,14 @@ namespace VCDiff.Decoders
         /// <param name="delta">The stream containing the VCDIFF delta.</param>
         /// <param name="outputStream">The stream to write the output in.</param>
         /// <param name="maxTargetFileSize">The maximum target file size (and target window size) in bytes</param>
-        public VcDecoderEx(TSourceBuffer dict, TDeltaBuffer delta, Stream outputStream, int maxTargetFileSize = WindowDecoderBase.DefaultMaxTargetFileSize)
+        /// <param name="disableChecksums">Whether to disable checksums when applying the delta. This can be dangerous, but can be useful when the input file differs in ways that the delta does not reference.</param>
+        public VcDecoderEx(TSourceBuffer dict, TDeltaBuffer delta, Stream outputStream, int maxTargetFileSize = WindowDecoderBase.DefaultMaxTargetFileSize, bool disableChecksums = false)
         {
             this.delta  = delta;
             this.source = dict;
             this.outputStream = outputStream;
             this.maxTargetFileSize = maxTargetFileSize;
+            this.disableChecksums = disableChecksums;
             this.IsInitialized = false;
         }
 
@@ -139,10 +146,12 @@ namespace VCDiff.Decoders
                 return VCDiffResult.ERROR;
             }
 
-            //compression not supported
+            // secondary compression
             if ((hdr & (int)VCDiffCodeFlags.VCDDECOMPRESS) != 0)
             {
-                return VCDiffResult.ERROR;
+                if (!delta.CanRead) return VCDiffResult.EOD;
+
+                SecondaryCompressorId = delta.ReadByte();
             }
 
             //custom code table!
@@ -188,15 +197,16 @@ namespace VCDiff.Decoders
             if (!Decode_Init(out bytesWritten, out var result, out var decodeAsync))
                 return result;
 
+            var decompressors = new SharedDecompressors(); // Decompression streams are shared across windows
             while (delta.CanRead)
             {
                 //delta is streamed in order aka not random access
-                using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, maxTargetFileSize);
+                using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, decompressors, maxTargetFileSize);
 
-                if (!w.Decode(this.IsSDCHFormat))
+                if (!w.Decode(this.IsSDCHFormat, this.SecondaryCompressorId))
                     return (VCDiffResult)w.Result;
 
-                using var body = new BodyDecoder<TDeltaBuffer, TSourceBuffer, TDeltaBuffer>(w, source, delta, outputStream);
+                using var body = new BodyDecoder<TDeltaBuffer, TSourceBuffer, TDeltaBuffer>(w, source, delta, outputStream, disableChecksums: disableChecksums);
                 if (this.IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
                 {
                     //interleaved
@@ -243,14 +253,16 @@ namespace VCDiff.Decoders
         {
             if (!Decode_Init(out var bytesWritten, out var result, out var decodeAsync)) 
                 return decodeAsync;
+
+            var decompressors = new SharedDecompressors(); // Decompression streams are shared across windows
             while (delta.CanRead)
             {
                 //delta is streamed in order aka not random access
-                using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, maxTargetFileSize);
+                using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, decompressors, maxTargetFileSize);
 
-                if (w.Decode(this.IsSDCHFormat))
+                if (w.Decode(this.IsSDCHFormat, this.SecondaryCompressorId))
                 {
-                    using var body = new BodyDecoder<TDeltaBuffer, TSourceBuffer, TDeltaBuffer>(w, source, delta, outputStream);
+                    using var body = new BodyDecoder<TDeltaBuffer, TSourceBuffer, TDeltaBuffer>(w, source, delta, outputStream, disableChecksums: disableChecksums);
                     if (this.IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
                     {
                         //interleaved

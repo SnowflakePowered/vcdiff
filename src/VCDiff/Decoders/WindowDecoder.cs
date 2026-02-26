@@ -1,5 +1,7 @@
-﻿using System;
+﻿using SharpCompress.Compressors.Xz;
+using System;
 using System.Diagnostics;
+using System.IO;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
@@ -31,7 +33,11 @@ namespace VCDiff.Decoders
         private long addRunLength;
         private long instructionAndSizesLength;
         private long addressForCopyLength;
+        private bool addRunCompressed;
+        private bool instructionsAndSizesCompressed;
+        private bool addressForCopyCompressed;
         private uint checksum;
+        private SharedDecompressors sharedDecompressors;
 
         public PinnedArrayRental AddRunData;
 
@@ -44,6 +50,12 @@ namespace VCDiff.Decoders
         public long InstructionAndSizesLength => instructionAndSizesLength;
 
         public long AddressesForCopyLength => addressForCopyLength;
+
+        public bool AddRunCompressed => addRunCompressed;
+
+        public bool InstructionAndSizesCompressed => instructionsAndSizesCompressed;
+
+        public bool AddressesForCopyCompressed => addressForCopyCompressed;
 
         public byte WinIndicator => winIndicator;
 
@@ -65,10 +77,12 @@ namespace VCDiff.Decoders
         /// <param name="dictionarySize">the dictionary size</param>
         /// <param name="buffer">the buffer containing the incoming data</param>
         /// <param name="maxWindowSize">The maximum target window size in bytes</param>
-        public WindowDecoder(long dictionarySize, TByteBuffer buffer, int maxWindowSize = DefaultMaxTargetFileSize)
+        /// <param name="sharedDecompressors">Container for compression streams used across windows</param>
+        public WindowDecoder(long dictionarySize, TByteBuffer buffer, SharedDecompressors sharedDecompressors, int maxWindowSize = DefaultMaxTargetFileSize)
         {
             this.dictionarySize = dictionarySize;
             this.buffer = buffer;
+            this.sharedDecompressors = sharedDecompressors;
             chunk = new ParseableChunk(buffer.Position, buffer.Length);
 
             if (maxWindowSize < 0)
@@ -87,8 +101,9 @@ namespace VCDiff.Decoders
         /// Decodes the window header.
         /// </summary>
         /// <param name="isSdch">If the delta uses SDCH extensions.</param>
+        /// <param name="secondaryCompressorId">ID of the secondary compressor.</param>
         /// <returns></returns>
-        public bool Decode(bool isSdch)
+        public bool Decode(bool isSdch, byte secondaryCompressorId)
         {
             if (!ParseWindowIndicatorAndSegment(dictionarySize, 0, false, out winIndicator, out sourceSegmentLength, out sourceSegmentOffset))
             {
@@ -128,18 +143,30 @@ namespace VCDiff.Decoders
                 AddRunData = new PinnedArrayRental((int)addRunLength);
                 Debug.Assert(addRunLength <= int.MaxValue);
                 buffer.ReadBytesToSpan(AddRunData.AsSpan());
+                if (AddRunCompressed)
+                {
+                    AddRunData = Decompress(AddRunData, secondaryCompressorId, ref sharedDecompressors.AddRunDecompressor, ref sharedDecompressors.AddRunCompressedBuffer);
+                }
             }
             if (buffer.CanRead)
             {
                 InstructionsAndSizesData = new PinnedArrayRental((int)instructionAndSizesLength);
                 Debug.Assert(instructionAndSizesLength <= int.MaxValue);
                 buffer.ReadBytesToSpan(InstructionsAndSizesData.AsSpan());
+                if (instructionsAndSizesCompressed)
+                {
+                    InstructionsAndSizesData = Decompress(InstructionsAndSizesData, secondaryCompressorId, ref sharedDecompressors.InstructionsDecompressor, ref sharedDecompressors.InstructionsCompressedBuffer);
+                }
             }
             if (buffer.CanRead)
             {
                 AddressesForCopyData = new PinnedArrayRental((int)addressForCopyLength);
                 Debug.Assert(addressForCopyLength <= int.MaxValue);
                 buffer.ReadBytesToSpan(AddressesForCopyData.AsSpan());
+                if (addressForCopyCompressed)
+                {
+                    AddressesForCopyData = Decompress(AddressesForCopyData, secondaryCompressorId, ref sharedDecompressors.AddressesDecompressor, ref sharedDecompressors.AddressesCompressedBuffer);
+                }
             }
 
             return true;
@@ -351,12 +378,48 @@ namespace VCDiff.Decoders
                 returnCode = (int)VCDiffResult.ERROR;
                 return false;
             }
-            if ((deltaIndicator & ((int)VCDiffCompressFlags.VCDDATACOMP | (int)VCDiffCompressFlags.VCDINSTCOMP | (int)VCDiffCompressFlags.VCDADDRCOMP)) > 0)
-            {
-                returnCode = (int)VCDiffResult.ERROR;
-                return false;
-            }
+
+            addRunCompressed = (deltaIndicator & (int)VCDiffCompressFlags.VCDDATACOMP) != 0;
+            instructionsAndSizesCompressed = (deltaIndicator & (int)VCDiffCompressFlags.VCDINSTCOMP) != 0;
+            addressForCopyCompressed = (deltaIndicator & (int)VCDiffCompressFlags.VCDADDRCOMP) != 0;
+
             return true;
+        }
+
+        private PinnedArrayRental Decompress(PinnedArrayRental pinnedArrayRental, byte secondaryCompressorId, ref XZStream? xzStream, ref MemoryStream? memoryStream)
+        {
+            if (secondaryCompressorId == 0)
+            {
+                return pinnedArrayRental;
+            }
+
+            if (secondaryCompressorId != 2)
+            {
+                throw new NotSupportedException("Only LZMA decompression is supported");
+            }
+
+            if (pinnedArrayRental.Data == null)
+            {
+                throw new ArgumentException("Cannot decompress null data");
+            }
+
+            var uncompressedLength = VarIntBE.ParseInt32(pinnedArrayRental.AsSpan(), out int uncompressedLengthByteCount);
+            var compressedData = pinnedArrayRental.AsSpan().Slice(uncompressedLengthByteCount);
+
+            // Each section in a window uses the same compression stream throughout the file
+            // If this is not the first window, reuse the same stream from before, just using different data
+            memoryStream ??= new MemoryStream();
+            memoryStream.SetLength(compressedData.Length);
+            memoryStream.Position = 0;
+            memoryStream.Write(compressedData);
+            memoryStream.Position = 0;
+
+            xzStream ??= new XZStream(memoryStream);
+
+            var decompressedData = new PinnedArrayRental(uncompressedLength);
+            xzStream.ReadExactly(decompressedData.AsSpan());
+
+            return decompressedData;
         }
 
         public bool ParseSectionLengths(ChecksumFormat checksumFormat, out long addRunLength, out long instructionsLength, out long addressLength, out uint checksum)
