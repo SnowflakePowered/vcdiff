@@ -19,7 +19,7 @@ namespace VCDiff.Decoders
         private AddressCache addressCache;
         private MemoryStream targetData;
         private CustomCodeTableDecoder? customTable;
-        private bool disableChecksums;
+        private readonly bool disableChecksums;
 
         //the total bytes decoded
         public long TotalBytesDecoded { get; private set; }

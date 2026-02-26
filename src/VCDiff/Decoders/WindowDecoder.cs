@@ -37,7 +37,7 @@ namespace VCDiff.Decoders
         private bool instructionsAndSizesCompressed;
         private bool addressForCopyCompressed;
         private uint checksum;
-        private SharedDecompressors sharedDecompressors;
+        private readonly SharedDecompressors sharedDecompressors;
 
         public PinnedArrayRental AddRunData;
 

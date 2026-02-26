@@ -204,7 +204,9 @@ namespace VCDiff.Decoders
                 using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, decompressors, maxTargetFileSize);
 
                 if (!w.Decode(this.IsSDCHFormat, this.SecondaryCompressorId))
+                {
                     return (VCDiffResult)w.Result;
+                }
 
                 using var body = new BodyDecoder<TDeltaBuffer, TSourceBuffer, TDeltaBuffer>(w, source, delta, outputStream, disableChecksums: disableChecksums);
                 if (this.IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
