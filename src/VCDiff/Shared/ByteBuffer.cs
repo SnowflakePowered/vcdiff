@@ -137,6 +137,7 @@ namespace VCDiff.Shared
         {
             var result = PeekBytes(data.Length);
             result.CopyTo(data);
+            offset += result.Length;
             return result.Slice(0, result.Length);
         }
 
