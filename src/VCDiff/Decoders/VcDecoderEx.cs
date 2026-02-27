@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
+using VCDiff.Compressors;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
@@ -13,7 +13,7 @@ namespace VCDiff.Decoders
     /// </summary>
     public class VcDecoder : VcDecoderEx<ByteStreamReader, ByteStreamReader>, IDisposable
     {
-        private bool _ownsSources;
+        private readonly bool _ownsSources;
         private bool _disposed;
 
         /// <summary>
@@ -25,13 +25,8 @@ namespace VCDiff.Decoders
         /// <param name="maxTargetFileSize">The maximum target file size (and target window size) in bytes</param>
         /// <param name="disableChecksums">Whether to disable checksums when applying the delta. This can be dangerous, but can be useful when the input file differs in ways that the delta does not reference.</param>
         public VcDecoder(Stream source, Stream delta, Stream outputStream, int maxTargetFileSize = WindowDecoderBase.DefaultMaxTargetFileSize, bool disableChecksums = false)
+            : base(new ByteStreamReader(source), new ByteStreamReader(delta), outputStream, maxTargetFileSize, disableChecksums)
         {
-            base.delta  = new ByteStreamReader(delta);
-            base.source = new ByteStreamReader(source);
-            base.outputStream      = outputStream;
-            base.maxTargetFileSize = maxTargetFileSize;
-            base.IsInitialized     = false;
-            base.disableChecksums = disableChecksums;
             _ownsSources = true;
         }
 
@@ -77,8 +72,6 @@ namespace VCDiff.Decoders
         /// If the decoder has been initialized.
         /// </summary>
         protected bool IsInitialized { get; set; }
-
-        protected VcDecoderEx() { }
 
         /// <summary>
         /// Creates a new VCDIFF decoder.
@@ -197,11 +190,11 @@ namespace VCDiff.Decoders
             if (!Decode_Init(out bytesWritten, out var result, out var decodeAsync))
                 return result;
 
-            var decompressors = SecondaryCompressorId != 0 ? new SharedDecompressors() : null; // Decompression streams are shared across windows
+            var secondaryCompressor = SecondaryCompressorId != 0 ? CreateCompressor(SecondaryCompressorId): null;
             while (delta.CanRead)
             {
                 //delta is streamed in order aka not random access
-                using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, decompressors, maxTargetFileSize);
+                using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, secondaryCompressor, maxTargetFileSize);
 
                 if (!w.Decode(this.IsSDCHFormat, this.SecondaryCompressorId))
                 {
@@ -256,11 +249,11 @@ namespace VCDiff.Decoders
             if (!Decode_Init(out var bytesWritten, out var result, out var decodeAsync)) 
                 return decodeAsync;
 
-            var decompressors = new SharedDecompressors(); // Decompression streams are shared across windows
+            var secondaryCompressor = SecondaryCompressorId != 0 ? CreateCompressor(SecondaryCompressorId) : null;
             while (delta.CanRead)
             {
                 //delta is streamed in order aka not random access
-                using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, decompressors, maxTargetFileSize);
+                using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, secondaryCompressor, maxTargetFileSize);
 
                 if (w.Decode(this.IsSDCHFormat, this.SecondaryCompressorId))
                 {
@@ -329,6 +322,18 @@ namespace VCDiff.Decoders
 
             decodeAsync = default;
             return true;
+        }
+
+        private ICompressor? CreateCompressor(byte secondaryCompressorId)
+        {
+            return secondaryCompressorId switch
+            {
+                0 => null,
+                // xdelta defines 1 to be "DJW static huffman"
+                2 => new XzCompressor(),
+                // xdelta defines 16 to be "FGK adaptive huffman" but says it's non-standard
+                _ => throw new NotSupportedException($"Secondary compression id '{secondaryCompressorId}' is not supported.")
+            };
         }
 
         /// <summary>

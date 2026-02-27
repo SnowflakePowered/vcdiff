@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using VCDiff.Compressors;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
@@ -37,7 +38,7 @@ namespace VCDiff.Decoders
         private bool instructionsAndSizesCompressed;
         private bool addressForCopyCompressed;
         private uint checksum;
-        private readonly SharedDecompressors? sharedDecompressors;
+        private readonly ICompressor? secondaryCompressor;
 
         public PinnedArrayRental AddRunData;
 
@@ -77,12 +78,12 @@ namespace VCDiff.Decoders
         /// <param name="dictionarySize">the dictionary size</param>
         /// <param name="buffer">the buffer containing the incoming data</param>
         /// <param name="maxWindowSize">The maximum target window size in bytes</param>
-        /// <param name="sharedDecompressors">Container for compression streams used across windows</param>
-        public WindowDecoder(long dictionarySize, TByteBuffer buffer, SharedDecompressors? sharedDecompressors, int maxWindowSize = DefaultMaxTargetFileSize)
+        /// <param name="secondaryCompressor">The secondary compressor that can decompress window sections, if applicable.</param>
+        public WindowDecoder(long dictionarySize, TByteBuffer buffer, ICompressor? secondaryCompressor, int maxWindowSize = DefaultMaxTargetFileSize)
         {
             this.dictionarySize = dictionarySize;
             this.buffer = buffer;
-            this.sharedDecompressors = sharedDecompressors;
+            this.secondaryCompressor = secondaryCompressor;
             chunk = new ParseableChunk(buffer.Position, buffer.Length);
 
             if (maxWindowSize < 0)
@@ -145,12 +146,12 @@ namespace VCDiff.Decoders
                 buffer.ReadBytesToSpan(AddRunData.AsSpan());
                 if (AddRunCompressed && secondaryCompressorId != 0)
                 {
-                    if (sharedDecompressors == null)
+                    if (secondaryCompressor == null)
                     {
-                        throw new InvalidOperationException("AddRunData is compressed but no SharedDecompressors were provided to the WindowDecoder");
+                        throw new InvalidOperationException("AddRunData is compressed but no compressor was provided to the WindowDecoder");
                     }
 
-                    AddRunData = Decompress(AddRunData, secondaryCompressorId, ref sharedDecompressors.AddRunDecompressor, ref sharedDecompressors.AddRunCompressedBuffer);
+                    AddRunData = secondaryCompressor.Decompress(WindowSectionType.AddRunData, AddRunData);
                 }
             }
             if (buffer.CanRead)
@@ -160,12 +161,12 @@ namespace VCDiff.Decoders
                 buffer.ReadBytesToSpan(InstructionsAndSizesData.AsSpan());
                 if (instructionsAndSizesCompressed && secondaryCompressorId != 0)
                 {
-                    if (sharedDecompressors == null)
+                    if (secondaryCompressor == null)
                     {
-                        throw new InvalidOperationException("AddRunData is compressed but no SharedDecompressors were provided to the WindowDecoder");
+                        throw new InvalidOperationException("AddRunData is compressed but no compressor was provided to the WindowDecoder");
                     }
 
-                    InstructionsAndSizesData = Decompress(InstructionsAndSizesData, secondaryCompressorId, ref sharedDecompressors.InstructionsDecompressor, ref sharedDecompressors.InstructionsCompressedBuffer);
+                    InstructionsAndSizesData = secondaryCompressor.Decompress(WindowSectionType.InstructionsAndSizes, InstructionsAndSizesData);
                 }
             }
             if (buffer.CanRead)
@@ -175,12 +176,12 @@ namespace VCDiff.Decoders
                 buffer.ReadBytesToSpan(AddressesForCopyData.AsSpan());
                 if (addressForCopyCompressed && secondaryCompressorId != 0)
                 {
-                    if (sharedDecompressors == null)
+                    if (secondaryCompressor == null)
                     {
-                        throw new InvalidOperationException("AddRunData is compressed but no SharedDecompressors were provided to the WindowDecoder");
+                        throw new InvalidOperationException("AddRunData is compressed but no compressor was provided to the WindowDecoder");
                     }
 
-                    AddressesForCopyData = Decompress(AddressesForCopyData, secondaryCompressorId, ref sharedDecompressors.AddressesDecompressor, ref sharedDecompressors.AddressesCompressedBuffer);
+                    AddressesForCopyData = secondaryCompressor.Decompress(WindowSectionType.AddressForCopy, AddressesForCopyData);
                 }
             }
 
@@ -399,42 +400,6 @@ namespace VCDiff.Decoders
             addressForCopyCompressed = (deltaIndicator & (int)VCDiffCompressFlags.VCDADDRCOMP) != 0;
 
             return true;
-        }
-
-        private PinnedArrayRental Decompress(PinnedArrayRental pinnedArrayRental, byte secondaryCompressorId, ref XZStream? xzStream, ref MemoryStream? memoryStream)
-        {
-            if (secondaryCompressorId == 0)
-            {
-                return pinnedArrayRental;
-            }
-
-            if (secondaryCompressorId != 2)
-            {
-                throw new NotSupportedException("Only LZMA decompression is supported");
-            }
-
-            if (pinnedArrayRental.Data == null)
-            {
-                throw new ArgumentException("Cannot decompress null data");
-            }
-
-            var uncompressedLength = VarIntBE.ParseInt32(pinnedArrayRental.AsSpan(), out int uncompressedLengthByteCount);
-            var compressedData = pinnedArrayRental.AsSpan().Slice(uncompressedLengthByteCount);
-
-            // Each section in a window uses the same compression stream throughout the file
-            // If this is not the first window, reuse the same stream from before, just using different data
-            memoryStream ??= new MemoryStream();
-            memoryStream.SetLength(compressedData.Length);
-            memoryStream.Position = 0;
-            memoryStream.Write(compressedData);
-            memoryStream.Position = 0;
-
-            xzStream ??= new XZStream(memoryStream);
-
-            var decompressedData = new PinnedArrayRental(uncompressedLength);
-            xzStream.ReadExactly(decompressedData.AsSpan());
-
-            return decompressedData;
         }
 
         public bool ParseSectionLengths(ChecksumFormat checksumFormat, out long addRunLength, out long instructionsLength, out long addressLength, out uint checksum)
