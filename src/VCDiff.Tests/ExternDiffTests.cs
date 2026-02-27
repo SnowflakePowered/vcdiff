@@ -20,6 +20,7 @@ namespace VCDiff.Tests
         [InlineData("sample.xdelta")]
         [InlineData("sample_nosmallstr.xdelta")]
         [InlineData("sample_appheader.xdelta")]
+        [InlineData("a-to-b-lzma-compression.xdelta")]
 
         public async Task ExternTest_ImplAsync(string patchfile)
         {
@@ -53,6 +54,7 @@ namespace VCDiff.Tests
         [InlineData("sample.xdelta")]
         [InlineData("sample_nosmallstr.xdelta")]
         [InlineData("sample_appheader.xdelta")]
+        [InlineData("a-to-b-lzma-compression.xdelta")]
 
         public void ExternTest_Impl(string patchfile)
         {
