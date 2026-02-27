@@ -235,6 +235,11 @@ namespace VCDiff.Decoders
                 }
             }
 
+            if (secondaryCompressor is IDisposable secondaryCompressorDisposable)
+            {
+                secondaryCompressorDisposable.Dispose();
+            }
+
             return result;
         }
 
@@ -296,6 +301,11 @@ namespace VCDiff.Decoders
                 }
             }
 
+            if (secondaryCompressor is IDisposable secondaryCompressorDisposable)
+            {
+                secondaryCompressorDisposable.Dispose();
+            }
+
             return (result, bytesWritten);
         }
 
@@ -324,7 +334,7 @@ namespace VCDiff.Decoders
             return true;
         }
 
-        private ICompressor? CreateCompressor(byte secondaryCompressorId)
+        protected virtual ICompressor? CreateCompressor(byte secondaryCompressorId)
         {
             return secondaryCompressorId switch
             {

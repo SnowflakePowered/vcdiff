@@ -7,7 +7,7 @@ using VCDiff.Shared;
 
 namespace VCDiff.Compressors
 {
-    internal class XzCompressor : ICompressor
+    internal class XzCompressor : ICompressor, IDisposable
     {
         public XzCompressor()
         {
@@ -68,6 +68,15 @@ namespace VCDiff.Compressors
             xzStream.ReadExactly(decompressedData.AsSpan());
 
             return decompressedData;
+        }
+        public void Dispose()
+        {
+            addressesCompressedBuffer?.Dispose();
+            instructionsCompressedBuffer?.Dispose();
+            addressesCompressedBuffer?.Dispose();
+            addRunDecompressor?.Dispose();
+            instructionsDecompressor?.Dispose();
+            addressesDecompressor?.Dispose();
         }
     }
 }
