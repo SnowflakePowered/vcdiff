@@ -334,7 +334,7 @@ namespace VCDiff.Decoders
             return true;
         }
 
-        protected virtual ICompressor? CreateCompressor(byte secondaryCompressorId)
+        private ICompressor? CreateCompressor(byte secondaryCompressorId)
         {
             return secondaryCompressorId switch
             {
