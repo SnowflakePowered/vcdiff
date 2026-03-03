@@ -57,9 +57,9 @@ namespace VCDiff.Encoders
 
             hashTableMask = (ulong)tableSize - 1;
 
-            hashTable = new NativeAllocation<long>((int)tableSize);
-            nextBlockTable = new NativeAllocation<long>((int)blocksCount);
-            lastBlockTable = new NativeAllocation<long>((int)blocksCount);
+            hashTable = new NativeAllocation<long>(tableSize);
+            nextBlockTable = new NativeAllocation<long>(blocksCount);
+            lastBlockTable = new NativeAllocation<long>(blocksCount);
 
             lastBlockAdded = -1;
             SetTablesToInvalid();
@@ -72,9 +72,9 @@ namespace VCDiff.Encoders
 
         private unsafe void SetTablesToInvalid()
         {
-            Intrinsics.FillArrayVectorized(lastBlockTable.Pointer, lastBlockTable.NumItems, -1);
-            Intrinsics.FillArrayVectorized(nextBlockTable.Pointer, nextBlockTable.NumItems, -1);
-            Intrinsics.FillArrayVectorized(hashTable.Pointer, hashTable.NumItems, -1);
+            Intrinsics.FillArrayVectorized(lastBlockTable.Pointer, (int)lastBlockTable.NumItems, -1);
+            Intrinsics.FillArrayVectorized(nextBlockTable.Pointer, (int)nextBlockTable.NumItems, -1);
+            Intrinsics.FillArrayVectorized(hashTable.Pointer, (int)hashTable.NumItems, -1);
         }
 
         private long CalcTableSize()
@@ -142,7 +142,7 @@ namespace VCDiff.Encoders
 
             long offset = source.Position + NextIndexToAdd;
             long end = source.Position + endLimit;
-            source.Position = (int) offset;
+            source.Position = offset;
             while (offset < end)
             {
                 unsafe

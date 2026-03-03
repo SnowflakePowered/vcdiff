@@ -322,7 +322,7 @@ namespace VCDiff.Decoders
             // Copy all data from source segment
             if (decodedAddress + size <= window.SourceSegmentLength)
             {
-                source.Position = (int)(decodedAddress + window.SourceSegmentOffset);
+                source.Position = decodedAddress + window.SourceSegmentOffset;
                 targetData.Write(source.ReadBytesAsSpan(size));
                 this.TotalBytesDecoded += size;
                 return VCDiffResult.SUCCESS;
@@ -333,7 +333,7 @@ namespace VCDiff.Decoders
             {
                 // ... plus some data from source segment
                 long partialCopySize = window.SourceSegmentLength - decodedAddress;
-                source.Position = (int)(decodedAddress + +window.SourceSegmentOffset);
+                source.Position = decodedAddress + window.SourceSegmentOffset;
                 targetData.Write(source.ReadBytesAsSpan((int)partialCopySize));
                 this.TotalBytesDecoded += partialCopySize;
                 decodedAddress += partialCopySize;

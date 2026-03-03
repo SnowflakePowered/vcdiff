@@ -33,7 +33,7 @@ namespace VCDiff.Decoders
             byte instructionType = CodeTable.N;
             int instructionSize = 0;
             byte instructionMode = 0;
-            int start = (int)source.Position;
+            long start = source.Position;
             do
             {
                 if (pendingSecond != CodeTable.kNoOpcode)

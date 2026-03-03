@@ -6,18 +6,18 @@ namespace VCDiff.Shared
 {
     public interface IByteBuffer : IDisposable
     {
-        int Length
+        long Length
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get; 
+            get;
         }
 
-        int Position
+        long Position
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set; 
+            set;
         }
 
         bool CanRead

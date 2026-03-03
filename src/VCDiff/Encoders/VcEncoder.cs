@@ -53,9 +53,17 @@ namespace VCDiff.Encoders
         /// <exception cref="ArgumentException">If an invalid blockSize or chunkSize is used..</exception>
         public unsafe VcEncoder(Stream source, Stream target, Stream outputStream, int maxBufferSize = 1, int blockSize = 16, int chunkSize = 0, RollingHash? rollingHash = null)
         {
-            _nativeAllocation = new NativeAllocation<byte>((int)source.Length);
-            source.Read(_nativeAllocation.AsSpan());
-            this.oldData = new ByteBuffer(_nativeAllocation.AsSpan());
+            _nativeAllocation = new NativeAllocation<byte>(source.Length);
+            long remaining = source.Length;
+            long position = 0;
+            while (remaining > 0)
+            {
+                int chunk = (int)Math.Min(remaining, int.MaxValue);
+                source.Read(_nativeAllocation.AsSpan(position, chunk));
+                position += chunk;
+                remaining -= chunk;
+            }
+            this.oldData = new ByteBuffer(_nativeAllocation);
 
             InitializeEncoder(target, outputStream, maxBufferSize, blockSize, chunkSize, rollingHash);
         }

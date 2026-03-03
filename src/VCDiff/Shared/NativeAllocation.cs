@@ -6,25 +6,27 @@ namespace VCDiff.Shared
     internal unsafe struct NativeAllocation<T> : IDisposable where T : unmanaged
     {
         public T* Pointer;
-        public int NumItems;
+        public long NumItems;
         public bool OwnsAllocation;
 
-        public NativeAllocation(int numItems)
+        public NativeAllocation(long numItems)
         {
-            var bytes = (long)numItems * sizeof(T);
+            var bytes = numItems * sizeof(T);
             Pointer = (T*) Marshal.AllocHGlobal((IntPtr) bytes);
             NumItems = numItems;
             OwnsAllocation = true;
         }
 
-        public NativeAllocation(IntPtr address, int size) : this()
+        public NativeAllocation(IntPtr address, long size) : this()
         {
             Pointer = (T*) address;
             NumItems = size;
             OwnsAllocation = false;
         }
 
-        public unsafe Span<byte> AsSpan() => new Span<byte>((void*) Pointer, NumItems);
+        public unsafe Span<byte> AsSpan() => new Span<byte>((void*) Pointer, (int)NumItems);
+
+        public unsafe Span<byte> AsSpan(long offset, int length) => new Span<byte>((void*)(Pointer + offset), length);
 
         public void Dispose()
         {

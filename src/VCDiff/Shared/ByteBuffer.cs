@@ -14,8 +14,8 @@ namespace VCDiff.Shared
     {
         private MemoryHandle? byteHandle;
         private unsafe byte* bytePtr;
-        private int length;
-        private int offset;
+        private long length;
+        private long offset;
 
         private ByteBuffer()
         {
@@ -34,6 +34,12 @@ namespace VCDiff.Shared
             var memory = bytes != null ? new Memory<byte>(bytes) : Memory<byte>.Empty;
             this.byteHandle = memory.Pin();
             CreateFromPointer((byte*)this.byteHandle.Value.Pointer, memory.Length);
+        }
+
+        internal unsafe ByteBuffer(NativeAllocation<byte> bytes)
+        {
+            offset = 0;
+            CreateFromPointer(bytes.Pointer, bytes.NumItems);
         }
 
         /// <summary/>
@@ -60,7 +66,7 @@ namespace VCDiff.Shared
             CreateFromPointer(bytes, length);
         }
 
-        private unsafe void CreateFromPointer(byte* pointer, int length)
+        private unsafe void CreateFromPointer(byte* pointer, long length)
         {
             this.bytePtr = pointer;
             this.length = length;
@@ -68,10 +74,10 @@ namespace VCDiff.Shared
 
 #if NET5_0 || NET5_0_OR_GREATER || NETCOREAPP3_1 || NETSTANDARD2_1_OR_GREATER
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe Span<byte> AsSpan() => MemoryMarshal.CreateSpan(ref Unsafe.AsRef<byte>(bytePtr), length);
+        public unsafe Span<byte> AsSpan() => MemoryMarshal.CreateSpan(ref Unsafe.AsRef<byte>(bytePtr), (int)length);
 #else
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe Span<byte> AsSpan() => new Span<byte>(bytePtr, length);
+        public unsafe Span<byte> AsSpan() => new Span<byte>(bytePtr, (int)length);
 #endif
 
         /// <summary>
@@ -100,7 +106,7 @@ namespace VCDiff.Shared
             get => offset < length;
         }
 
-        public int Position
+        public long Position
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => offset;
@@ -109,7 +115,7 @@ namespace VCDiff.Shared
             set => offset = value;
         }
 
-        public int Length
+        public long Length
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => length;
@@ -124,7 +130,7 @@ namespace VCDiff.Shared
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe Span<byte> PeekBytes(int len)
         {
-            int sliceLen = offset + len > this.length ? this.length - offset : len;
+            int sliceLen = (int)(offset + len > this.length ? this.length - offset : len);
 #if NET5_0 || NET5_0_OR_GREATER || NETCOREAPP3_1 || NETSTANDARD2_1_OR_GREATER
             return MemoryMarshal.CreateSpan(ref Unsafe.AsRef<byte>(bytePtr + offset), sliceLen);
 #else

@@ -91,7 +91,7 @@ namespace VCDiff.Encoders
                     if (candidatePos > startOfLastBlock)
                         break;
 
-                    newData.Position = (int) candidatePos;
+                    newData.Position = candidatePos;
                     //cannot use rolling hash since we skipped so many
                     hash = hasher.Hash(newData.DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(this.dictionary.blockSize), this.dictionary.blockSize);
                 }
@@ -102,9 +102,9 @@ namespace VCDiff.Encoders
 
                     //update hash requires the first byte of the last hash as well as the byte that is first byte pos + blockSize
                     //in order to properly calculate the rolling hash
-                    newData.Position = (int) candidatePos;
+                    newData.Position = candidatePos;
                     byte peek0 = newData.ReadByte();
-                    newData.Position = (int)(candidatePos + this.dictionary.blockSize);
+                    newData.Position = candidatePos + this.dictionary.blockSize;
                     byte peek1 = newData.ReadByte();
                     hash = hasher.UpdateHash(hash, peek0, peek1);
                     candidatePos++;
@@ -115,7 +115,7 @@ namespace VCDiff.Encoders
             if (nextEncode < newData.Length)
             {
                 int len = (int)(newData.Length - nextEncode);
-                newData.Position = (int) nextEncode;
+                newData.Position = nextEncode;
                 windowEncoder.Add(newData.ReadBytesAsSpan(len));
             }
 
@@ -140,7 +140,7 @@ namespace VCDiff.Encoders
 
             if (bestMatch.tOffset > 0)
             {
-                newData.Position = (int) unencodedStart;
+                newData.Position = unencodedStart;
                 windowEncoder?.Add(newData.ReadBytesAsSpan((int)bestMatch.tOffset));
             }
 

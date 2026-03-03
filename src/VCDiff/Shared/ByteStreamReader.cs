@@ -28,18 +28,18 @@ namespace VCDiff.Shared
 
         ~ByteStreamReader() => Dispose();
 
-        public int Position
+        public long Position
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (int) buffer.Position;
+            get => buffer.Position;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => buffer.Seek(value, SeekOrigin.Begin);
         }
 
-        public int Length
+        public long Length
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (int)(buffer.CanRead ? buffer.Length : 0);
+            get => buffer.CanRead ? buffer.Length : 0;
         }
 
         public bool CanRead
