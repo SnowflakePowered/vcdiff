@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.IO;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
@@ -20,6 +19,7 @@ namespace VCDiff.Decoders
         private AddressCache addressCache;
         private MemoryStream targetData;
         private CustomCodeTableDecoder? customTable;
+        private readonly bool disableChecksums;
 
         //the total bytes decoded
         public long TotalBytesDecoded { get; private set; }
@@ -32,7 +32,7 @@ namespace VCDiff.Decoders
         /// <param name="delta">The delta</param>
         /// <param name="decodedTarget">the out stream</param>
         /// <param name="customTable">custom table if any. Default is null.</param>
-        public BodyDecoder(WindowDecoder<TWindowDecoderByteBuffer> w, TSourceBuffer source, TDeltaBuffer delta, Stream decodedTarget, CustomCodeTableDecoder? customTable = null)
+        public BodyDecoder(WindowDecoder<TWindowDecoderByteBuffer> w, TSourceBuffer source, TDeltaBuffer delta, Stream decodedTarget, CustomCodeTableDecoder? customTable = null, bool disableChecksums = false)
         {
             if (customTable != null)
             {
@@ -48,6 +48,7 @@ namespace VCDiff.Decoders
             this.source = source;
             this.delta = delta;
             this.targetData = Pool.MemoryStreamManager.GetStream(nameof(BodyDecoder<TWindowDecoderByteBuffer, TSourceBuffer, TDeltaBuffer>), (int) w.TargetWindowLength);
+            this.disableChecksums = disableChecksums;
         }
 
         private VCDiffResult DecodeInterleaveCore()
@@ -254,7 +255,7 @@ namespace VCDiff.Decoders
             {
                 uint adler = Checksum.ComputeGoogleAdler32(targetData.GetBuffer().AsSpan(0, (int)targetData.Length));
 
-                if (adler != window.Checksum)
+                if (adler != window.Checksum && !disableChecksums)
                 {
                     result = VCDiffResult.ERROR;
                 }
@@ -263,7 +264,7 @@ namespace VCDiff.Decoders
             {
                 uint adler = Checksum.ComputeXdelta3Adler32(targetData.GetBuffer().AsSpan(0, (int)targetData.Length));
 
-                if (adler != window.Checksum)
+                if (adler != window.Checksum && !disableChecksums)
                 {
                     result = VCDiffResult.ERROR;
                 }

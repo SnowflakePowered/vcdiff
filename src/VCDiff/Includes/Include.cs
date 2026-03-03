@@ -117,8 +117,6 @@
     //     compressor.  The bit positions 0 (VCD_DATACOMP), 1
     //     (VCD_INSTCOMP), and 2 (VCD_ADDRCOMP) respectively indicate, if
     //     non-zero, that the corresponding parts are compressed."
-    // [Secondary compressors are not supported, so open-vcdiff decoding will fail
-    //  if these bits are not all zero.]
     internal enum VCDiffCompressFlags
     {
         VCDDATACOMP = 0x01,
