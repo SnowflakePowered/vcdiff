@@ -32,7 +32,7 @@ jobs:
       run: dotnet test --configuration ${{ matrix.configuration }} src/VCDiff.Tests/VCDiff.Tests.NetFx.csproj
       if: ${{ matrix.os == 'windows-latest' }}
     - name: Upload code coverage
-      uses: codecov/codecov-action@v1.2.1
+      uses: codecov/codecov-action@v5.5.2
       with:
         token: 5605db1d-f7eb-4a6b-bb3a-556d61df4d5c
         directory: src/VCDiff.Tests/
