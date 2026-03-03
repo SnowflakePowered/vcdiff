@@ -191,54 +191,60 @@ namespace VCDiff.Decoders
                 return result;
 
             var secondaryCompressor = SecondaryCompressorId != 0 ? CreateCompressor(SecondaryCompressorId): null;
-            while (delta.CanRead)
+            try
             {
-                //delta is streamed in order aka not random access
-                using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, secondaryCompressor, maxTargetFileSize);
-
-                if (!w.Decode(this.IsSDCHFormat, this.SecondaryCompressorId))
+                while (delta.CanRead)
                 {
-                    return (VCDiffResult)w.Result;
+                    //delta is streamed in order aka not random access
+                    using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, secondaryCompressor, maxTargetFileSize);
+
+                    if (!w.Decode(this.IsSDCHFormat, this.SecondaryCompressorId))
+                    {
+                        return (VCDiffResult)w.Result;
+                    }
+
+                    using var body = new BodyDecoder<TDeltaBuffer, TSourceBuffer, TDeltaBuffer>(w, source, delta, outputStream, disableChecksums: disableChecksums);
+                    if (this.IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
+                    {
+                        //interleaved
+                        //decodedinterleave actually has an internal loop for waiting and streaming the incoming rest of the interleaved window
+                        result = body.DecodeInterleave();
+
+                        if (result != VCDiffResult.SUCCESS && result != VCDiffResult.EOD)
+                            return result;
+
+                        bytesWritten += body.TotalBytesDecoded;
+                    }
+                    //technically add could be 0 if it is all copy instructions
+                    //so do an or check on those two
+                    else if (!this.IsSDCHFormat ||
+                             (this.IsSDCHFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) &&
+                              w.InstructionAndSizesLength > 0))
+                    {
+                        //not interleaved
+                        //expects the full window to be available
+                        //in the stream
+                        result = body.Decode();
+                        if (result != VCDiffResult.SUCCESS)
+                            return result;
+
+                        bytesWritten += body.TotalBytesDecoded;
+                    }
+                    else
+                    {
+                        //invalid file
+                        return VCDiffResult.ERROR;
+                    }
                 }
-
-                using var body = new BodyDecoder<TDeltaBuffer, TSourceBuffer, TDeltaBuffer>(w, source, delta, outputStream, disableChecksums: disableChecksums);
-                if (this.IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
+            }
+            finally
+            {
+                if (secondaryCompressor is IDisposable secondaryCompressorDisposable)
                 {
-                    //interleaved
-                    //decodedinterleave actually has an internal loop for waiting and streaming the incoming rest of the interleaved window
-                    result = body.DecodeInterleave();
-
-                    if (result != VCDiffResult.SUCCESS && result != VCDiffResult.EOD)
-                        return result;
-
-                    bytesWritten += body.TotalBytesDecoded;
-                }
-                //technically add could be 0 if it is all copy instructions
-                //so do an or check on those two
-                else if (!this.IsSDCHFormat ||
-                         (this.IsSDCHFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) &&
-                          w.InstructionAndSizesLength > 0))
-                {
-                    //not interleaved
-                    //expects the full window to be available
-                    //in the stream
-                    result = body.Decode();
-                    if (result != VCDiffResult.SUCCESS)
-                        return result;
-
-                    bytesWritten += body.TotalBytesDecoded;
-                }
-                else
-                {
-                    //invalid file
-                    return VCDiffResult.ERROR;
+                    secondaryCompressorDisposable.Dispose();
                 }
             }
 
-            if (secondaryCompressor is IDisposable secondaryCompressorDisposable)
-            {
-                secondaryCompressorDisposable.Dispose();
-            }
 
             return result;
         }
@@ -255,55 +261,60 @@ namespace VCDiff.Decoders
                 return decodeAsync;
 
             var secondaryCompressor = SecondaryCompressorId != 0 ? CreateCompressor(SecondaryCompressorId) : null;
-            while (delta.CanRead)
+            try
             {
-                //delta is streamed in order aka not random access
-                using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, secondaryCompressor, maxTargetFileSize);
-
-                if (w.Decode(this.IsSDCHFormat, this.SecondaryCompressorId))
+                while (delta.CanRead)
                 {
-                    using var body = new BodyDecoder<TDeltaBuffer, TSourceBuffer, TDeltaBuffer>(w, source, delta, outputStream, disableChecksums: disableChecksums);
-                    if (this.IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
+                    //delta is streamed in order aka not random access
+                    using var w = new WindowDecoder<TDeltaBuffer>(source.Length, delta, secondaryCompressor, maxTargetFileSize);
+
+                    if (w.Decode(this.IsSDCHFormat, this.SecondaryCompressorId))
                     {
-                        //interleaved
-                        //decodedinterleave actually has an internal loop for waiting and streaming the incoming rest of the interleaved window
-                        result = await body.DecodeInterleaveAsync();
+                        using var body = new BodyDecoder<TDeltaBuffer, TSourceBuffer, TDeltaBuffer>(w, source, delta, outputStream, disableChecksums: disableChecksums);
+                        if (this.IsSDCHFormat && w.AddRunLength == 0 && w.AddressesForCopyLength == 0 && w.InstructionAndSizesLength > 0)
+                        {
+                            //interleaved
+                            //decodedinterleave actually has an internal loop for waiting and streaming the incoming rest of the interleaved window
+                            result = await body.DecodeInterleaveAsync();
 
-                        if (result != VCDiffResult.SUCCESS && result != VCDiffResult.EOD)
-                            return (result, bytesWritten);
+                            if (result != VCDiffResult.SUCCESS && result != VCDiffResult.EOD)
+                                return (result, bytesWritten);
 
-                        bytesWritten += body.TotalBytesDecoded;
-                    }
-                    //technically add could be 0 if it is all copy instructions
-                    //so do an or check on those two
-                    else if (!this.IsSDCHFormat || (this.IsSDCHFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) &&
-                                                    w.InstructionAndSizesLength > 0))
-                    {
-                        //not interleaved
-                        //expects the full window to be available
-                        //in the stream
-                        result = await body.DecodeAsync();
+                            bytesWritten += body.TotalBytesDecoded;
+                        }
+                        //technically add could be 0 if it is all copy instructions
+                        //so do an or check on those two
+                        else if (!this.IsSDCHFormat || (this.IsSDCHFormat && (w.AddRunLength > 0 || w.AddressesForCopyLength > 0) &&
+                                                        w.InstructionAndSizesLength > 0))
+                        {
+                            //not interleaved
+                            //expects the full window to be available
+                            //in the stream
+                            result = await body.DecodeAsync();
 
-                        if (result != VCDiffResult.SUCCESS)
-                            return (result, bytesWritten);
+                            if (result != VCDiffResult.SUCCESS)
+                                return (result, bytesWritten);
 
-                        bytesWritten += body.TotalBytesDecoded;
+                            bytesWritten += body.TotalBytesDecoded;
+                        }
+                        else
+                        {
+                            //invalid file
+                            return (VCDiffResult.ERROR, bytesWritten);
+                        }
                     }
                     else
                     {
-                        //invalid file
-                        return (VCDiffResult.ERROR, bytesWritten);
+                        return ((VCDiffResult)w.Result, bytesWritten);
                     }
                 }
-                else
-                {
-                    return ((VCDiffResult)w.Result, bytesWritten);
-                }
             }
-
-            if (secondaryCompressor is IDisposable secondaryCompressorDisposable)
+            finally
             {
-                secondaryCompressorDisposable.Dispose();
+                if (secondaryCompressor is IDisposable secondaryCompressorDisposable)
+                {
+                    secondaryCompressorDisposable.Dispose();
+                }
             }
 
             return (result, bytesWritten);
