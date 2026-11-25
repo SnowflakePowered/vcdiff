@@ -1,0 +1,49 @@
+sample,actions_job_id,reported_cpu_model,vcpus,os,runtime,workload,operation,dictionary_api,target_bytes,patch_bytes,median_ms,managed_B_per_op
+1,139239672477,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"24 shared bytes per 32",encode,ByteBuffer,262144,98240,1.6328,678552
+1,139239672477,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Unrelated bytes",encode,ByteBuffer,262144,262170,2.8905,1318312
+1,139239672477,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Shuffled records",encode,ByteBuffer,133120,18595,3.1506,226176
+1,139239672477,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Small edits (8-bit index)",encode,ByteBuffer,2040,99,0.008375,10048
+1,139239672477,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Small edits (16-bit index)",encode,ByteBuffer,65536,2605,0.069541,87248
+1,139239672477,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Moby-Dick",encode,ByteBuffer,1253974,35197,1.1487,1215488
+1,139239672477,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"SQLite CLI 3.46.0 → 3.46.1",encode,ByteBuffer,3773952,810691,19.5867,6348616
+1,139239672477,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Repository binary fixture",encode,ByteBuffer,2097152,275744,8.5876,2662280
+1,139239672477,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Moby-Dick",decode,Stream,1253974,35197,0.2399,13800
+1,139239672477,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Moby-Dick",decode,ByteBuffer,1253974,35197,0.2109,13752
+1,139239672477,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"SQLite CLI 3.46.0 → 3.46.1",decode,Stream,3773952,810691,2.8466,27448
+1,139239672477,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"SQLite CLI 3.46.0 → 3.46.1",decode,ByteBuffer,3773952,810691,2.6983,27400
+2,139239672441,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"24 shared bytes per 32",encode,ByteBuffer,262144,98240,2.0874,678552
+2,139239672441,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Unrelated bytes",encode,ByteBuffer,262144,262170,3.738,1318312
+2,139239672441,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Shuffled records",encode,ByteBuffer,133120,18595,4.036,226176
+2,139239672441,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Small edits (8-bit index)",encode,ByteBuffer,2040,99,0.010503,10048
+2,139239672441,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Small edits (16-bit index)",encode,ByteBuffer,65536,2605,0.089103,87248
+2,139239672441,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Moby-Dick",encode,ByteBuffer,1253974,35197,1.5309,1215488
+2,139239672441,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"SQLite CLI 3.46.0 → 3.46.1",encode,ByteBuffer,3773952,810691,26.356,6348616
+2,139239672441,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Repository binary fixture",encode,ByteBuffer,2097152,275744,11.1734,2662280
+2,139239672441,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Moby-Dick",decode,Stream,1253974,35197,0.307,13800
+2,139239672441,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Moby-Dick",decode,ByteBuffer,1253974,35197,0.2668,13752
+2,139239672441,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"SQLite CLI 3.46.0 → 3.46.1",decode,Stream,3773952,810691,3.8205,27448
+2,139239672441,"AMD EPYC 9V74 80-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"SQLite CLI 3.46.0 → 3.46.1",decode,ByteBuffer,3773952,810691,3.5434,27400
+3,139239671984,"INTEL(R) XEON(R) PLATINUM 8573C",4,Ubuntu 24.04.5 LTS,10.0.15,"24 shared bytes per 32",encode,ByteBuffer,262144,98240,2.0122,678552
+3,139239671984,"INTEL(R) XEON(R) PLATINUM 8573C",4,Ubuntu 24.04.5 LTS,10.0.15,"Unrelated bytes",encode,ByteBuffer,262144,262170,3.6614,1318312
+3,139239671984,"INTEL(R) XEON(R) PLATINUM 8573C",4,Ubuntu 24.04.5 LTS,10.0.15,"Shuffled records",encode,ByteBuffer,133120,18595,4.3656,226176
+3,139239671984,"INTEL(R) XEON(R) PLATINUM 8573C",4,Ubuntu 24.04.5 LTS,10.0.15,"Small edits (8-bit index)",encode,ByteBuffer,2040,99,0.007778,10048
+3,139239671984,"INTEL(R) XEON(R) PLATINUM 8573C",4,Ubuntu 24.04.5 LTS,10.0.15,"Small edits (16-bit index)",encode,ByteBuffer,65536,2605,0.151053,87248
+3,139239671984,"INTEL(R) XEON(R) PLATINUM 8573C",4,Ubuntu 24.04.5 LTS,10.0.15,"Moby-Dick",encode,ByteBuffer,1253974,35197,1.5242,1215488
+3,139239671984,"INTEL(R) XEON(R) PLATINUM 8573C",4,Ubuntu 24.04.5 LTS,10.0.15,"SQLite CLI 3.46.0 → 3.46.1",encode,ByteBuffer,3773952,810691,23.9514,6348616
+3,139239671984,"INTEL(R) XEON(R) PLATINUM 8573C",4,Ubuntu 24.04.5 LTS,10.0.15,"Repository binary fixture",encode,ByteBuffer,2097152,275744,10.4944,2662280
+3,139239671984,"INTEL(R) XEON(R) PLATINUM 8573C",4,Ubuntu 24.04.5 LTS,10.0.15,"Moby-Dick",decode,Stream,1253974,35197,0.3287,13800
+3,139239671984,"INTEL(R) XEON(R) PLATINUM 8573C",4,Ubuntu 24.04.5 LTS,10.0.15,"Moby-Dick",decode,ByteBuffer,1253974,35197,0.3072,13752
+3,139239671984,"INTEL(R) XEON(R) PLATINUM 8573C",4,Ubuntu 24.04.5 LTS,10.0.15,"SQLite CLI 3.46.0 → 3.46.1",decode,Stream,3773952,810691,3.3531,27448
+3,139239671984,"INTEL(R) XEON(R) PLATINUM 8573C",4,Ubuntu 24.04.5 LTS,10.0.15,"SQLite CLI 3.46.0 → 3.46.1",decode,ByteBuffer,3773952,810691,3.1247,27400
+4,139239672537,"AMD EPYC 9V45 96-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"24 shared bytes per 32",encode,ByteBuffer,262144,98240,1.3606,678552
+4,139239672537,"AMD EPYC 9V45 96-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Unrelated bytes",encode,ByteBuffer,262144,262170,2.3801,1318312
+4,139239672537,"AMD EPYC 9V45 96-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Shuffled records",encode,ByteBuffer,133120,18595,2.2147,226176
+4,139239672537,"AMD EPYC 9V45 96-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Small edits (8-bit index)",encode,ByteBuffer,2040,99,0.006281,10048
+4,139239672537,"AMD EPYC 9V45 96-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Small edits (16-bit index)",encode,ByteBuffer,65536,2605,0.053441,87248
+4,139239672537,"AMD EPYC 9V45 96-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Moby-Dick",encode,ByteBuffer,1253974,35197,0.8188,1215488
+4,139239672537,"AMD EPYC 9V45 96-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"SQLite CLI 3.46.0 → 3.46.1",encode,ByteBuffer,3773952,810691,14.9112,6348616
+4,139239672537,"AMD EPYC 9V45 96-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Repository binary fixture",encode,ByteBuffer,2097152,275744,6.1664,2662280
+4,139239672537,"AMD EPYC 9V45 96-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Moby-Dick",decode,Stream,1253974,35197,0.1688,13800
+4,139239672537,"AMD EPYC 9V45 96-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"Moby-Dick",decode,ByteBuffer,1253974,35197,0.151,13752
+4,139239672537,"AMD EPYC 9V45 96-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"SQLite CLI 3.46.0 → 3.46.1",decode,Stream,3773952,810691,2.0306,27448
+4,139239672537,"AMD EPYC 9V45 96-Core Processor",4,Ubuntu 24.04.5 LTS,10.0.15,"SQLite CLI 3.46.0 → 3.46.1",decode,ByteBuffer,3773952,810691,1.9274,27400

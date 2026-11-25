@@ -1,0 +1,66 @@
+name: x64 benchmarks
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/benchmarks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Ubuntu x64 sample ${{ matrix.sample }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # The hosted x64 label can be assigned CPUs from different vendors.
+        sample: [1, 2, 3, 4]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      DOTNET_TieredCompilation: '0'
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+      LC_ALL: C
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Record runner and runtime
+        shell: bash
+        run: |
+          mkdir results
+          runtime=$(dotnet --list-runtimes | awk '$1 == "Microsoft.NETCore.App" && $2 ~ /^10\.0\.[0-9]+$/ {print $2}' | sort -V | tail -1)
+          test -n "$runtime"
+          echo "BENCH_RUNTIME=$runtime" >> "$GITHUB_ENV"
+          {
+            echo "Benchmark runtime: $runtime"
+            echo "Revision: $GITHUB_SHA"
+            echo "Runner: $RUNNER_OS $RUNNER_ARCH"
+            lscpu
+            cat /etc/os-release
+            dotnet --info
+          } | tee results/environment.txt
+      - name: Build benchmark
+        run: dotnet build src/VCDiff.MatcherBenchmark -c Release -f net10.0 -p:TargetFrameworks=net10.0
+      - name: Run default encode and decode benchmarks
+        shell: bash
+        run: |
+          set -euo pipefail
+          bench=src/VCDiff.MatcherBenchmark/bin/Release/net10.0/VCDiff.MatcherBenchmark.dll
+          for i in 1 2 3; do
+            {
+              dotnet --fx-version "$BENCH_RUNTIME" "$bench" --defaults
+              dotnet --fx-version "$BENCH_RUNTIME" "$bench" --defaults --real
+              dotnet --fx-version "$BENCH_RUNTIME" "$bench" --defaults src/VCDiff.Tests/patches/a.test src/VCDiff.Tests/patches/b.test
+            } | tee "results/encode-$i.txt"
+            dotnet --fx-version "$BENCH_RUNTIME" "$bench" --decode --defaults --real | tee "results/decode-$i.txt"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks-x64-${{ matrix.sample }}
+          path: results/
+          if-no-files-found: error

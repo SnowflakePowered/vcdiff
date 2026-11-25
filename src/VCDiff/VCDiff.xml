@@ -4,39 +4,23 @@
         <name>VCDiff</name>
     </assembly>
     <members>
-        <member name="M:VCDiff.Decoders.BodyDecoder.#ctor(VCDiff.Decoders.WindowDecoder,VCDiff.Shared.IByteBuffer,VCDiff.Shared.IByteBuffer,System.IO.Stream,VCDiff.Decoders.CustomCodeTableDecoder)">
+        <member name="T:VCDiff.Compressors.ICompressor">
+            <summary>
+            A compression method for secondary compression, for use when <see cref="F:VCDiff.Includes.VCDiffCodeFlags.VCDDECOMPRESS"/> is enabled in the header and the appropriate <see cref="T:VCDiff.Includes.VCDiffCompressFlags"/> flag is enabled for the section in the window.
+            </summary>
+            <remarks>
+            Implementations are stateful, and a single instance must be used for the entire file for a single operation (compression or decompression).
+            </remarks>
+        </member>
+        <member name="M:VCDiff.Decoders.BodyDecoder`2.#ctor(VCDiff.Decoders.WindowDecoder{`0},`1,System.IO.Stream,VCDiff.Decoders.CustomCodeTableDecoder,System.Boolean)">
             <summary>
             The main decoder loop for the data
             </summary>
             <param name="w">the window decoder</param>
             <param name="source">The source dictionary data</param>
-            <param name="delta">The delta</param>
             <param name="decodedTarget">the out stream</param>
             <param name="customTable">custom table if any. Default is null.</param>
-        </member>
-        <member name="M:VCDiff.Decoders.BodyDecoder.DecodeInterleave">
-            <summary>
-            Decode if as expecting interleave
-            </summary>
-            <returns></returns>
-        </member>
-        <member name="M:VCDiff.Decoders.BodyDecoder.DecodeInterleaveAsync(System.Threading.CancellationToken)">
-            <summary>
-            Decode if as expecting interleave
-            </summary>
-            <returns></returns>
-        </member>
-        <member name="M:VCDiff.Decoders.BodyDecoder.Decode">
-            <summary>
-            Decode normally
-            </summary>
-            <returns></returns>
-        </member>
-        <member name="M:VCDiff.Decoders.BodyDecoder.DecodeAsync(System.Threading.CancellationToken)">
-            <summary>
-            Decode normally
-            </summary>
-            <returns></returns>
+            <param name="disableChecksums">Skip verification of the decoded window checksum when true.</param>
         </member>
         <member name="M:VCDiff.Decoders.InstructionDecoder.#ctor(VCDiff.Shared.ByteBuffer,VCDiff.Decoders.CustomCodeTableDecoder)">
             <summary>
@@ -55,29 +39,69 @@
         </member>
         <member name="T:VCDiff.Decoders.VcDecoder">
             <summary>
-            A simple VCDIFF decoder class.
+            Applies VCDIFF patches using seekable dictionary and patch streams.
+            Use <see cref="T:VCDiff.Decoders.VcDecoderEx`2"/> with custom byte buffers.
             </summary>
         </member>
-        <member name="P:VCDiff.Decoders.VcDecoder.IsSDCHFormat">
-            <summary>
-            If the provided delta is in Shared-Dictionary Compression over HTTP (Sandwich) protocol.
-            </summary>
-        </member>
-        <member name="P:VCDiff.Decoders.VcDecoder.IsInitialized">
-            <summary>
-            If the decoder has been initialized.
-            </summary>
-        </member>
-        <member name="M:VCDiff.Decoders.VcDecoder.#ctor(System.IO.Stream,System.IO.Stream,System.IO.Stream,System.Int32)">
+        <member name="M:VCDiff.Decoders.VcDecoder.#ctor(System.IO.Stream,System.IO.Stream,System.IO.Stream,System.Int32,System.Boolean)">
             <summary>
             Creates a new VCDIFF decoder.
             </summary>
             <param name="source">The dictionary stream, or the base file.</param>
             <param name="delta">The stream containing the VCDIFF delta.</param>
             <param name="outputStream">The stream to write the output in.</param>
-            <param name="maxTargetFileSize">The maximum target file size (and target window size) in bytes</param>
+            <param name="maxTargetFileSize">Maximum decoded size of a single target window in bytes. Defaults to 64 MiB.</param>
+            <param name="disableChecksums">Whether to disable checksums when applying the delta. This can be dangerous, but can be useful when the input file differs in ways that the delta does not reference.</param>
         </member>
-        <member name="M:VCDiff.Decoders.VcDecoder.Initialize">
+        <member name="M:VCDiff.Decoders.VcDecoder.Dispose">
+            <inheritdoc />
+        </member>
+        <member name="T:VCDiff.Decoders.VcDecoderEx`2">
+            <summary>
+            Reconstructs target data from a dictionary buffer and a VCDIFF patch buffer.
+            </summary>
+            <typeparam name="TSourceBuffer">Type of <see cref="T:VCDiff.Shared.IByteBuffer"/> used for the source buffer.</typeparam>
+            <typeparam name="TDeltaBuffer">Type of <see cref="T:VCDiff.Shared.IByteBuffer"/> used for the delta buffer.</typeparam>
+        </member>
+        <member name="F:VCDiff.Decoders.VcDecoderEx`2.outputStream">
+            <summary>Writable destination for reconstructed target bytes.</summary>
+        </member>
+        <member name="F:VCDiff.Decoders.VcDecoderEx`2.delta">
+            <summary>Buffer providing the encoded patch bytes.</summary>
+        </member>
+        <member name="F:VCDiff.Decoders.VcDecoderEx`2.source">
+            <summary>Buffer providing the original dictionary bytes.</summary>
+        </member>
+        <member name="F:VCDiff.Decoders.VcDecoderEx`2.maxTargetFileSize">
+            <summary>Maximum permitted target-window size in bytes.</summary>
+        </member>
+        <member name="F:VCDiff.Decoders.VcDecoderEx`2.disableChecksums">
+            <summary>Whether to skip embedded target checksum verification.</summary>
+        </member>
+        <member name="F:VCDiff.Decoders.VcDecoderEx`2.MagicBytes">
+            <summary>VCDIFF file signature followed by the standard version and zero flags.</summary>
+        </member>
+        <member name="P:VCDiff.Decoders.VcDecoderEx`2.IsSDCHFormat">
+            <summary>
+            If the provided delta is in Shared-Dictionary Compression over HTTP (Sandwich) protocol.
+            </summary>
+        </member>
+        <member name="P:VCDiff.Decoders.VcDecoderEx`2.IsInitialized">
+            <summary>
+            If the decoder has been initialized.
+            </summary>
+        </member>
+        <member name="M:VCDiff.Decoders.VcDecoderEx`2.#ctor(`0,`1,System.IO.Stream,System.Int32,System.Boolean)">
+            <summary>
+            Creates a new VCDIFF decoder.
+            </summary>
+            <param name="dict">The dictionary stream, or the base file.</param>
+            <param name="delta">The stream containing the VCDIFF delta.</param>
+            <param name="outputStream">The stream to write the output in.</param>
+            <param name="maxTargetFileSize">Maximum decoded size of a single target window in bytes. Defaults to 64 MiB.</param>
+            <param name="disableChecksums">Whether to disable checksums when applying the delta. This can be dangerous, but can be useful when the input file differs in ways that the delta does not reference.</param>
+        </member>
+        <member name="M:VCDiff.Decoders.VcDecoderEx`2.Initialize">
             <summary>
             Call this before calling decode
             This expects at least the header part of the delta file
@@ -85,237 +109,205 @@
             </summary>
             <returns></returns>
         </member>
-        <member name="M:VCDiff.Decoders.VcDecoder.Decode(System.Int64@)">
-            <summary>
-            Writes the patched file into the output stream.
-            </summary>
-            <param name="bytesWritten">Number of bytes written into the output stream.</param>
-            <returns></returns>
+        <member name="M:VCDiff.Decoders.VcDecoderEx`2.Decode(System.Int64@)">
+            <summary>Decodes available windows and appends target bytes to the output stream.</summary>
+            <param name="bytesWritten">Number of bytes written from complete, successfully decoded windows during this call.</param>
+            <returns>The decode status: success, end of data, or a format error.</returns>
+            <exception cref="T:System.NotSupportedException">The patch specifies an unsupported secondary compressor.</exception>
+            <exception cref="T:System.InvalidOperationException">A target window exceeds the configured limit.</exception>
         </member>
-        <member name="M:VCDiff.Decoders.VcDecoder.DecodeAsync">
-            <summary>
-            Writes the patched file into the output stream asynchronously.
-            This method is only asynchronous for the final step of writing the patched data into the output stream.
-            For large outputs, this may be beneficial.
-            </summary>
-            <returns></returns>
+        <member name="M:VCDiff.Decoders.VcDecoderEx`2.DecodeAsync">
+            <summary>Decodes available windows and writes the reconstructed bytes asynchronously.</summary>
+            <returns>A task containing the decode status and the number of bytes written from complete, successfully decoded windows during this call.</returns>
+            <remarks>Window parsing and dictionary reads are synchronous.</remarks>
+            <exception cref="T:System.NotSupportedException">The patch specifies an unsupported secondary compressor.</exception>
+            <exception cref="T:System.InvalidOperationException">A target window exceeds the configured limit.</exception>
         </member>
-        <member name="M:VCDiff.Decoders.VcDecoder.Dispose">
+        <member name="M:VCDiff.Decoders.VcDecoderEx`2.Dispose">
             <summary>
             Disposes the decoder
             </summary>
         </member>
-        <member name="F:VCDiff.Decoders.WindowDecoder.DefaultMaxTargetFileSize">
-            The default maximum target file size (and target window size) 
+        <member name="F:VCDiff.Decoders.WindowDecoderBase.DefaultMaxTargetFileSize">
+            The default maximum target file size (and target window size)
         </member>
-        <member name="M:VCDiff.Decoders.WindowDecoder.#ctor(System.Int64,VCDiff.Shared.IByteBuffer,System.Int32)">
+        <member name="M:VCDiff.Decoders.WindowDecoder`1.#ctor(System.Int64,`0,VCDiff.Compressors.ICompressor,System.Int32)">
             <summary>
             Parses the window from the data
             </summary>
             <param name="dictionarySize">the dictionary size</param>
             <param name="buffer">the buffer containing the incoming data</param>
             <param name="maxWindowSize">The maximum target window size in bytes</param>
+            <param name="secondaryCompressor">The secondary compressor that can decompress window sections, if applicable.</param>
         </member>
-        <member name="M:VCDiff.Decoders.WindowDecoder.Decode(System.Boolean)">
+        <member name="M:VCDiff.Decoders.WindowDecoder`1.Decode(System.Boolean,System.Byte)">
             <summary>
             Decodes the window header.
             </summary>
             <param name="isSdch">If the delta uses SDCH extensions.</param>
+            <param name="secondaryCompressorId">ID of the secondary compressor.</param>
             <returns></returns>
         </member>
-        <member name="M:VCDiff.Encoders.BlockHash.#ctor(VCDiff.Shared.ByteBuffer,System.Int32,VCDiff.Encoders.RollingHash,System.Int32)">
-            <summary>
-            Create a hash lookup table for the data
-            </summary>
-            <param name="sin">the data to create the table for</param>
-            <param name="offset">the offset usually 0</param>
-            <param name="hasher">the hashing method</param>
-            <param name="blockSize">The block size to use</param>
+        <member name="T:VCDiff.Encoders.BlockSize">
+            <summary>Width and spacing of the source blocks indexed during encoding.</summary>
         </member>
-        <member name="M:VCDiff.Encoders.BlockHash.FindBestMatch(System.UInt64,System.Int64,System.Int64,System.Int64,System.Byte*,VCDiff.Shared.ByteBuffer,VCDiff.Encoders.BlockHash.Match@)">
-            <summary>
-            Finds the best matching block for the candidate
-            </summary>
-            <param name="hash">the hash to look for</param>
-            <param name="candidateStart">the start position</param>
-            <param name="targetStart">the target start position</param>
-            <param name="targetSize">the data left to encode</param>
-            <param name="targetPtr">pointer to the target buffer</param>
-            <param name="target">the target buffer</param>
-            <param name="m">the match object to use</param>
+        <member name="F:VCDiff.Encoders.BlockSize.Bytes8">
+            <summary>Index an eight-byte block every eight bytes.</summary>
         </member>
-        <member name="M:VCDiff.Encoders.ChunkEncoder.#ctor(VCDiff.Encoders.BlockHash,VCDiff.Shared.ByteBuffer,VCDiff.Encoders.RollingHash,VCDiff.Shared.ChecksumFormat,System.Boolean,System.Int32)">
-            <summary>
-            Performs the actual encoding of a chunk of data into the VCDiff format
-            </summary>
-            <param name="dictionary">The dictionary hash table</param>
-            <param name="oldData">The data for the dictionary hash table</param>
-            <param name="hash">The rolling hash object</param>
-            <param name="interleaved">Whether to interleave the data or not</param>
-            <param name="checksumFormat">The format of the checksums for each window.</param>
-            <param name="minBlockSize">The minimum block size to use. Defaults to 32, and must be a power of 2.
-                This value must also be smaller than the block size of the dictionary.</param>
+        <member name="F:VCDiff.Encoders.BlockSize.Bytes16">
+            <summary>Index a sixteen-byte block every sixteen bytes (the default).</summary>
         </member>
-        <member name="M:VCDiff.Encoders.ChunkEncoder.EncodeChunk(VCDiff.Shared.ByteBuffer,System.IO.Stream)">
-            <summary>
-            Encodes the data using the settings from initialization
-            </summary>
-            <param name="newData">the target data</param>
-            <param name="outputStream">the out stream</param>
+        <member name="F:VCDiff.Encoders.BlockSize.Bytes32">
+            <summary>Index a thirty-two-byte block every thirty-two bytes.</summary>
+        </member>
+        <member name="T:VCDiff.Encoders.IndexPreference">
+            <summary>Controls the number of buckets allocated in the encoder’s source index.</summary>
+        </member>
+        <member name="F:VCDiff.Encoders.IndexPreference.Speed">
+            <summary>Use twice the memory-mode bucket count for 16- and 32-bit indexes to reduce collisions.</summary>
+        </member>
+        <member name="F:VCDiff.Encoders.IndexPreference.Memory">
+            <summary>Use the smallest power of two at least as large as the number of indexed source blocks, with a minimum of 256 buckets.</summary>
         </member>
         <member name="M:VCDiff.Encoders.InstructionMap.#ctor">
             <summary>
             Instruction mapping for op codes and such for using in encoding
             </summary>
         </member>
-        <member name="T:VCDiff.Encoders.RollingHash">
-            <summary>
-            A rolling hasher for <see cref="T:VCDiff.Encoders.VcEncoder"/>.
-            <see cref="T:VCDiff.Encoders.RollingHash"/> may be reused 
-            </summary>
+        <member name="T:VCDiff.Encoders.MatchAlgorithm">
+            <summary>Selects how the encoder finds source ranges for COPY instructions.</summary>
         </member>
-        <member name="M:VCDiff.Encoders.RollingHash.#ctor(System.Int32)">
-            <summary>
-            Manually creates a rolling hash instance for use with a <see cref="T:VCDiff.Encoders.VcEncoder"/>.
-            This object must be disposed because it allocates pinned memory that will never be garbage collected
-            if it is not disposed.
-            </summary>
-            <param name="size">The window size to use for this hashing instance.</param>
+        <member name="F:VCDiff.Encoders.MatchAlgorithm.Exhaustive">
+            <summary>Exhaustive word-hash search.</summary>
         </member>
-        <member name="P:VCDiff.Encoders.RollingHash.WindowSize">
-            <summary>
-            The window size for this rolling hash.
-            </summary>
-        </member>
-        <member name="M:VCDiff.Encoders.RollingHash.Hash(System.Byte*,System.Int32)">
-            <summary>
-            Generate a new hash from the bytes
-            
-            The formula for calculating h is
-            h(0) = 1
-            h(n) = SUM {i=0}^{n-1} c^{n - i - 1} S[i]
-            
-            where n is the length of S, and c is kMult.
-            
-            In code,
-            h(n) = Sum(i: 0, n: len - 1, i => kMult ** (len - i - 1) span[i])
-            
-            The final result is then MODded using binary and with kBase.
-            
-            </summary>
-        </member>
-        <member name="M:VCDiff.Encoders.RollingHash.UpdateHash(System.UInt64,System.Byte,System.Byte)">
-            <summary>
-            Rolling update for the hash
-            First byte must be the first bytee that was used in the data
-            that was last encoded
-            new byte is the first byte position + Size
-            </summary>
-            <param name="oldHash">the original hash</param>
-            <param name="firstByte">the original byte of the data for the first hash</param>
-            <param name="newByte">the first byte of the new data to hash</param>
-            <returns></returns>
-        </member>
-        <member name="M:VCDiff.Encoders.RollingHash.Dispose">
-             <summary>
-             Dispose the rolling hash instance.
-            
-             You must always dispose a manually created hashing instance, or memory leaks will occur.
-             For performance purposes, 
-             </summary>
+        <member name="F:VCDiff.Encoders.MatchAlgorithm.Bounded">
+            <summary>Word-hash search capped at 256 bucket entries per target position.</summary>
         </member>
         <member name="T:VCDiff.Encoders.VcEncoder">
-            <summary>
-            A simple VCDIFF Encoder class.
-            </summary>
+            <summary>Creates a VCDIFF patch by matching target bytes against a source dictionary.</summary>
         </member>
         <member name="M:VCDiff.Encoders.VcEncoder.#ctor(System.IO.Stream,System.IO.Stream,System.IO.Stream,System.Int32,System.Int32,System.Int32,VCDiff.Encoders.RollingHash)">
-             <summary>
-             Creates a new VCDIFF Encoder. The input streams will not be closed once this object is disposed.
-             </summary>
-             <param name="source">The dictionary (sourceStream file).</param>
-             <param name="target">The target to create the diff from.</param>
-             <param name="outputStream">The stream to write the diff into.</param>
-             <param name="maxBufferSize">The maximum buffer size for window chunking in megabytes (MiB).</param>
-             <param name="blockSize">
-             The block size to use. Must be a power of two. No match smaller than this block size will be identified.
-             Increasing blockSize by a factor of two will halve the amount of memory needed for the next block table, and will halve the setup time
-             for a new BlockHash.  However, it also doubles the minimum match length that is guaranteed to be found.
-             
-             Blocksizes that are n mod 32 = 0 are AVX2 accelerated. Blocksizes that are n mod 16 = 0 are SSE2 accelerated, if supported. 16 is a good default
-             for most scenarios, but you should use a block size of 32 or 64 for very similar data, or to optimize for speed.
-             </param>
-             <param name="chunkSize">
-             The minimum size of a string match that is worth putting into a COPY. This must be bigger than twice the block size.</param>
-             <param name="rollingHash">
-             Manually provide a <see cref="T:VCDiff.Encoders.RollingHash"/> instance that can be reused for multiple encoding instances
-             of the same block size.
-            
-             If you provide a <see cref="T:VCDiff.Encoders.RollingHash"/> instance, you must dispose of it yourself.
-             </param>
-             <exception cref="T:System.ArgumentException">If an invalid blockSize or chunkSize is used..</exception>
+            <summary>Creates an encoder with the legacy integer settings. Prefer an overload taking <see cref="T:VCDiff.Encoders.BlockSize"/>.</summary>
+            <param name="source">Readable dictionary stream, positioned at the beginning. The constructor copies its contents into encoder-owned memory.</param>
+            <param name="target">Readable, seekable stream containing the desired target. Encoding starts at offset zero.</param>
+            <param name="outputStream">Writable destination for the patch, starting at its current position.</param>
+            <param name="maxBufferSize">Target window size in MiB. Values less than one select one MiB.</param>
+            <param name="blockSize">Requested block width in bytes. Rounds to the nearest of 8, 16, or 32, with ties rounded down.</param>
+            <param name="chunkSize">Minimum COPY length in bytes. Values below two select twice the rounded width. Other values are raised to that width when necessary.</param>
+            <param name="rollingHash">Accepted for binary compatibility and ignored during encoding.</param>
+            <remarks>The legacy defaults use 16-byte blocks and a 32-byte minimum COPY. Pass <see cref="F:VCDiff.Encoders.BlockSize.Bytes16"/> and a chunk size of 32 to preserve those settings.</remarks>
+            <exception cref="T:System.ArgumentOutOfRangeException">The dictionary exceeds <see cref="F:System.Int32.MaxValue"/> bytes.</exception>
+            <exception cref="T:System.IO.EndOfStreamException">The source ends before its declared length.</exception>
         </member>
         <member name="M:VCDiff.Encoders.VcEncoder.#ctor(VCDiff.Shared.ByteBuffer,System.IO.Stream,System.IO.Stream,System.Int32,System.Int32,System.Int32,VCDiff.Encoders.RollingHash)">
-             <summary>
-             Creates a new VCDIFF Encoder. The input streams will not be closed once this object is disposed.
-             </summary>
-             <param name="buffer">The dictionary (source file).</param>
-             <param name="target">The target to create the diff from.</param>
-             <param name="outputStream">The stream to write the diff into.</param>
-             <param name="maxBufferSize">The maximum buffer size for window chunking in megabytes (MiB).</param>
-             <param name="blockSize">
-             The block size to use. Must be a power of two. No match smaller than this block size will be identified.
-             Increasing blockSize by a factor of two will halve the amount of memory needed for the next block table, and will halve the setup time
-             for a new BlockHash.  However, it also doubles the minimum match length that is guaranteed to be found.
-             
-             Blocksizes that are n mod 32 = 0 are AVX2 accelerated. Blocksizes that are n mod 16 = 0 are SSE2 accelerated, if supported. 16 is a good default
-             for most scenarios, but you should use a block size of 32 or 64 for very similar data, or to optimize for speed.
-             </param>
-             <param name="chunkSize">
-             The minimum size of a string match that is worth putting into a COPY. This must be bigger than twice the block size.</param>
-             <param name="rollingHash">
-             Manually provide a <see cref="T:VCDiff.Encoders.RollingHash"/> instance that can be reused for multiple encoding instances
-             of the same block size.
-            
-             If you provide a <see cref="T:VCDiff.Encoders.RollingHash"/> instance, you must dispose of it yourself.
-             </param>
-             <exception cref="T:System.ArgumentException">If an invalid blockSize or chunkSize is used..</exception>
+            <summary>Creates an encoder with the legacy integer settings. Prefer an overload taking <see cref="T:VCDiff.Encoders.BlockSize"/>.</summary>
+            <param name="buffer">Caller-owned dictionary buffer. Keep its storage valid until encoding finishes.</param>
+            <param name="target">Readable, seekable stream containing the desired target. Encoding starts at offset zero.</param>
+            <param name="outputStream">Writable destination for the patch, starting at its current position.</param>
+            <param name="maxBufferSize">Target window size in MiB. Values less than one select one MiB.</param>
+            <param name="blockSize">Requested block width in bytes. Rounds to the nearest of 8, 16, or 32, with ties rounded down.</param>
+            <param name="chunkSize">Minimum COPY length in bytes. Values below two select twice the rounded width. Other values are raised to that width when necessary.</param>
+            <param name="rollingHash">Accepted for binary compatibility and ignored during encoding.</param>
+            <remarks>The legacy defaults use 16-byte blocks and a 32-byte minimum COPY. Pass <see cref="F:VCDiff.Encoders.BlockSize.Bytes16"/> and a chunk size of 32 to preserve those settings.</remarks>
+            <exception cref="T:System.ArgumentOutOfRangeException">The dictionary exceeds <see cref="F:System.Int32.MaxValue"/> bytes.</exception>
+        </member>
+        <member name="P:VCDiff.Encoders.VcEncoder.Matcher">
+            <summary>Gets or sets the search mode used by the next encode call.</summary>
+            <value>The default, <see cref="F:VCDiff.Encoders.MatchAlgorithm.Bounded"/>, examines up to 256 source candidates per target position.</value>
+        </member>
+        <member name="P:VCDiff.Encoders.VcEncoder.IndexPreference">
+            <summary>Gets or sets the bucket sizing preference for the next encode call.</summary>
+            <value>Defaults to <see cref="F:VCDiff.Encoders.IndexPreference.Speed"/>. Both modes use 256 buckets for an 8-bit index.</value>
+            <remarks>This setting is independent of the match search limit and is not stored in the patch.</remarks>
+        </member>
+        <member name="M:VCDiff.Encoders.VcEncoder.#ctor(System.IO.Stream,System.IO.Stream,System.IO.Stream,VCDiff.Encoders.BlockSize,System.Int32)">
+            <summary>Creates a word-hash encoder with 1 MiB target windows.</summary>
+            <param name="source">Readable dictionary stream, positioned at the beginning. The constructor copies its contents into encoder-owned memory.</param>
+            <param name="target">Readable, seekable stream containing the desired target. Encoding starts at offset zero.</param>
+            <param name="outputStream">Writable destination for the patch, starting at its current position.</param>
+            <param name="blockSize">Width and spacing of indexed source blocks (8, 16, or 32 bytes).</param>
+            <param name="chunkSize">Minimum COPY length in bytes. Zero uses the selected block width. Any other value must be at least that width.</param>
+            <remarks>The caller retains ownership of all supplied streams.</remarks>
+            <exception cref="T:System.ArgumentOutOfRangeException">The dictionary exceeds <see cref="F:System.Int32.MaxValue"/> bytes, the block size is unsupported, or the COPY minimum is invalid.</exception>
+            <exception cref="T:System.IO.EndOfStreamException">The source ends before its declared length.</exception>
+        </member>
+        <member name="M:VCDiff.Encoders.VcEncoder.#ctor(System.IO.Stream,System.IO.Stream,System.IO.Stream,System.Int32,VCDiff.Encoders.BlockSize,System.Int32)">
+            <summary>Creates a word-hash encoder with the specified target window size.</summary>
+            <param name="source">Readable dictionary stream, positioned at the beginning. The constructor copies its contents into encoder-owned memory.</param>
+            <param name="target">Readable, seekable stream containing the desired target. Encoding starts at offset zero.</param>
+            <param name="outputStream">Writable destination for the patch, starting at its current position.</param>
+            <param name="maxBufferSize">Target window size in MiB. Values less than one select one MiB.</param>
+            <param name="blockSize">Width and spacing of indexed source blocks (8, 16, or 32 bytes).</param>
+            <param name="chunkSize">Minimum COPY length in bytes. Zero uses the selected block width. Any other value must be at least that width.</param>
+            <remarks>The caller retains ownership of all supplied streams.</remarks>
+            <exception cref="T:System.ArgumentOutOfRangeException">The dictionary exceeds <see cref="F:System.Int32.MaxValue"/> bytes, the block size is unsupported, or the COPY minimum is invalid.</exception>
+            <exception cref="T:System.IO.EndOfStreamException">The source ends before its declared length.</exception>
+        </member>
+        <member name="M:VCDiff.Encoders.VcEncoder.#ctor(VCDiff.Shared.ByteBuffer,System.IO.Stream,System.IO.Stream,VCDiff.Encoders.BlockSize,System.Int32)">
+            <summary>Creates a word-hash encoder with 1 MiB target windows.</summary>
+            <param name="buffer">Caller-owned dictionary buffer. Keep its storage valid until encoding finishes.</param>
+            <param name="target">Readable, seekable stream containing the desired target. Encoding starts at offset zero.</param>
+            <param name="outputStream">Writable destination for the patch, starting at its current position.</param>
+            <param name="blockSize">Width and spacing of indexed source blocks (8, 16, or 32 bytes).</param>
+            <param name="chunkSize">Minimum COPY length in bytes. Zero uses the selected block width. Any other value must be at least that width.</param>
+            <remarks>The caller retains ownership of all supplied streams.</remarks>
+            <exception cref="T:System.ArgumentOutOfRangeException">The dictionary exceeds <see cref="F:System.Int32.MaxValue"/> bytes, the block size is unsupported, or the COPY minimum is invalid.</exception>
+        </member>
+        <member name="M:VCDiff.Encoders.VcEncoder.#ctor(VCDiff.Shared.ByteBuffer,System.IO.Stream,System.IO.Stream,System.Int32,VCDiff.Encoders.BlockSize,System.Int32)">
+            <summary>Creates a word-hash encoder with the specified target window size.</summary>
+            <param name="buffer">Caller-owned dictionary buffer. Keep its storage valid until encoding finishes.</param>
+            <param name="target">Readable, seekable stream containing the desired target. Encoding starts at offset zero.</param>
+            <param name="outputStream">Writable destination for the patch, starting at its current position.</param>
+            <param name="maxBufferSize">Target window size in MiB. Values less than one select one MiB.</param>
+            <param name="blockSize">Width and spacing of indexed source blocks (8, 16, or 32 bytes).</param>
+            <param name="chunkSize">Minimum COPY length in bytes. Zero uses the selected block width. Any other value must be at least that width.</param>
+            <remarks>The caller retains ownership of all supplied streams.</remarks>
+            <exception cref="T:System.ArgumentOutOfRangeException">The dictionary exceeds <see cref="F:System.Int32.MaxValue"/> bytes, the block size is unsupported, or the COPY minimum is invalid.</exception>
         </member>
         <member name="M:VCDiff.Encoders.VcEncoder.Encode(System.Boolean,VCDiff.Shared.ChecksumFormat,System.IProgress{System.Single})">
-            <summary>
-            Calculate and write a diff for the file.
-            </summary>
-            <param name="interleaved">Whether to output in SDCH interleaved diff format.</param>
-            <param name="checksumFormat">
-            Whether to include Adler32 checksums for encoded data windows. If interleaved is true, <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/>
-            is not supported.
-            </param>
-            <param name="progress">Reports an estimate of the encoding progress. Value if 0 to 1.</param>
-            <returns>
-            <see cref="F:VCDiff.Includes.VCDiffResult.SUCCESS"/> if successful, <see cref="F:VCDiff.Includes.VCDiffResult.ERROR"/> if the sourceStream or target are zero-length.</returns>
-            <exception cref="T:System.ArgumentException">If interleaved is true, and <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/> is chosen.</exception>
+            <summary>Writes a VCDIFF patch to the output stream.</summary>
+            <param name="interleaved">Use the SDCH interleaved instruction layout when true.</param>
+            <param name="checksumFormat">Optional per-window checksum format. Defaults to <see cref="F:VCDiff.Shared.ChecksumFormat.None"/>.</param>
+            <param name="progress">Optional receiver for the fraction of the target consumed after each window, from zero to one.</param>
+            <returns><see cref="F:VCDiff.Includes.VCDiffResult.SUCCESS"/> on completion, or <see cref="F:VCDiff.Includes.VCDiffResult.ERROR"/> for an empty source or target.</returns>
+            <exception cref="T:System.IO.EndOfStreamException">The target ends before its declared length.</exception>
+            <exception cref="T:System.ArgumentException">Interleaving was requested with <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/>.</exception>
+            <exception cref="T:System.ArgumentOutOfRangeException"><see cref="P:VCDiff.Encoders.VcEncoder.Matcher"/> or <see cref="P:VCDiff.Encoders.VcEncoder.IndexPreference"/> contains an unsupported value.</exception>
         </member>
         <member name="M:VCDiff.Encoders.VcEncoder.EncodeAsync(System.Boolean,VCDiff.Shared.ChecksumFormat,System.IProgress{System.Single})">
-            <summary>
-            Calculate and write a diff for the file.
-            This method isn't fully asynchonous; writes to the output stream are still synchronous.
-            
-            It is recommended you use the synchronous <see cref="M:VCDiff.Encoders.VcEncoder.Encode(System.Boolean,VCDiff.Shared.ChecksumFormat,System.IProgress{System.Single})"/> method for most use cases.
-            </summary>
-            <param name="interleaved">Whether to output in SDCH interleaved diff format.</param>
-            <param name="checksumFormat">
-            Whether to include Adler32 checksums for encoded data windows. If interleaved is true, <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/>
-            is not supported.
-            </param>
-            <param name="progress">Reports an estimate of the encoding progress. Value if 0 to 1.</param>
-            <returns>
-            <see cref="F:VCDiff.Includes.VCDiffResult.SUCCESS"/> if successful, <see cref="F:VCDiff.Includes.VCDiffResult.ERROR"/> if the sourceStream or target are zero-length.</returns>
-            <exception cref="T:System.ArgumentException">If interleaved is true, and <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/> is chosen.</exception>
+            <summary>Asynchronously reads target windows and writes a VCDIFF patch to the output stream.</summary>
+            <param name="interleaved">Use the SDCH interleaved instruction layout when true.</param>
+            <param name="checksumFormat">Optional per-window checksum format. Defaults to <see cref="F:VCDiff.Shared.ChecksumFormat.None"/>.</param>
+            <param name="progress">Optional receiver for the fraction of the target consumed after each window, from zero to one.</param>
+            <returns>A task returning <see cref="F:VCDiff.Includes.VCDiffResult.SUCCESS"/> on completion, or <see cref="F:VCDiff.Includes.VCDiffResult.ERROR"/> for an empty source or target.</returns>
+            <remarks>Source matching and window output writes run synchronously.</remarks>
+            <exception cref="T:System.IO.EndOfStreamException">The target ends before its declared length.</exception>
+            <exception cref="T:System.ArgumentException">Interleaving was requested with <see cref="F:VCDiff.Shared.ChecksumFormat.Xdelta3"/>.</exception>
+            <exception cref="T:System.ArgumentOutOfRangeException"><see cref="P:VCDiff.Encoders.VcEncoder.Matcher"/> or <see cref="P:VCDiff.Encoders.VcEncoder.IndexPreference"/> contains an unsupported value.</exception>
         </member>
         <member name="M:VCDiff.Encoders.VcEncoder.Dispose">
-            <summary>
-            Disposes the encoder.
-            </summary>
+            <summary>Releases the encoder’s dictionary copy. Caller-supplied streams and buffers remain open.</summary>
+        </member>
+        <member name="T:VCDiff.Encoders.RollingHash">
+            <summary>Legacy rolling-hash API. The encoder accepts this type for binary compatibility and ignores the instance.</summary>
+        </member>
+        <member name="M:VCDiff.Encoders.RollingHash.#ctor(System.Int32)">
+            <summary>Creates a legacy rolling hash for a fixed-size window.</summary>
+            <param name="size">Window length in bytes.</param>
+            <exception cref="T:System.ArgumentOutOfRangeException"><paramref name="size"/> is zero or negative.</exception>
+        </member>
+        <member name="P:VCDiff.Encoders.RollingHash.WindowSize">
+            <summary>Gets the size of the rolling window in bytes.</summary>
+        </member>
+        <member name="M:VCDiff.Encoders.RollingHash.UpdateHash(System.UInt64,System.Byte,System.Byte)">
+            <summary>Calculates the next window’s hash after shifting forward by one byte.</summary>
+            <param name="oldHash">The hash of the preceding window.</param>
+            <param name="firstByte">The outgoing byte at the start of the preceding window.</param>
+            <param name="newByte">The incoming byte at the end of the next window.</param>
+            <returns>The updated 23-bit polynomial hash.</returns>
+        </member>
+        <member name="M:VCDiff.Encoders.RollingHash.Dispose">
+            <summary>Retained for callers that dispose of their hash instance.</summary>
         </member>
         <member name="T:VCDiff.Includes.VCDiffResult">
             <summary>
@@ -361,30 +353,139 @@
             Encapsulates a buffer that reads bytes from managed or unmanaged memory.
             </summary>
         </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.Finalize">
+            <summary>Releases an outstanding pin when the buffer is finalized.</summary>
+        </member>
         <member name="M:VCDiff.Shared.ByteBuffer.#ctor(System.Byte[])">
-            <summary/>
+            <summary>Pins an array and reads its contents in place.</summary>
+            <param name="bytes">The array to pin. A null array produces an empty buffer.</param>
+            <remarks>Dispose the buffer to release the pin.</remarks>
         </member>
         <member name="M:VCDiff.Shared.ByteBuffer.#ctor(System.Memory{System.Byte})">
-            <summary/>
+            <summary>Pins a memory region and reads its contents in place.</summary>
+            <param name="bytes">The memory to pin.</param>
+            <remarks>Dispose the buffer to release the pin.</remarks>
         </member>
         <member name="M:VCDiff.Shared.ByteBuffer.#ctor(System.Span{System.Byte})">
-            <summary/>
+            <summary>Borrows the storage referenced by a span.</summary>
+            <param name="bytes">The bytes to expose.</param>
+            <remarks>The caller must keep the storage alive and at a stable address for the entire buffer lifetime. For movable managed memory, use the array or Memory overload to pin it.</remarks>
         </member>
         <member name="M:VCDiff.Shared.ByteBuffer.#ctor(System.Byte*,System.Int32)">
-            <summary/>
+            <summary>Borrows an unmanaged memory region.</summary>
+            <param name="bytes">Pointer to the beginning of the region.</param>
+            <param name="length">Number of accessible bytes from the pointer.</param>
+            <remarks>The caller owns the memory and must keep it valid for the entire buffer lifetime.</remarks>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.AsSpan">
+            <summary>Exposes the entire buffer, independent of the current position.</summary>
+            <returns>A writable view valid while the underlying storage is valid.</returns>
         </member>
         <member name="M:VCDiff.Shared.ByteBuffer.DangerousGetBytePointer">
-            <summary>
-            Dangerously gets the byte pointer.
-            </summary>
-            <returns></returns>
+            <summary>Gets the address of the first byte.</summary>
+            <returns>A borrowed pointer valid while the underlying storage is valid.</returns>
         </member>
         <member name="M:VCDiff.Shared.ByteBuffer.DangerousGetBytePointerAtCurrentPositionAndIncreaseOffsetAfter(System.Int32)">
-            <summary>
-            Dangerously retrieves the byte pointer at the current position and then increases the offset after.
-            </summary>
-            <param name="read"></param>
-            <returns></returns>
+            <summary>Gets a pointer at the current position and advances the cursor.</summary>
+            <param name="read">Number of bytes to advance. The caller must check the range.</param>
+            <returns>A borrowed pointer to the position before the advance.</returns>
+        </member>
+        <member name="P:VCDiff.Shared.ByteBuffer.CanRead">
+            <inheritdoc/>
+        </member>
+        <member name="P:VCDiff.Shared.ByteBuffer.Position">
+            <inheritdoc/>
+        </member>
+        <member name="P:VCDiff.Shared.ByteBuffer.Length">
+            <inheritdoc/>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.PeekByte">
+            <inheritdoc/>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.PeekBytes(System.Int32)">
+            <summary>Exposes the available bytes starting at the current position without advancing.</summary>
+            <param name="len">Maximum number of bytes to expose.</param>
+            <returns>A view of up to the requested number of bytes.</returns>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.ReadBytesToSpan(System.Span{System.Byte})">
+            <summary>Reads up to the destination length and advances by the count read.</summary>
+            <param name="data">Destination for the bytes.</param>
+            <returns>A view of the source bytes copied into the destination.</returns>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.ReadByte">
+            <inheritdoc/>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.ReadBytesAsSpan(System.Int32)">
+            <summary>Reads up to the requested byte count and advances the position.</summary>
+            <param name="len">Maximum number of bytes to read.</param>
+            <returns>A view into the underlying storage.</returns>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.ReadBytes(System.Int32)">
+            <summary>Reads up to the requested byte count and advances the position.</summary>
+            <param name="len">Maximum number of bytes to read.</param>
+            <returns>An independently allocated copy of the bytes read.</returns>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.Next">
+            <inheritdoc/>
+        </member>
+        <member name="M:VCDiff.Shared.ByteBuffer.Dispose">
+            <summary>Releases any managed-memory pin held by the buffer.</summary>
+        </member>
+        <member name="T:VCDiff.Shared.ByteStreamReader">
+            <summary>Reads a seekable stream through the byte-buffer interface.</summary>
+        </member>
+        <member name="M:VCDiff.Shared.ByteStreamReader.#ctor(System.IO.Stream)">
+            <summary>Wraps a stream and rents a buffer for small reads.</summary>
+            <param name="stream">Caller-owned readable, seekable stream. Disposing the reader leaves it open.</param>
+        </member>
+        <member name="M:VCDiff.Shared.ByteStreamReader.Finalize">
+            <summary>Returns the pooled buffer when the reader is finalized.</summary>
+        </member>
+        <member name="P:VCDiff.Shared.ByteStreamReader.Position">
+            <inheritdoc/>
+        </member>
+        <member name="P:VCDiff.Shared.ByteStreamReader.Length">
+            <inheritdoc/>
+        </member>
+        <member name="P:VCDiff.Shared.ByteStreamReader.CanRead">
+            <inheritdoc/>
+        </member>
+        <member name="M:VCDiff.Shared.ByteStreamReader.ReadBytesToSpan(System.Span{System.Byte})">
+            <summary>Reads up to the destination length and advances by the count read.</summary>
+            <param name="data">Destination for the bytes.</param>
+            <returns>The written prefix of the destination.</returns>
+        </member>
+        <member name="M:VCDiff.Shared.ByteStreamReader.ReadByte">
+            <inheritdoc/>
+        </member>
+        <member name="M:VCDiff.Shared.ByteStreamReader.ReadBytesAsSpan(System.Int32)">
+            <summary>Reads up to the requested byte count and advances the position.</summary>
+            <param name="len">Maximum number of bytes to read.</param>
+            <returns>The bytes read. Small reads share temporary storage that can be overwritten by the next read. Copy data that must outlive the reader or another read.</returns>
+        </member>
+        <member name="M:VCDiff.Shared.ByteStreamReader.ReadBytes(System.Int32)">
+            <summary>Reads up to the requested byte count and advances the position.</summary>
+            <param name="len">Maximum number of bytes to read.</param>
+            <returns>The bytes read. Small reads share temporary storage that can be overwritten by the next read. Copy data that must outlive the reader or another read.</returns>
+        </member>
+        <member name="M:VCDiff.Shared.ByteStreamReader.ReadBytesIntoBuf(System.Span{System.Byte})">
+            <summary>Reads from the stream into the supplied span.</summary>
+            <param name="buf">Destination for bytes read from the current stream position.</param>
+            <returns>The actual byte count, or zero at end of stream.</returns>
+        </member>
+        <member name="M:VCDiff.Shared.ByteStreamReader.ReadBytesIntoBufAsync(System.Memory{System.Byte})">
+            <summary>Asynchronously reads from the stream into the supplied memory.</summary>
+            <param name="buf">Destination for bytes read from the current stream position.</param>
+            <returns>A task returning the actual byte count, or zero at end of stream.</returns>
+        </member>
+        <member name="M:VCDiff.Shared.ByteStreamReader.PeekByte">
+            <inheritdoc/>
+        </member>
+        <member name="M:VCDiff.Shared.ByteStreamReader.Next">
+            <inheritdoc/>
+        </member>
+        <member name="M:VCDiff.Shared.ByteStreamReader.Dispose">
+            <summary>Returns the rented read buffer to the pool and leaves the stream open.</summary>
         </member>
         <member name="T:VCDiff.Shared.ChecksumFormat">
             <summary>
@@ -411,10 +512,83 @@
             Default CodeTable as described in the RFC doc
             </summary>
         </member>
+        <member name="T:VCDiff.Shared.IByteBuffer">
+            <summary>Provides a positionable reader for dictionary or patch bytes.</summary>
+        </member>
+        <member name="P:VCDiff.Shared.IByteBuffer.Length">
+            <summary>Gets the input length in bytes.</summary>
+        </member>
+        <member name="P:VCDiff.Shared.IByteBuffer.Position">
+            <summary>Gets or sets the zero-based offset of the next byte to read.</summary>
+        </member>
+        <member name="P:VCDiff.Shared.IByteBuffer.CanRead">
+            <summary>Gets whether there are more bytes to read at the current position.</summary>
+        </member>
+        <member name="M:VCDiff.Shared.IByteBuffer.ReadBytes(System.Int32)">
+            <summary>Reads up to the requested byte count and advances the position.</summary>
+            <param name="len">Maximum number of bytes to read.</param>
+            <returns>The bytes read. Copy them before another read if the implementation reuses storage.</returns>
+        </member>
+        <member name="M:VCDiff.Shared.IByteBuffer.ReadBytesAsSpan(System.Int32)">
+            <summary>Reads up to the requested byte count and advances the position.</summary>
+            <param name="len">Maximum number of bytes to read.</param>
+            <returns>A span of the bytes read, which may reference reusable storage.</returns>
+        </member>
+        <member name="M:VCDiff.Shared.IByteBuffer.ReadBytesToSpan(System.Span{System.Byte})">
+            <summary>Reads into the destination and advances by the number of bytes read.</summary>
+            <param name="data">The destination and maximum read length.</param>
+            <returns>A span containing the bytes read.</returns>
+        </member>
+        <member name="M:VCDiff.Shared.IByteBuffer.ReadByte">
+            <summary>Reads the byte at the current position and advances by one.</summary>
+            <returns>The byte read. Check <see cref="P:VCDiff.Shared.IByteBuffer.CanRead"/> before calling.</returns>
+        </member>
+        <member name="M:VCDiff.Shared.IByteBuffer.PeekByte">
+            <summary>Reads the current byte while preserving the position.</summary>
+            <returns>The current byte. Check <see cref="P:VCDiff.Shared.IByteBuffer.CanRead"/> before calling.</returns>
+        </member>
+        <member name="M:VCDiff.Shared.IByteBuffer.Next">
+            <summary>Advances the position by one byte.</summary>
+        </member>
+        <member name="P:VCDiff.Shared.PinnedArrayRental.Data">
+            <summary>
+            The data encapsulated by this rental.
+            </summary>
+        </member>
+        <member name="P:VCDiff.Shared.PinnedArrayRental.NumBytes">
+            <summary>
+            The number of bytes in this object.
+            </summary>
+        </member>
+        <member name="M:VCDiff.Shared.PinnedArrayRental.AsSpan">
+            <summary>
+            Converts the data to a span.
+            </summary>
+        </member>
+        <member name="M:VCDiff.Shared.PinnedArrayRental.AsSpanOrDefault">
+            <summary>
+            Converts the data to a span or an empty span.
+            </summary>
+        </member>
         <member name="F:VCDiff.Shared.VarIntBE.int32Max">
             <summary>
             Special VarIntBE class for encoding a Variable BE Integer
             </summary>
+        </member>
+        <member name="T:VCDiff.Shared.WindowSectionType">
+            <summary>Identifies a data section within an encoded VCDIFF window.</summary>
+        </member>
+        <member name="F:VCDiff.Shared.WindowSectionType.Unspecified">
+            <summary>No section was selected.</summary>
+        </member>
+        <member name="F:VCDiff.Shared.WindowSectionType.AddRunData">
+            <summary>Literal data used by ADD and RUN instructions.</summary>
+        </member>
+        <member name="F:VCDiff.Shared.WindowSectionType.InstructionsAndSizes">
+            <summary>Operation codes and explicit instruction lengths.</summary>
+        </member>
+        <member name="F:VCDiff.Shared.WindowSectionType.AddressForCopy">
+            <summary>Encoded addresses for COPY instructions.</summary>
         </member>
     </members>
 </doc>

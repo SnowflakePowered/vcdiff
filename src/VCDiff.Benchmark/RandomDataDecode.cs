@@ -20,9 +20,8 @@ namespace VCDiff.Benchmark
         )]
         public int Bytes { get; set; }
 
-        [Params(32)] // AVX Only
-        //[Params(16, 32)] // AVX vs SSE
-        public int BlockSize { get; set; }
+        [Params(BlockSize.Bytes32)]
+        public BlockSize BlockSize { get; set; }
 
         private const int RepeatCount = 128;
         private byte[] _data;

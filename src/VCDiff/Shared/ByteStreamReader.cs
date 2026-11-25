@@ -8,9 +8,7 @@ using System.Threading.Tasks;
 
 namespace VCDiff.Shared
 {
-    //Wrapper Class for any stream that supports Position
-    //and Length to make reading bytes easier
-    //also has a helper function for reading all the bytes in at once
+    /// <summary>Reads a seekable stream through the byte-buffer interface.</summary>
     public class ByteStreamReader : IByteBuffer
     {
         private const int CACHE_SIZE = 8192;
@@ -20,14 +18,18 @@ namespace VCDiff.Shared
         private byte[] cache;
         private bool _isDisposed = false;
 
+        /// <summary>Wraps a stream and rents a buffer for small reads.</summary>
+        /// <param name="stream">Caller-owned readable, seekable stream. Disposing the reader leaves it open.</param>
         public ByteStreamReader(Stream stream)
         {
             cache  = ArrayPool<byte>.Shared.Rent(CACHE_SIZE);
             buffer = stream;
         }
 
+        /// <summary>Returns the pooled buffer when the reader is finalized.</summary>
         ~ByteStreamReader() => Dispose();
 
+        /// <inheritdoc/>
         public long Position
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -36,18 +38,23 @@ namespace VCDiff.Shared
             set => buffer.Seek(value, SeekOrigin.Begin);
         }
 
+        /// <inheritdoc/>
         public long Length
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => buffer.CanRead ? buffer.Length : 0;
         }
 
+        /// <inheritdoc/>
         public bool CanRead
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => buffer.CanRead && buffer.Position < buffer.Length;
         }
 
+        /// <summary>Reads up to the destination length and advances by the count read.</summary>
+        /// <param name="data">Destination for the bytes.</param>
+        /// <returns>The written prefix of the destination.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<byte> ReadBytesToSpan(Span<byte> data)
         {
@@ -55,6 +62,7 @@ namespace VCDiff.Shared
             return data.Slice(0, bytesRead);
         }
 
+        /// <inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte ReadByte()
         {
@@ -64,6 +72,9 @@ namespace VCDiff.Shared
             return 0;
         }
 
+        /// <summary>Reads up to the requested byte count and advances the position.</summary>
+        /// <param name="len">Maximum number of bytes to read.</param>
+        /// <returns>The bytes read. Small reads share temporary storage that can be overwritten by the next read. Copy data that must outlive the reader or another read.</returns>
 #if NET5_0 || NET5_0_OR_GREATER
         [SkipLocalsInit]
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
@@ -78,6 +89,9 @@ namespace VCDiff.Shared
             return actualRead > 0 ? buf.AsSpanFast(actualRead) : Span<byte>.Empty;
         }
 
+        /// <summary>Reads up to the requested byte count and advances the position.</summary>
+        /// <param name="len">Maximum number of bytes to read.</param>
+        /// <returns>The bytes read. Small reads share temporary storage that can be overwritten by the next read. Copy data that must outlive the reader or another read.</returns>
 #if NET5_0 || NET5_0_OR_GREATER
         [SkipLocalsInit]
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
@@ -92,6 +106,9 @@ namespace VCDiff.Shared
             return actualRead > 0 ? buf.AsMemory(0, actualRead) : Memory<byte>.Empty;
         }
 
+        /// <summary>Reads from the stream into the supplied span.</summary>
+        /// <param name="buf">Destination for bytes read from the current stream position.</param>
+        /// <returns>The actual byte count, or zero at end of stream.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int ReadBytesIntoBuf(Span<byte> buf)
         {
@@ -100,6 +117,9 @@ namespace VCDiff.Shared
             return actualRead;
         }
 
+        /// <summary>Asynchronously reads from the stream into the supplied memory.</summary>
+        /// <param name="buf">Destination for bytes read from the current stream position.</param>
+        /// <returns>A task returning the actual byte count, or zero at end of stream.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public async Task<int> ReadBytesIntoBufAsync(Memory<byte> buf)
         {
@@ -108,6 +128,7 @@ namespace VCDiff.Shared
             return actualRead;
         }
 
+        /// <inheritdoc/>
         public byte PeekByte()
         {
             byte b = ReadByte();
@@ -116,11 +137,13 @@ namespace VCDiff.Shared
         }
 
         //increases the offset by 1
+        /// <inheritdoc/>
         public void Next()
         {
             buffer.Seek(1, SeekOrigin.Current);
         }
 
+        /// <summary>Returns the rented read buffer to the pool and leaves the stream open.</summary>
         public void Dispose()
         {
             if (!_isDisposed)

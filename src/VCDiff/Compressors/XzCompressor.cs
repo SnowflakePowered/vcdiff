@@ -65,13 +65,20 @@ namespace VCDiff.Compressors
             memoryStream.Position = 0;
 
             var decompressedData = new PinnedArrayRental(uncompressedLength);
-            xzStream.ReadExactly(decompressedData.AsSpan());
-
-            return decompressedData;
+            try
+            {
+                xzStream.ReadExactly(decompressedData.AsSpan());
+                return decompressedData;
+            }
+            catch
+            {
+                decompressedData.Dispose();
+                throw;
+            }
         }
         public void Dispose()
         {
-            addressesCompressedBuffer?.Dispose();
+            addRunCompressedBuffer?.Dispose();
             instructionsCompressedBuffer?.Dispose();
             addressesCompressedBuffer?.Dispose();
             addRunDecompressor?.Dispose();

@@ -1,7 +1,4 @@
-﻿using SharpCompress.Compressors.Xz;
-using System;
-using System.Diagnostics;
-using System.IO;
+﻿using System;
 using VCDiff.Compressors;
 using VCDiff.Includes;
 using VCDiff.Shared;
@@ -84,7 +81,7 @@ namespace VCDiff.Decoders
             this.dictionarySize = dictionarySize;
             this.buffer = buffer;
             this.secondaryCompressor = secondaryCompressor;
-            chunk = new ParseableChunk(buffer.Position, buffer.Length);
+            chunk = new ParseableChunk(buffer.Position, buffer.Length - buffer.Position);
 
             if (maxWindowSize < 0)
             {
@@ -132,60 +129,44 @@ namespace VCDiff.Decoders
                 return false;
             }
 
-            if (isSdch && addRunLength == 0 && addressForCopyLength == 0 && instructionAndSizesLength > 0)
+            // Buffer a complete window before advancing any secondary decompressor.
+            if (addRunLength + instructionAndSizesLength + addressForCopyLength > buffer.Length - buffer.Position)
             {
-                //interleave format
-                return true;
+                returnCode = (int)VCDiffResult.EOD;
+                return false;
             }
+            if (!ReadSection((int)addRunLength, out AddRunData) ||
+                !ReadSection((int)instructionAndSizesLength, out InstructionsAndSizesData) ||
+                !ReadSection((int)addressForCopyLength, out AddressesForCopyData))
+                return false;
 
-            // Note: Copied required here due to caching behaviour.
-            if (buffer.CanRead)
+            if (secondaryCompressorId != 0)
             {
-                AddRunData = new PinnedArrayRental((int)addRunLength);
-                Debug.Assert(addRunLength <= int.MaxValue);
-                buffer.ReadBytesToSpan(AddRunData.AsSpan());
-                if (AddRunCompressed && secondaryCompressorId != 0)
-                {
-                    if (secondaryCompressor == null)
-                    {
-                        throw new InvalidOperationException("AddRunData is compressed but no compressor was provided to the WindowDecoder");
-                    }
-
-                    AddRunData = secondaryCompressor.Decompress(WindowSectionType.AddRunData, AddRunData);
-                }
+                if (AddRunCompressed) DecompressSection(ref AddRunData, WindowSectionType.AddRunData);
+                if (InstructionAndSizesCompressed) DecompressSection(ref InstructionsAndSizesData, WindowSectionType.InstructionsAndSizes);
+                if (AddressesForCopyCompressed) DecompressSection(ref AddressesForCopyData, WindowSectionType.AddressForCopy);
             }
-            if (buffer.CanRead)
-            {
-                InstructionsAndSizesData = new PinnedArrayRental((int)instructionAndSizesLength);
-                Debug.Assert(instructionAndSizesLength <= int.MaxValue);
-                buffer.ReadBytesToSpan(InstructionsAndSizesData.AsSpan());
-                if (instructionsAndSizesCompressed && secondaryCompressorId != 0)
-                {
-                    if (secondaryCompressor == null)
-                    {
-                        throw new InvalidOperationException("AddRunData is compressed but no compressor was provided to the WindowDecoder");
-                    }
-
-                    InstructionsAndSizesData = secondaryCompressor.Decompress(WindowSectionType.InstructionsAndSizes, InstructionsAndSizesData);
-                }
-            }
-            if (buffer.CanRead)
-            {
-                AddressesForCopyData = new PinnedArrayRental((int)addressForCopyLength);
-                Debug.Assert(addressForCopyLength <= int.MaxValue);
-                buffer.ReadBytesToSpan(AddressesForCopyData.AsSpan());
-                if (addressForCopyCompressed && secondaryCompressorId != 0)
-                {
-                    if (secondaryCompressor == null)
-                    {
-                        throw new InvalidOperationException("AddRunData is compressed but no compressor was provided to the WindowDecoder");
-                    }
-
-                    AddressesForCopyData = secondaryCompressor.Decompress(WindowSectionType.AddressForCopy, AddressesForCopyData);
-                }
-            }
-
             return true;
+        }
+
+        private bool ReadSection(int length, out PinnedArrayRental section)
+        {
+            section = default;
+            if (length == 0) return true;
+            section = new PinnedArrayRental(length);
+            if (BufferReads.TryReadExactly(ref buffer, section.AsSpan())) return true;
+            returnCode = (int)VCDiffResult.EOD;
+            return false;
+        }
+
+        private void DecompressSection(ref PinnedArrayRental section, WindowSectionType type)
+        {
+            if (secondaryCompressor == null)
+                throw new InvalidOperationException("Compressed window section requires a secondary decompressor.");
+
+            var decompressed = secondaryCompressor.Decompress(type, section);
+            section.Dispose();
+            section = decompressed;
         }
 
         private bool ParseByte(out byte value)
@@ -224,10 +205,8 @@ namespace VCDiff.Decoders
             switch (parsed)
             {
                 case (int)VCDiffResult.ERROR:
-                    value = 0;
-                    return false;
-
                 case (int)VCDiffResult.EOD:
+                    returnCode = (int)parsed;
                     value = 0;
                     return false;
             }
@@ -254,10 +233,8 @@ namespace VCDiff.Decoders
             switch (parsed)
             {
                 case (int)VCDiffResult.ERROR:
-                    value = 0;
-                    return false;
-
                 case (int)VCDiffResult.EOD:
+                    returnCode = (int)parsed;
                     value = 0;
                     return false;
             }
@@ -349,6 +326,7 @@ namespace VCDiff.Decoders
                     return ParseSourceSegmentLengthAndPosition(decodedTargetSize, out sourceSegmentLength, out sourceSegmentPosition);
 
                 case (int)VCDiffWindowFlags.VCDSOURCE | (int)VCDiffWindowFlags.VCDTARGET:
+                    returnCode = (int)VCDiffResult.ERROR;
                     winIndicator = 0;
                     sourceSegmentPosition = 0;
                     sourceSegmentLength = 0;
@@ -390,10 +368,7 @@ namespace VCDiff.Decoders
         private bool ParseDeltaIndicator()
         {
             if (!ParseByte(out deltaIndicator))
-            {
-                returnCode = (int)VCDiffResult.ERROR;
                 return false;
-            }
 
             addRunCompressed = (deltaIndicator & (int)VCDiffCompressFlags.VCDDATACOMP) != 0;
             instructionsAndSizesCompressed = (deltaIndicator & (int)VCDiffCompressFlags.VCDINSTCOMP) != 0;

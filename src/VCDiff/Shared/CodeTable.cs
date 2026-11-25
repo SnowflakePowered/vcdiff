@@ -3,23 +3,22 @@ using VCDiff.Includes;
 
 namespace VCDiff.Shared
 {
-    internal class CodeTable : IDisposable
+    internal sealed class CodeTable
     {
         /// <summary>
         /// Default CodeTable as described in the RFC doc
         /// </summary>
         public static readonly int kNoOpcode = 0x100;
 
-        public static readonly int kCodeTableSize = 256;
+        public const int kCodeTableSize = 256;
 
-        public byte[] table = new byte[kCodeTableSize * 6];
-
-        public NativeAllocation<byte> inst1;
-        public NativeAllocation<byte> inst2;
-        public NativeAllocation<byte> size1;
-        public NativeAllocation<byte> size2;
-        public NativeAllocation<byte> mode1;
-        public NativeAllocation<byte> mode2;
+        public const int SerializedSize = 6 * kCodeTableSize;
+        public readonly byte[] Inst1;
+        public readonly byte[] Inst2;
+        public readonly byte[] Size1;
+        public readonly byte[] Size2;
+        public readonly byte[] Mode1;
+        public readonly byte[] Mode2;
 
         public const byte N = (byte)VCDiffInstructionType.NOOP;
         public const byte A = (byte)VCDiffInstructionType.ADD;
@@ -172,57 +171,39 @@ namespace VCDiff.Shared
                 0, 0, 0, 0, 0, 0, 0, 0, 0  // opcodes 247-255
             };
 
-        public static CodeTable DefaultTable = new CodeTable();
+        public static readonly CodeTable DefaultTable = new CodeTable();
 
-        public CodeTable()
+        private CodeTable()
         {
-            InitTableSegment(0, defaultInst1, ref inst1);
-            InitTableSegment(1, defaultInst2, ref inst2);
-
-            InitTableSegment(2, defaultSize1, ref size1);
-            InitTableSegment(3, defaultSize2, ref size2);
-
-            InitTableSegment(4, defaultMode1, ref mode1);
-            InitTableSegment(5, defaultMode2, ref mode2);
+            Inst1 = defaultInst1;
+            Inst2 = defaultInst2;
+            Size1 = defaultSize1;
+            Size2 = defaultSize2;
+            Mode1 = defaultMode1;
+            Mode2 = defaultMode2;
         }
 
-        ~CodeTable()
+        internal CodeTable(ReadOnlySpan<byte> bytes)
         {
-            Dispose();
+            Inst1 = bytes.Slice(0, kCodeTableSize).ToArray();
+            Inst2 = bytes.Slice(kCodeTableSize, kCodeTableSize).ToArray();
+            Size1 = bytes.Slice(2 * kCodeTableSize, kCodeTableSize).ToArray();
+            Size2 = bytes.Slice(3 * kCodeTableSize, kCodeTableSize).ToArray();
+            Mode1 = bytes.Slice(4 * kCodeTableSize, kCodeTableSize).ToArray();
+            Mode2 = bytes.Slice(5 * kCodeTableSize, kCodeTableSize).ToArray();
         }
 
-        private void InitTableSegment(int row, byte[] defaultBytes, ref NativeAllocation<byte> alloc)
+        // RFC 3284 section 7 serializes by field across all 256 opcodes.
+        internal ByteBuffer GetBytes()
         {
-            var rowSpan = table.AsSpan(row * kCodeTableSize, kCodeTableSize);
-            alloc = new NativeAllocation<byte>(rowSpan.Length);
-            defaultBytes.CopyTo(alloc.AsSpan());
-        }
-
-        public bool SetBytes(byte[] items)
-        {
-            if (items.Length != kCodeTableSize * 6)
-            {
-                return false;
-            }
-
-            items.CopyTo(table, 0);
-            return true;
-        }
-
-        public ByteBuffer GetBytes()
-        {
-            return new ByteBuffer(table);
-        }
-
-        public void Dispose()
-        {
-            inst1.Dispose();
-            inst2.Dispose();
-            size1.Dispose();
-            size2.Dispose();
-            mode1.Dispose();
-            mode2.Dispose();
-            GC.SuppressFinalize(this);
+            var bytes = new byte[SerializedSize];
+            Inst1.CopyTo(bytes, 0);
+            Inst2.CopyTo(bytes, kCodeTableSize);
+            Size1.CopyTo(bytes, 2 * kCodeTableSize);
+            Size2.CopyTo(bytes, 3 * kCodeTableSize);
+            Mode1.CopyTo(bytes, 4 * kCodeTableSize);
+            Mode2.CopyTo(bytes, 5 * kCodeTableSize);
+            return new ByteBuffer(bytes);
         }
     }
 }

@@ -198,7 +198,7 @@ namespace VCDiff.Tests
             using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
-            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: 32);
+            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: BlockSize.Bytes32);
             VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.SDCH); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
@@ -291,7 +291,7 @@ namespace VCDiff.Tests
 
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
-            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: 32);
+            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: BlockSize.Bytes32);
             VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.Xdelta3); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
@@ -308,7 +308,7 @@ namespace VCDiff.Tests
         }
 
         [Fact]
-        public void Xdelta3ChecksumHash48Block_Test()
+        public void Xdelta3ChecksumMinimumCopy48_Test()
         {
             using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}a.test");
             using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
@@ -318,7 +318,7 @@ namespace VCDiff.Tests
 
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
-            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: 48);
+            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: BlockSize.Bytes32, chunkSize: 48);
             VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.Xdelta3); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
@@ -335,7 +335,7 @@ namespace VCDiff.Tests
         }
 
         [Fact]
-        public void Xdelta3ChecksumHash32BlockBenchmark_Test()
+        public void Xdelta3ChecksumExhaustive32Block_Test()
         {
             using var srcStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}a.test");
             using var targetStream = File.OpenRead($"patches{Path.DirectorySeparatorChar}b.test");
@@ -345,9 +345,10 @@ namespace VCDiff.Tests
 
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
-            using var hasher = new RollingHash(32);
-            
-            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: 32, rollingHash: hasher);
+            using var coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: BlockSize.Bytes32)
+            {
+                Matcher = MatchAlgorithm.Exhaustive
+            };
             VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.Xdelta3); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
@@ -427,7 +428,7 @@ namespace VCDiff.Tests
 
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
-            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: 8);
+            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: BlockSize.Bytes8);
             VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.SDCH); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
 
@@ -453,7 +454,7 @@ namespace VCDiff.Tests
 
             using var deltaStream = new MemoryStream();
             using var outputStream = new MemoryStream();
-            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: 32);
+            using VcEncoder coder = new VcEncoder(srcStream, targetStream, deltaStream, blockSize: BlockSize.Bytes32);
             VCDiffResult result = coder.Encode(checksumFormat: ChecksumFormat.SDCH); //encodes with no checksum and not interleaved
             Assert.Equal(VCDiffResult.SUCCESS, result);
 

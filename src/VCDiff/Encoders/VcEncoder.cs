@@ -1,266 +1,218 @@
 ﻿using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using VCDiff.Includes;
 using VCDiff.Shared;
 
 namespace VCDiff.Encoders
 {
-    /// <summary>
-    /// A simple VCDIFF Encoder class.
-    /// </summary>
-    public class VcEncoder : IDisposable
+    /// <summary>Creates a VCDIFF patch by matching target bytes against a source dictionary.</summary>
+    public partial class VcEncoder : IDisposable
     {
-        private ByteBuffer? oldData;
-        private ByteStreamReader targetData;
-        private Stream outputStream;
-        private Stream sourceStream;
-        private RollingHash hasher;
-        private int bufferSize;
+        private readonly ByteBuffer oldData;
+        private readonly Stream targetData;
+        private readonly Stream outputStream;
+
+        /// <summary>Gets or sets the search mode used by the next encode call.</summary>
+        /// <value>The default, <see cref="MatchAlgorithm.Bounded"/>, examines up to 256 source candidates per target position.</value>
+        public MatchAlgorithm Matcher { get; set; } = MatchAlgorithm.Bounded;
+
+        /// <summary>Gets or sets the bucket sizing preference for the next encode call.</summary>
+        /// <value>Defaults to <see cref="IndexPreference.Speed"/>. Both modes use 256 buckets for an 8-bit index.</value>
+        /// <remarks>This setting is independent of the match search limit and is not stored in the patch.</remarks>
+        public IndexPreference IndexPreference { get; set; } = IndexPreference.Speed;
+
+        private long maxWindowBytes;
 
         private static readonly byte[] MagicBytes = { 0xD6, 0xC3, 0xC4, 0x00, 0x00 };
         private static readonly byte[] MagicBytesExtended = { 0xD6, 0xC3, 0xC4, (byte)'S', 0x00 };
         private int blockSize;
         private int chunkSize;
-        private bool disposeRollingHash = false;
 
         private NativeAllocation<byte> _nativeAllocation;
 
-        /// <summary>
-        /// Creates a new VCDIFF Encoder. The input streams will not be closed once this object is disposed.
-        /// </summary>
-        /// <param name="source">The dictionary (sourceStream file).</param>
-        /// <param name="target">The target to create the diff from.</param>
-        /// <param name="outputStream">The stream to write the diff into.</param>
-        /// <param name="maxBufferSize">The maximum buffer size for window chunking in megabytes (MiB).</param>
-        /// <param name="blockSize">
-        /// The block size to use. Must be a power of two. No match smaller than this block size will be identified.
-        /// Increasing blockSize by a factor of two will halve the amount of memory needed for the next block table, and will halve the setup time
-        /// for a new BlockHash.  However, it also doubles the minimum match length that is guaranteed to be found.
-        /// 
-        /// Blocksizes that are n mod 32 = 0 are AVX2 accelerated. Blocksizes that are n mod 16 = 0 are SSE2 accelerated, if supported. 16 is a good default
-        /// for most scenarios, but you should use a block size of 32 or 64 for very similar data, or to optimize for speed.
-        /// </param>
-        /// <param name="chunkSize">
-        /// The minimum size of a string match that is worth putting into a COPY. This must be bigger than twice the block size.</param>
-        /// <param name="rollingHash">
-        /// Manually provide a <see cref="RollingHash"/> instance that can be reused for multiple encoding instances
-        /// of the same block size.
-        ///
-        /// If you provide a <see cref="RollingHash"/> instance, you must dispose of it yourself.
-        /// </param>
-        /// <exception cref="ArgumentException">If an invalid blockSize or chunkSize is used..</exception>
-        public unsafe VcEncoder(Stream source, Stream target, Stream outputStream, int maxBufferSize = 1, int blockSize = 16, int chunkSize = 0, RollingHash? rollingHash = null)
+        /// <summary>Creates a word-hash encoder with 1 MiB target windows.</summary>
+        /// <param name="source">Readable dictionary stream, positioned at the beginning. The constructor copies its contents into encoder-owned memory.</param>
+        /// <param name="target">Readable, seekable stream containing the desired target. Encoding starts at offset zero.</param>
+        /// <param name="outputStream">Writable destination for the patch, starting at its current position.</param>
+        /// <param name="blockSize">Width and spacing of indexed source blocks (8, 16, or 32 bytes).</param>
+        /// <param name="chunkSize">Minimum COPY length in bytes. Zero uses the selected block width. Any other value must be at least that width.</param>
+        /// <remarks>The caller retains ownership of all supplied streams.</remarks>
+        /// <exception cref="ArgumentOutOfRangeException">The dictionary exceeds <see cref="int.MaxValue"/> bytes, the block size is unsupported, or the COPY minimum is invalid.</exception>
+        /// <exception cref="EndOfStreamException">The source ends before its declared length.</exception>
+        public VcEncoder(Stream source, Stream target, Stream outputStream, BlockSize blockSize, int chunkSize = 0)
+            : this(source, target, outputStream, 1, blockSize, chunkSize)
         {
-            _nativeAllocation = new NativeAllocation<byte>(source.Length);
-            long remaining = source.Length;
-            long position = 0;
-            while (remaining > 0)
-            {
-                int chunk = (int)Math.Min(remaining, int.MaxValue);
-                source.Read(_nativeAllocation.AsSpan(position, chunk));
-                position += chunk;
-                remaining -= chunk;
-            }
-            this.oldData = new ByteBuffer(_nativeAllocation);
-
-            InitializeEncoder(target, outputStream, maxBufferSize, blockSize, chunkSize, rollingHash);
         }
 
-        /// <summary>
-        /// Creates a new VCDIFF Encoder. The input streams will not be closed once this object is disposed.
-        /// </summary>
-        /// <param name="buffer">The dictionary (source file).</param>
-        /// <param name="target">The target to create the diff from.</param>
-        /// <param name="outputStream">The stream to write the diff into.</param>
-        /// <param name="maxBufferSize">The maximum buffer size for window chunking in megabytes (MiB).</param>
-        /// <param name="blockSize">
-        /// The block size to use. Must be a power of two. No match smaller than this block size will be identified.
-        /// Increasing blockSize by a factor of two will halve the amount of memory needed for the next block table, and will halve the setup time
-        /// for a new BlockHash.  However, it also doubles the minimum match length that is guaranteed to be found.
-        /// 
-        /// Blocksizes that are n mod 32 = 0 are AVX2 accelerated. Blocksizes that are n mod 16 = 0 are SSE2 accelerated, if supported. 16 is a good default
-        /// for most scenarios, but you should use a block size of 32 or 64 for very similar data, or to optimize for speed.
-        /// </param>
-        /// <param name="chunkSize">
-        /// The minimum size of a string match that is worth putting into a COPY. This must be bigger than twice the block size.</param>
-        /// <param name="rollingHash">
-        /// Manually provide a <see cref="RollingHash"/> instance that can be reused for multiple encoding instances
-        /// of the same block size.
-        ///
-        /// If you provide a <see cref="RollingHash"/> instance, you must dispose of it yourself.
-        /// </param>
-        /// <exception cref="ArgumentException">If an invalid blockSize or chunkSize is used..</exception>
-        public unsafe VcEncoder(ByteBuffer buffer, Stream target, Stream outputStream, int maxBufferSize = 1, int blockSize = 16, int chunkSize = 0, RollingHash? rollingHash = null)
+        /// <summary>Creates a word-hash encoder with the specified target window size.</summary>
+        /// <param name="source">Readable dictionary stream, positioned at the beginning. The constructor copies its contents into encoder-owned memory.</param>
+        /// <param name="target">Readable, seekable stream containing the desired target. Encoding starts at offset zero.</param>
+        /// <param name="outputStream">Writable destination for the patch, starting at its current position.</param>
+        /// <param name="maxBufferSize">Target window size in MiB. Values less than one select one MiB.</param>
+        /// <param name="blockSize">Width and spacing of indexed source blocks (8, 16, or 32 bytes).</param>
+        /// <param name="chunkSize">Minimum COPY length in bytes. Zero uses the selected block width. Any other value must be at least that width.</param>
+        /// <remarks>The caller retains ownership of all supplied streams.</remarks>
+        /// <exception cref="ArgumentOutOfRangeException">The dictionary exceeds <see cref="int.MaxValue"/> bytes, the block size is unsupported, or the COPY minimum is invalid.</exception>
+        /// <exception cref="EndOfStreamException">The source ends before its declared length.</exception>
+        public VcEncoder(Stream source, Stream target, Stream outputStream, int maxBufferSize, BlockSize blockSize, int chunkSize = 0)
         {
-            this.oldData = buffer;
-            InitializeEncoder(target, outputStream, maxBufferSize, blockSize, chunkSize, rollingHash);
-        }
-
-        private void InitializeEncoder(Stream target, Stream outputStream, int maxBufferSize, int blockSize, int chunkSize, RollingHash? rollingHash)
-        {
-            if (maxBufferSize <= 0)
-                maxBufferSize = 1;
-
-            this.bufferSize = maxBufferSize * 1024 * 1024;
-            if (target.Length <= maxBufferSize)
-                this.bufferSize = (int) target.Length;
-
-            this.blockSize = blockSize;
-            this.chunkSize = chunkSize < 2 ? this.blockSize * 2 : chunkSize;
-            this.targetData = new ByteStreamReader(target);
+            long sourceLength = source.Length;
+            if (sourceLength > int.MaxValue)
+                throw new ArgumentOutOfRangeException(nameof(source), "The source must fit in a .NET span.");
+            InitializeOptions(maxBufferSize, blockSize, chunkSize);
+            targetData = target;
             this.outputStream = outputStream;
-
-            if (rollingHash == null)
+            _nativeAllocation = new NativeAllocation<byte>(sourceLength);
+            try
             {
-                this.disposeRollingHash = true;
-                this.hasher = new RollingHash(this.blockSize);
+                source.ReadExactly(_nativeAllocation.AsSpan());
+                oldData = new ByteBuffer(_nativeAllocation);
             }
-            else
+            catch
             {
-                this.hasher = rollingHash;
+                _nativeAllocation.Dispose();
+                throw;
             }
-
-            if (this.hasher.WindowSize != this.blockSize)
-                throw new ArgumentException("Supplied RollingHash instance has a different window size than blocksize!");
-
-            if (this.blockSize % 2 != 0 || this.chunkSize < 2 || this.chunkSize < 2 * this.blockSize)
-                throw new ArgumentException($"{this.blockSize} can not be less than 2 or twice the blocksize of the dictionary {this.blockSize}.");
         }
 
+        /// <summary>Creates a word-hash encoder with 1 MiB target windows.</summary>
+        /// <param name="buffer">Caller-owned dictionary buffer. Keep its storage valid until encoding finishes.</param>
+        /// <param name="target">Readable, seekable stream containing the desired target. Encoding starts at offset zero.</param>
+        /// <param name="outputStream">Writable destination for the patch, starting at its current position.</param>
+        /// <param name="blockSize">Width and spacing of indexed source blocks (8, 16, or 32 bytes).</param>
+        /// <param name="chunkSize">Minimum COPY length in bytes. Zero uses the selected block width. Any other value must be at least that width.</param>
+        /// <remarks>The caller retains ownership of all supplied streams.</remarks>
+        /// <exception cref="ArgumentOutOfRangeException">The dictionary exceeds <see cref="int.MaxValue"/> bytes, the block size is unsupported, or the COPY minimum is invalid.</exception>
+        public VcEncoder(ByteBuffer buffer, Stream target, Stream outputStream, BlockSize blockSize, int chunkSize = 0)
+            : this(buffer, target, outputStream, 1, blockSize, chunkSize)
+        {
+        }
 
-        /// <summary>
-        /// Calculate and write a diff for the file.
-        /// </summary>
-        /// <param name="interleaved">Whether to output in SDCH interleaved diff format.</param>
-        /// <param name="checksumFormat">
-        /// Whether to include Adler32 checksums for encoded data windows. If interleaved is true, <see cref="ChecksumFormat.Xdelta3"/>
-        /// is not supported.
-        /// </param>
-        /// <param name="progress">Reports an estimate of the encoding progress. Value if 0 to 1.</param>
-        /// <returns>
-        /// <see cref="VCDiffResult.SUCCESS"/> if successful, <see cref="VCDiffResult.ERROR"/> if the sourceStream or target are zero-length.</returns>
-        /// <exception cref="ArgumentException">If interleaved is true, and <see cref="ChecksumFormat.Xdelta3"/> is chosen.</exception>
+        /// <summary>Creates a word-hash encoder with the specified target window size.</summary>
+        /// <param name="buffer">Caller-owned dictionary buffer. Keep its storage valid until encoding finishes.</param>
+        /// <param name="target">Readable, seekable stream containing the desired target. Encoding starts at offset zero.</param>
+        /// <param name="outputStream">Writable destination for the patch, starting at its current position.</param>
+        /// <param name="maxBufferSize">Target window size in MiB. Values less than one select one MiB.</param>
+        /// <param name="blockSize">Width and spacing of indexed source blocks (8, 16, or 32 bytes).</param>
+        /// <param name="chunkSize">Minimum COPY length in bytes. Zero uses the selected block width. Any other value must be at least that width.</param>
+        /// <remarks>The caller retains ownership of all supplied streams.</remarks>
+        /// <exception cref="ArgumentOutOfRangeException">The dictionary exceeds <see cref="int.MaxValue"/> bytes, the block size is unsupported, or the COPY minimum is invalid.</exception>
+        public VcEncoder(ByteBuffer buffer, Stream target, Stream outputStream, int maxBufferSize, BlockSize blockSize, int chunkSize = 0)
+        {
+            if (buffer.Length > int.MaxValue)
+                throw new ArgumentOutOfRangeException(nameof(buffer), "The source must fit in a .NET span.");
+            this.oldData = buffer;
+            InitializeOptions(maxBufferSize, blockSize, chunkSize);
+            targetData = target;
+            this.outputStream = outputStream;
+        }
+
+        private void InitializeOptions(int maxBufferSize, BlockSize blockSize, int chunkSize)
+        {
+            if (blockSize != BlockSize.Bytes8 && blockSize != BlockSize.Bytes16 && blockSize != BlockSize.Bytes32)
+                throw new ArgumentOutOfRangeException(nameof(blockSize), blockSize, "Choose an 8-, 16-, or 32-byte block.");
+            if (chunkSize != 0 && chunkSize < (int)blockSize)
+                throw new ArgumentOutOfRangeException(nameof(chunkSize), chunkSize, "The minimum COPY length must be at least the block size.");
+
+            maxWindowBytes = Math.Max(1, maxBufferSize) * (1024L * 1024);
+
+            this.blockSize = (int)blockSize;
+            this.chunkSize = chunkSize == 0 ? this.blockSize : chunkSize;
+        }
+
+        /// <summary>Writes a VCDIFF patch to the output stream.</summary>
+        /// <param name="interleaved">Use the SDCH interleaved instruction layout when true.</param>
+        /// <param name="checksumFormat">Optional per-window checksum format. Defaults to <see cref="ChecksumFormat.None"/>.</param>
+        /// <param name="progress">Optional receiver for the fraction of the target consumed after each window, from zero to one.</param>
+        /// <returns><see cref="VCDiffResult.SUCCESS"/> on completion, or <see cref="VCDiffResult.ERROR"/> for an empty source or target.</returns>
+        /// <exception cref="EndOfStreamException">The target ends before its declared length.</exception>
+        /// <exception cref="ArgumentException">Interleaving was requested with <see cref="ChecksumFormat.Xdelta3"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><see cref="Matcher"/> or <see cref="IndexPreference"/> contains an unsupported value.</exception>
         public VCDiffResult Encode(bool interleaved = false, ChecksumFormat checksumFormat = ChecksumFormat.None, IProgress<float>? progress = null)
         {
-            Task WriteBytes(byte[] bytes)
-            {
-                outputStream.Write(bytes);
-                return Task.CompletedTask;
-            }
+            var algorithm = Matcher;
+            var preference = IndexPreference;
+            var header = PrepareHeader(interleaved, checksumFormat, algorithm, preference);
+            if (header == null) return VCDiffResult.ERROR;
+            outputStream.Write(header);
 
-            ValidateParameters(interleaved, checksumFormat);
-            if (!Encode_Init(interleaved, checksumFormat, WriteBytes).Result) 
-                return VCDiffResult.ERROR;
-
-            // Read in all the dictionary it is the only thing that needs to be
-            Encode_Setup(interleaved, checksumFormat, out var chunker, out var buf);
-            try
+            byte[] buffer = CreateWindowBuffer();
+            using var chunker = CreateChunkEncoder(buffer.Length, interleaved, checksumFormat, algorithm, preference);
+            while (targetData.Position < targetData.Length)
             {
-                var bufSpan = buf.Span;
-                while (targetData.CanRead)
-                {
-                    int bytesRead = targetData.ReadBytesIntoBuf(bufSpan);
-                    using ByteBuffer ntarget = new ByteBuffer(buf[..bytesRead]);
-                    chunker.EncodeChunk(ntarget, outputStream);
-                    progress?.Report((float)targetData.Position / targetData.Length);
-                }
-
-                return VCDiffResult.SUCCESS;
+                int read = targetData.Read(buffer.AsSpan());
+                if (read == 0) throw new EndOfStreamException();
+                chunker.EncodeChunk(buffer.AsSpan(0, read), outputStream);
+                progress?.Report((float)targetData.Position / targetData.Length);
             }
-            finally
-            {
-                chunker.Dispose();
-            }
+            return VCDiffResult.SUCCESS;
         }
 
-        /// <summary>
-        /// Calculate and write a diff for the file.
-        /// This method isn't fully asynchonous; writes to the output stream are still synchronous.
-        /// 
-        /// It is recommended you use the synchronous <see cref="Encode"/> method for most use cases.
-        /// </summary>
-        /// <param name="interleaved">Whether to output in SDCH interleaved diff format.</param>
-        /// <param name="checksumFormat">
-        /// Whether to include Adler32 checksums for encoded data windows. If interleaved is true, <see cref="ChecksumFormat.Xdelta3"/>
-        /// is not supported.
-        /// </param>
-        /// <param name="progress">Reports an estimate of the encoding progress. Value if 0 to 1.</param>
-        /// <returns>
-        /// <see cref="VCDiffResult.SUCCESS"/> if successful, <see cref="VCDiffResult.ERROR"/> if the sourceStream or target are zero-length.</returns>
-        /// <exception cref="ArgumentException">If interleaved is true, and <see cref="ChecksumFormat.Xdelta3"/> is chosen.</exception>
+        /// <summary>Asynchronously reads target windows and writes a VCDIFF patch to the output stream.</summary>
+        /// <param name="interleaved">Use the SDCH interleaved instruction layout when true.</param>
+        /// <param name="checksumFormat">Optional per-window checksum format. Defaults to <see cref="ChecksumFormat.None"/>.</param>
+        /// <param name="progress">Optional receiver for the fraction of the target consumed after each window, from zero to one.</param>
+        /// <returns>A task returning <see cref="VCDiffResult.SUCCESS"/> on completion, or <see cref="VCDiffResult.ERROR"/> for an empty source or target.</returns>
+        /// <remarks>Source matching and window output writes run synchronously.</remarks>
+        /// <exception cref="EndOfStreamException">The target ends before its declared length.</exception>
+        /// <exception cref="ArgumentException">Interleaving was requested with <see cref="ChecksumFormat.Xdelta3"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><see cref="Matcher"/> or <see cref="IndexPreference"/> contains an unsupported value.</exception>
         public async Task<VCDiffResult> EncodeAsync(bool interleaved = false, ChecksumFormat checksumFormat = ChecksumFormat.None, IProgress<float>? progress = null)
         {
-            ValidateParameters(interleaved, checksumFormat);
-            if (!await Encode_Init(interleaved, checksumFormat, async bytes => await outputStream.WriteAsync(bytes)))
-                return VCDiffResult.ERROR;
+            var algorithm = Matcher;
+            var preference = IndexPreference;
+            var header = PrepareHeader(interleaved, checksumFormat, algorithm, preference);
+            if (header == null) return VCDiffResult.ERROR;
+            await outputStream.WriteAsync(header);
 
-            //read in all the dictionary it is the only thing that needs to be
-            Encode_Setup(interleaved, checksumFormat, out var chunker, out var buf);
-            try
+            byte[] buffer = CreateWindowBuffer();
+            using var chunker = CreateChunkEncoder(buffer.Length, interleaved, checksumFormat, algorithm, preference);
+            while (targetData.Position < targetData.Length)
             {
-                while (targetData.CanRead)
-                {
-                    int read = await targetData.ReadBytesIntoBufAsync(buf);
-                    using ByteBuffer ntarget = new ByteBuffer(buf[..read]);
-                    chunker.EncodeChunk(ntarget, outputStream);
-                    progress?.Report((float)targetData.Position / targetData.Length);
-                }
-
-                return VCDiffResult.SUCCESS;
+                int read = await targetData.ReadAsync(buffer.AsMemory());
+                if (read == 0) throw new EndOfStreamException();
+                chunker.EncodeChunk(buffer.AsSpan(0, read), outputStream);
+                progress?.Report((float)targetData.Position / targetData.Length);
             }
-            finally
-            {
-                chunker.Dispose();
-            }
+            return VCDiffResult.SUCCESS;
         }
 
-        private async Task<bool> Encode_Init(bool interleaved, ChecksumFormat checksumFormat, WriteMagicHeader writeBytes)
+        private byte[]? PrepareHeader(bool interleaved, ChecksumFormat checksumFormat, MatchAlgorithm algorithm, IndexPreference preference)
         {
-            if (targetData.Length == 0 || oldData!.Length == 0)
-                return false;
+            if (algorithm != MatchAlgorithm.Exhaustive && algorithm != MatchAlgorithm.Bounded)
+                throw new ArgumentOutOfRangeException(nameof(Matcher));
+
+            if (preference != IndexPreference.Speed && preference != IndexPreference.Memory)
+                throw new ArgumentOutOfRangeException(nameof(IndexPreference));
+
+            if (interleaved && checksumFormat == ChecksumFormat.Xdelta3)
+                throw new ArgumentException("Interleaved diffs can not have an xdelta3 checksum!");
+
+            if (!targetData.CanRead || targetData.Length == 0 || oldData.Length == 0)
+                return null;
 
             oldData.Position = 0;
             targetData.Position = 0;
-
-            // file header
-            // write magic bytes
-            if (!interleaved && checksumFormat != ChecksumFormat.SDCH)
-                await writeBytes(MagicBytes);
-            else
-                await writeBytes(MagicBytesExtended);
-
-            return true;
+            return interleaved || checksumFormat == ChecksumFormat.SDCH ? MagicBytesExtended : MagicBytes;
         }
 
-        private void ValidateParameters(bool interleaved, ChecksumFormat checksumFormat)
+        private byte[] CreateWindowBuffer()
+            => new byte[(int)Math.Min(targetData.Length, Math.Min(maxWindowBytes, int.MaxValue))];
+
+        private ChunkEncoder CreateChunkEncoder(int windowCapacity, bool interleaved, ChecksumFormat checksumFormat, MatchAlgorithm algorithm, IndexPreference preference)
         {
-            if (interleaved && checksumFormat == ChecksumFormat.Xdelta3)
-                throw new ArgumentException("Interleaved diffs can not have an xdelta3 checksum!");
+            int limit = algorithm == MatchAlgorithm.Bounded ? 256 : int.MaxValue;
+            // A COPY must fit in a single target window.
+            var matcher = windowCapacity < chunkSize ? null : WordHashMatcher.Create(oldData, blockSize, limit, preference);
+            return new ChunkEncoder(matcher, oldData.Length, chunkSize, checksumFormat, interleaved);
         }
 
-        private void Encode_Setup(bool interleaved, ChecksumFormat checksumFormat, out ChunkEncoder chunkEncoder, out Memory<byte> buf)
-        {
-            var dictionary = new BlockHash(oldData!, 0, hasher, blockSize);
-            dictionary.AddAllBlocks();
-            oldData!.Position = 0;
-
-            chunkEncoder = new ChunkEncoder(dictionary, oldData, hasher, checksumFormat, interleaved, chunkSize);
-            buf = new Memory<byte>(new byte[bufferSize]);
-        }
-
-        /// <summary>
-        /// Disposes the encoder.
-        /// </summary>
+        /// <summary>Releases the encoder’s dictionary copy. Caller-supplied streams and buffers remain open.</summary>
         public void Dispose()
         {
             _nativeAllocation.Dispose();
-            targetData?.Dispose();
-            if (this.disposeRollingHash)
-                this.hasher.Dispose();
+            _nativeAllocation = default;
         }
-
-        private delegate Task WriteMagicHeader(byte[] writeBytes);
     }
 }

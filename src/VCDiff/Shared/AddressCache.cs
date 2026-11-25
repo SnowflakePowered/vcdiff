@@ -18,9 +18,9 @@ namespace VCDiff.Shared
         
         public const byte FirstNear = (byte)VCDiffModes.FIRST;
 
-        public byte FirstSame => (byte)(VCDiffModes.FIRST + nearSize);
+        public int FirstSame => FirstNear + nearSize;
 
-        public byte Last => (byte)(FirstSame + sameSize - 1);
+        public int Last => FirstSame + sameSize - 1;
 
         public static byte DefaultLast => (byte)(VCDiffModes.FIRST + DefaultNearCacheSize + DefaultSameCacheSize - 1);
 

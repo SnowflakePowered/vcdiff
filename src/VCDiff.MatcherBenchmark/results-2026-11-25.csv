@@ -1,0 +1,43 @@
+input,source_bytes,target_bytes,mode,block_bytes,min_copy_bytes,median_encode_ms,patch_bytes,median_managed_bytes_per_encode
+24 shared bytes per 32,262144,262144,bounded,8,8,1.2360,98240,678552
+24 shared bytes per 32,262144,262144,bounded,16,16,1.1890,98240,678552
+24 shared bytes per 32,262144,262144,bounded,32,32,3.2400,262170,1318312
+Unrelated bytes,262144,262144,bounded,8,8,3.0345,262170,1318312
+Unrelated bytes,262144,262144,bounded,16,16,2.8605,262170,1318312
+Unrelated bytes,262144,262144,bounded,32,32,3.1282,262170,1318312
+Shuffled records,131072,133120,bounded,8,8,2.1837,18568,226048
+Shuffled records,131072,133120,bounded,16,16,2.2478,18595,226176
+Shuffled records,131072,133120,bounded,32,32,2.3854,50048,430256
+Small edits (8-bit index),2040,2040,bounded,8,8,0.0019,99,10048
+Small edits (8-bit index),2040,2040,bounded,16,16,0.0017,99,10048
+Small edits (8-bit index),2040,2040,bounded,32,32,0.0016,99,10048
+Small edits (16-bit index),65536,65536,bounded,8,8,0.0543,2605,87248
+Small edits (16-bit index),65536,65536,bounded,16,16,0.0575,2605,87248
+Small edits (16-bit index),65536,65536,bounded,32,32,0.0744,2605,87248
+Moby-Dick (pg15 to pg2701),1253951,1253974,bounded,8,8,1.0864,34607,1240408
+Moby-Dick (pg15 to pg2701),1253951,1253974,bounded,16,16,0.8001,35197,1215488
+Moby-Dick (pg15 to pg2701),1253951,1253974,bounded,32,32,1.0127,53304,1297392
+SQLite CLI x64 (3.46.0 to 3.46.1),3773440,3773952,bounded,8,8,19.6184,627175,4619176
+SQLite CLI x64 (3.46.0 to 3.46.1),3773440,3773952,bounded,16,16,16.8535,810691,6348616
+SQLite CLI x64 (3.46.0 to 3.46.1),3773440,3773952,bounded,32,32,21.7281,1102734,5783120
+24 shared bytes per 32,262144,262144,exhaustive,8,8,1.2325,98240,678552
+24 shared bytes per 32,262144,262144,exhaustive,16,16,1.1745,98240,678552
+24 shared bytes per 32,262144,262144,exhaustive,32,32,3.1855,262170,1318312
+Unrelated bytes,262144,262144,exhaustive,8,8,2.9805,262170,1318312
+Unrelated bytes,262144,262144,exhaustive,16,16,2.8580,262170,1318312
+Unrelated bytes,262144,262144,exhaustive,32,32,3.1832,262170,1318312
+Shuffled records,131072,133120,exhaustive,8,8,16.7412,13331,203504
+Shuffled records,131072,133120,exhaustive,16,16,16.6349,13331,203504
+Shuffled records,131072,133120,exhaustive,32,32,16.7868,13331,203504
+Small edits (8-bit index),2040,2040,exhaustive,8,8,0.0018,99,10048
+Small edits (8-bit index),2040,2040,exhaustive,16,16,0.0018,99,10048
+Small edits (8-bit index),2040,2040,exhaustive,32,32,0.0017,99,10048
+Small edits (16-bit index),65536,65536,exhaustive,8,8,0.0545,2605,87248
+Small edits (16-bit index),65536,65536,exhaustive,16,16,0.0568,2605,87248
+Small edits (16-bit index),65536,65536,exhaustive,32,32,0.0736,2605,87248
+Moby-Dick (pg15 to pg2701),1253951,1253974,exhaustive,8,8,1.0980,34607,1240408
+Moby-Dick (pg15 to pg2701),1253951,1253974,exhaustive,16,16,0.6931,35197,1215488
+Moby-Dick (pg15 to pg2701),1253951,1253974,exhaustive,32,32,0.9281,53304,1297392
+SQLite CLI x64 (3.46.0 to 3.46.1),3773440,3773952,exhaustive,8,8,216.0705,624762,4615728
+SQLite CLI x64 (3.46.0 to 3.46.1),3773440,3773952,exhaustive,16,16,110.0632,810848,6350976
+SQLite CLI x64 (3.46.0 to 3.46.1),3773440,3773952,exhaustive,32,32,61.2559,1102987,5783784

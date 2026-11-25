@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,17 +8,15 @@ using VCDiff.Shared;
 
 namespace VCDiff.Decoders
 {
-    internal class BodyDecoder<TWindowDecoderByteBuffer, TSourceBuffer, TDeltaBuffer> : IDisposable 
+    internal class BodyDecoder<TWindowDecoderByteBuffer, TSourceBuffer> : IDisposable
         where TWindowDecoderByteBuffer : IByteBuffer
         where TSourceBuffer : IByteBuffer
-        where TDeltaBuffer : IByteBuffer
     {
         private WindowDecoder<TWindowDecoderByteBuffer> window;
         private Stream outputStream;
         private TSourceBuffer source;
-        private TDeltaBuffer delta;
         private AddressCache addressCache;
-        private MemoryStream targetData;
+        private readonly byte[] targetData;
         private CustomCodeTableDecoder? customTable;
         private readonly bool disableChecksums;
 
@@ -29,10 +28,10 @@ namespace VCDiff.Decoders
         /// </summary>
         /// <param name="w">the window decoder</param>
         /// <param name="source">The source dictionary data</param>
-        /// <param name="delta">The delta</param>
         /// <param name="decodedTarget">the out stream</param>
         /// <param name="customTable">custom table if any. Default is null.</param>
-        public BodyDecoder(WindowDecoder<TWindowDecoderByteBuffer> w, TSourceBuffer source, TDeltaBuffer delta, Stream decodedTarget, CustomCodeTableDecoder? customTable = null, bool disableChecksums = false)
+        /// <param name="disableChecksums">Skip verification of the decoded window checksum when true.</param>
+        public BodyDecoder(WindowDecoder<TWindowDecoderByteBuffer> w, TSourceBuffer source, Stream decodedTarget, CustomCodeTableDecoder? customTable = null, bool disableChecksums = false)
         {
             if (customTable != null)
             {
@@ -46,256 +45,78 @@ namespace VCDiff.Decoders
             window = w;
             this.outputStream = decodedTarget;
             this.source = source;
-            this.delta = delta;
-            this.targetData = Pool.MemoryStreamManager.GetStream(nameof(BodyDecoder<TWindowDecoderByteBuffer, TSourceBuffer, TDeltaBuffer>), (int) w.TargetWindowLength);
+            targetData = ArrayPool<byte>.Shared.Rent(checked((int)w.TargetWindowLength));
             this.disableChecksums = disableChecksums;
         }
 
-        private VCDiffResult DecodeInterleaveCore()
+        private VCDiffResult DecodeWindow(bool interleaved)
         {
-            VCDiffResult result = VCDiffResult.SUCCESS;
-            //since interleave expected then the last point that was most likely decoded was the lengths section
-            //so following is all data for the add run copy etc
-            long interleaveLength = window.InstructionAndSizesLength;
-            using var previous = Pool.MemoryStreamManager.GetStream(nameof(BodyDecoder<TWindowDecoderByteBuffer, TSourceBuffer, TDeltaBuffer>), (int) interleaveLength);
-            int lastDecodedSize = 0;
-            VCDiffInstructionType lastDecodedInstruction = VCDiffInstructionType.NOOP;
-
-            while (interleaveLength > 0)
+            using var instructions = new ByteBuffer(window.InstructionsAndSizesData.AsSpanOrDefault());
+            VCDiffResult result;
+            if (interleaved)
             {
-                if (!delta.CanRead) continue;
-                //read in
-                var didBreakBeforeComplete = false;
-
-                //try to read in all interleaved bytes
-                //if not then it will buffer for next time
-                previous.Write(delta.ReadBytesAsSpan((int)interleaveLength));
-                using ByteBuffer incoming = new ByteBuffer(previous.GetBuffer());
-                previous.SetLength(0);
-                long initialLength = incoming.Length;
-
-                InstructionDecoder instrDecoder = new InstructionDecoder(incoming, customTable);
-
-                while (incoming.CanRead && TotalBytesDecoded < window.TargetWindowLength)
-                {
-                    int decodedSize = 0;
-                    byte mode = 0;
-                    VCDiffInstructionType instruction = VCDiffInstructionType.NOOP;
-
-                    if (lastDecodedSize > 0 && lastDecodedInstruction != VCDiffInstructionType.NOOP)
-                    {
-                        decodedSize = lastDecodedSize;
-                        instruction = lastDecodedInstruction;
-                    }
-                    else
-                    {
-                        instruction = instrDecoder.Next(out decodedSize, out mode);
-
-                        switch (instruction)
-                        {
-                            case VCDiffInstructionType.EOD:
-                                didBreakBeforeComplete = true;
-                                break;
-
-                            case VCDiffInstructionType.ERROR:
-                                targetData.SetLength(0);
-                                return VCDiffResult.ERROR;
-                        }
-                    }
-
-                    //if instruction is EOD then decodedSize will be 0 as well
-                    //the last part of the buffer containing the instruction will be
-                    //buffered for the next loop
-                    lastDecodedInstruction = instruction;
-                    lastDecodedSize = decodedSize;
-
-                    if (didBreakBeforeComplete)
-                    {
-                        //we don't have all the data so store this pointer into a temporary list to resolve next loop
-                        didBreakBeforeComplete = true;
-                        interleaveLength -= incoming.Position;
-
-                        if (initialLength - incoming.Position > 0)
-                        {
-                            previous.Write(incoming.ReadBytesAsSpan((int)(initialLength - incoming.Position)));
-                        }
-
-                        break;
-                    }
-
-                    switch (instruction)
-                    {
-                        case VCDiffInstructionType.ADD:
-                            result = DecodeAdd(decodedSize, incoming);
-                            break;
-
-                        case VCDiffInstructionType.RUN:
-                            result = DecodeRun(decodedSize, incoming);
-                            break;
-
-                        case VCDiffInstructionType.COPY:
-                            result = DecodeCopy(decodedSize, mode, incoming);
-                            break;
-
-                        default:
-                            targetData.SetLength(0);
-                            return VCDiffResult.ERROR;
-                    }
-
-                    if (result == VCDiffResult.EOD)
-                    {
-                        //we don't have all the data so store this pointer into a temporary list to resolve next loop
-                        didBreakBeforeComplete = true;
-                        interleaveLength -= incoming.Position;
-
-                        if (initialLength - incoming.Position > 0)
-                        {
-                            previous.Write(incoming.ReadBytesAsSpan((int)(initialLength - incoming.Position)));
-                        }
-
-                        break;
-                    }
-
-                    //reset these as we have successfully used them
-                    lastDecodedInstruction = VCDiffInstructionType.NOOP;
-                    lastDecodedSize = 0;
-                }
-
-                if (!didBreakBeforeComplete)
-                {
-                    interleaveLength -= initialLength;
-                }
+                // Opcodes, literals and addresses all advance the same cursor.
+                result = DecodeInstructions(instructions, instructions, instructions);
+            }
+            else
+            {
+                using var literals = new ByteBuffer(window.AddRunData.AsSpanOrDefault());
+                using var addresses = new ByteBuffer(window.AddressesForCopyData.AsSpanOrDefault());
+                result = DecodeInstructions(instructions, literals, addresses);
             }
 
-            if (window.ChecksumFormat == ChecksumFormat.SDCH)
-            {
-                uint adler = Checksum.ComputeGoogleAdler32(targetData.GetBuffer().AsSpan(0, (int)targetData.Length));
+            if (result != VCDiffResult.SUCCESS || TotalBytesDecoded != window.TargetWindowLength)
+                return VCDiffResult.ERROR;
 
-                if (adler != window.Checksum)
-                {
-                    result = VCDiffResult.ERROR;
-                }
+            if (!disableChecksums && window.ChecksumFormat != ChecksumFormat.None)
+            {
+                var bytes = targetData.AsSpan(0, (int)TotalBytesDecoded);
+                uint checksum = window.ChecksumFormat == ChecksumFormat.SDCH
+                    ? Checksum.ComputeGoogleAdler32(bytes)
+                    : Checksum.ComputeXdelta3Adler32(bytes);
+                if (checksum != window.Checksum)
+                    return VCDiffResult.ERROR;
             }
 
-            return result;
+            return VCDiffResult.SUCCESS;
         }
-        
-        /// <summary>
-        /// Decode if as expecting interleave
-        /// </summary>
-        /// <returns></returns>
-        public VCDiffResult DecodeInterleave()
+
+        private VCDiffResult DecodeInstructions(ByteBuffer instructions, ByteBuffer literals, ByteBuffer addresses)
         {
-            var result = DecodeInterleaveCore();
-            targetData.Seek(0, SeekOrigin.Begin);
-            targetData.CopyTo(outputStream);
-            targetData.SetLength(0);
+            var decoder = new InstructionDecoder(instructions, customTable);
+            while (TotalBytesDecoded < window.TargetWindowLength)
+            {
+                var instruction = decoder.Next(out int size, out byte mode);
+                if (size < 0 || size > window.TargetWindowLength - TotalBytesDecoded)
+                    return VCDiffResult.ERROR;
+
+                var result = instruction switch
+                {
+                    VCDiffInstructionType.ADD => DecodeAdd(size, literals),
+                    VCDiffInstructionType.RUN => DecodeRun(size, literals),
+                    VCDiffInstructionType.COPY => DecodeCopy(size, mode, addresses),
+                    _ => VCDiffResult.ERROR
+                };
+                // The complete encoded window is already present. A missing operand is a format error.
+                if (result != VCDiffResult.SUCCESS)
+                    return VCDiffResult.ERROR;
+            }
+            return VCDiffResult.SUCCESS;
+        }
+
+        public VCDiffResult Decode(bool interleaved)
+        {
+            var result = DecodeWindow(interleaved);
+            if (result == VCDiffResult.SUCCESS)
+                outputStream.Write(targetData, 0, (int)TotalBytesDecoded);
             return result;
         }
 
-        /// <summary>
-        /// Decode if as expecting interleave
-        /// </summary>
-        /// <returns></returns>
-        public async Task<VCDiffResult> DecodeInterleaveAsync(CancellationToken token = default)
+        public async Task<VCDiffResult> DecodeAsync(bool interleaved, CancellationToken token = default)
         {
-            var result = DecodeInterleaveCore();
-            targetData.Seek(0, SeekOrigin.Begin);
-            await targetData.CopyToAsync(outputStream, token);
-            targetData.SetLength(0);
-            return result;
-        }
-
-        private VCDiffResult DecodeCore()
-        {
-            using ByteBuffer instructionBuffer = new ByteBuffer(window.InstructionsAndSizesData.AsSpanOrDefault());
-            using ByteBuffer addressBuffer = new ByteBuffer(window.AddressesForCopyData.AsSpanOrDefault());
-            using ByteBuffer addRunBuffer = new ByteBuffer(window.AddRunData.AsSpanOrDefault());
-
-            InstructionDecoder instrDecoder = new InstructionDecoder(instructionBuffer, customTable);
-
-            VCDiffResult result = VCDiffResult.SUCCESS;
-
-            while (this.TotalBytesDecoded < window.TargetWindowLength)
-            {
-                VCDiffInstructionType instruction = instrDecoder.Next(out int decodedSize, out byte mode);
-
-                switch (instruction)
-                {
-                    case VCDiffInstructionType.EOD:
-                        targetData.SetLength(0);
-                        return VCDiffResult.EOD;
-
-                    case VCDiffInstructionType.ERROR:
-                        targetData.SetLength(0);
-                        return VCDiffResult.ERROR;
-                }
-
-                switch (instruction)
-                {
-                    case VCDiffInstructionType.ADD:
-                        result = DecodeAdd(decodedSize, addRunBuffer);
-                        break;
-
-                    case VCDiffInstructionType.RUN:
-                        result = DecodeRun(decodedSize, addRunBuffer);
-                        break;
-
-                    case VCDiffInstructionType.COPY:
-                        result = DecodeCopy(decodedSize, mode, addressBuffer);
-                        break;
-
-                    default:
-                        targetData.SetLength(0);
-                        return VCDiffResult.ERROR;
-                }
-            }
-
-            if (window.ChecksumFormat == ChecksumFormat.SDCH)
-            {
-                uint adler = Checksum.ComputeGoogleAdler32(targetData.GetBuffer().AsSpan(0, (int)targetData.Length));
-
-                if (adler != window.Checksum && !disableChecksums)
-                {
-                    result = VCDiffResult.ERROR;
-                }
-            }
-            else if (window.ChecksumFormat == ChecksumFormat.Xdelta3)
-            {
-                uint adler = Checksum.ComputeXdelta3Adler32(targetData.GetBuffer().AsSpan(0, (int)targetData.Length));
-
-                if (adler != window.Checksum && !disableChecksums)
-                {
-                    result = VCDiffResult.ERROR;
-                }
-            }
-
-            return result;
-        }
-        
-        /// <summary>
-        /// Decode normally
-        /// </summary>
-        /// <returns></returns>
-        public VCDiffResult Decode()
-        {
-            var result = this.DecodeCore();
-            targetData.Seek(0, SeekOrigin.Begin);
-            targetData.CopyTo(outputStream);
-            targetData.SetLength(0);
-            return result;
-        }
-
-        /// <summary>
-        /// Decode normally
-        /// </summary>
-        /// <returns></returns>
-        public async Task<VCDiffResult> DecodeAsync(CancellationToken token = default)
-        {
-            var result = this.DecodeCore();
-            targetData.Seek(0, SeekOrigin.Begin);
-            await targetData.CopyToAsync(outputStream, token);
-            targetData.SetLength(0);
+            var result = DecodeWindow(interleaved);
+            if (result == VCDiffResult.SUCCESS)
+                await outputStream.WriteAsync(targetData, 0, (int)TotalBytesDecoded, token);
             return result;
         }
 
@@ -319,51 +140,36 @@ namespace VCDiff.Decoders
                     break;
             }
 
-            // Copy all data from source segment
-            if (decodedAddress + size <= window.SourceSegmentLength)
-            {
-                source.Position = decodedAddress + window.SourceSegmentOffset;
-                targetData.Write(source.ReadBytesAsSpan(size));
-                this.TotalBytesDecoded += size;
-                return VCDiffResult.SUCCESS;
-            }
-
-            // Copy some data from target window...
             if (decodedAddress < window.SourceSegmentLength)
             {
-                // ... plus some data from source segment
-                long partialCopySize = window.SourceSegmentLength - decodedAddress;
-                source.Position = decodedAddress + window.SourceSegmentOffset;
-                targetData.Write(source.ReadBytesAsSpan((int)partialCopySize));
-                this.TotalBytesDecoded += partialCopySize;
-                decodedAddress += partialCopySize;
-                size -= (int)partialCopySize;
+                int fromSource = (int)Math.Min(size, window.SourceSegmentLength - decodedAddress);
+                source.Position = window.SourceSegmentOffset + decodedAddress;
+                if (!BufferReads.TryReadExactly(ref source, NextBytes(fromSource)))
+                    return VCDiffResult.ERROR;
+
+                TotalBytesDecoded += fromSource;
+                size -= fromSource;
+                if (size == 0)
+                    return VCDiffResult.SUCCESS;
+
+                decodedAddress += fromSource;
             }
 
             decodedAddress -= window.SourceSegmentLength;
-            bool overlap = decodedAddress + size >= this.TotalBytesDecoded;
-            if (overlap)
+            if (decodedAddress >= TotalBytesDecoded)
+                return VCDiffResult.ERROR;
+            while (size > 0)
             {
-                int availableData = (int)(this.TotalBytesDecoded - decodedAddress);
-                for (int i = 0; i < size; i += availableData)
-                {
-                    int toCopy = (size - i < availableData) ? size - i : availableData;
-                    var tbytesBuf = targetData.GetBuffer().AsSpan((int)decodedAddress + i, toCopy);
-                    //outputStream.Write(tbytesBuf);
-                    targetData.Write(tbytesBuf);
-                    this.TotalBytesDecoded += toCopy;
-                }
-            }
-            else
-            {
-                var fbytes = targetData.GetBuffer().AsSpan((int)decodedAddress, size);
-                //outputStream.Write(fbytes);
-                targetData.Write(fbytes);
-                this.TotalBytesDecoded += size;
+                // Previously copied bytes can serve as source for an overlapping COPY.
+                int count = (int)Math.Min(size, TotalBytesDecoded - decodedAddress);
+                targetData.AsSpan((int)decodedAddress, count).CopyTo(NextBytes(count));
+                TotalBytesDecoded += count;
+                size -= count;
             }
             return VCDiffResult.SUCCESS;
-
         }
+
+        private Span<byte> NextBytes(int size) => targetData.AsSpan((int)TotalBytesDecoded, size);
 
         private VCDiffResult DecodeRun(int size, ByteBuffer addRun)
         {
@@ -377,14 +183,7 @@ namespace VCDiff.Decoders
                 return VCDiffResult.EOD;
             }
 
-            byte b = addRun.ReadByte();
-
-            for (int i = 0; i < size; ++i)
-            {
-                //outputStream.Write(b);
-                targetData.WriteByte(b);
-            }
-
+            NextBytes(size).Fill(addRun.ReadByte());
             TotalBytesDecoded += size;
 
             return VCDiffResult.SUCCESS;
@@ -402,14 +201,14 @@ namespace VCDiff.Decoders
                 return VCDiffResult.EOD;
             }
             
-            targetData.Write(addRun.ReadBytesAsSpan(size));
+            addRun.ReadBytesAsSpan(size).CopyTo(NextBytes(size));
             TotalBytesDecoded += size;
             return VCDiffResult.SUCCESS;
         }
 
         public void Dispose()
         {
-            targetData.Dispose();
+            ArrayPool<byte>.Shared.Return(targetData);
         }
     }
 }
